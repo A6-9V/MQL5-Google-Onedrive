@@ -1,6 +1,16 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# Load local secrets (optional). Do not echo values.
+if [[ -f "$ROOT_DIR/.env" ]]; then
+  set -a
+  # shellcheck disable=SC1091
+  source "$ROOT_DIR/.env"
+  set +a
+fi
+
 if [[ $# -ne 1 ]]; then
   echo "Usage: $0 \"/path/to/MT5/Data/Folder\"" >&2
   echo "In MT5: File -> Open Data Folder (use that path)." >&2
@@ -9,7 +19,6 @@ fi
 
 MT5_DATA_DIR="$1"
 
-ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SRC_BASE="$ROOT_DIR/mt5/MQL5"
 
 if [[ ! -d "$SRC_BASE" ]]; then
