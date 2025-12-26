@@ -33,3 +33,22 @@ This repo contains:
 
 - This is a rules-based implementation of common “SMC” ideas (fractal swing BOS/CHoCH) and a Donchian breakout.
 - Test in Strategy Tester and/or demo before using real funds.
+
+### Secrets / workspace encryption (optional)
+
+- **Do not commit secrets**: put local credentials in `.env` (ignored by git). Use `.env.example` as a template.
+- **If you pasted a real API key into chat/logs, rotate it** with the provider (treat it as exposed).
+
+If you want an encrypted snapshot of this repository on disk, you can create an encrypted archive:
+
+```bash
+export ENCRYPTION_PASSPHRASE='your-strong-passphrase'
+./scripts/encrypt_workspace.sh
+```
+
+To decrypt/extract it:
+
+```bash
+export ENCRYPTION_PASSPHRASE='your-strong-passphrase'
+./scripts/decrypt_workspace.sh workspace.tar.gz.enc ./_decrypted_workspace
+```

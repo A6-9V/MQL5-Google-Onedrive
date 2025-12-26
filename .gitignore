@@ -1,0 +1,17 @@
+.env
+.env.*
+!.env.example
+
+# Local secrets / key material
+.secrets/
+*.key
+*.pem
+
+# Encrypted / packaged workspace artifacts
+workspace.tar.gz
+workspace.tar.gz.enc
+*.enc
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
