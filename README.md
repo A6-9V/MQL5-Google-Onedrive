@@ -29,6 +29,22 @@ This repo contains:
   - MT5 → **Tools → Options → Notifications**
   - enable push notifications and set your MetaQuotes ID.
 
+### Auto SL/TP + risk management (EA)
+
+In `SMC_TrendBreakout_MTF_EA`:
+
+- **SLMode**
+  - `SL_ATR`: SL = ATR × `ATR_SL_Mult`
+  - `SL_SWING`: SL beyond last confirmed fractal swing (with `SwingSLBufferPoints`), fallback to ATR if swing is missing/invalid
+  - `SL_FIXED_POINTS`: SL = `FixedSLPoints`
+- **TPMode**
+  - `TP_RR`: TP = `RR` × SL distance
+  - `TP_FIXED_POINTS`: TP = `FixedTPPoints`
+  - `TP_DONCHIAN_WIDTH`: TP = Donchian channel width × `DonchianTP_Mult` (fallback to ATR width if needed)
+- **RiskPercent**
+  - If `RiskPercent > 0`, lots are calculated from SL distance so the **money at risk ≈ RiskPercent of Equity** (or Balance if you disable `RiskUseEquity`).
+  - `RiskClampToFreeMargin` can reduce lots if required margin is too high.
+
 ### Notes / safety
 
 - This is a rules-based implementation of common “SMC” ideas (fractal swing BOS/CHoCH) and a Donchian breakout.
