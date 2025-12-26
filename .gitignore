@@ -1,0 +1,9 @@
+dist/
+
+# MetaTrader 5 compiled artifacts
+*.ex5
+
+# Editor/OS clutter
+*.mq5~
+*.mqh~
+.DS_Store
