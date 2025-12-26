@@ -22,6 +22,21 @@ This repo contains:
 - Copy directly into your MT5 Data Folder (run this on the machine that has MT5 installed):
   - `bash scripts/deploy_mt5.sh "/path/from/MT5/File->Open Data Folder"`
 
+### Secrets (Jules_API_KEY)
+
+If you use automation that requires a Jules API key, set it as **`Jules_API_KEY`**.
+
+- **Cursor / local runs (recommended)**:
+  - Copy `.env.example` → `.env`
+  - Put your key in `.env` as `Jules_API_KEY=...`
+  - `.env` is ignored by git.
+- **GitHub Actions**:
+  - Repo → **Settings → Secrets and variables → Actions → New repository secret**
+  - **Name**: `Jules_API_KEY`
+  - **Value**: (your key)
+
+This repo includes a workflow (`.github/workflows/jules_secret_check.yml`) that will fail on PRs if the secret is missing, and will never print the secret value.
+
 ### Use the indicator
 
 - Attach `SMC_TrendBreakout_MTF` to a chart (your main timeframe).
