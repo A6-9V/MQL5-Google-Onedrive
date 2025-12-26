@@ -1,0 +1,9 @@
+{
+  "workbench.colorTheme": "Default Light+",
+  "workbench.preferredLightColorTheme": "Default Light+",
+  "editor.minimap.enabled": false,
+  "editor.renderLineHighlight": "all",
+  "editor.bracketPairColorization.enabled": true,
+  "editor.guides.bracketPairs": "active",
+  "window.autoDetectColorScheme": false
+}
