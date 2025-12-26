@@ -187,7 +187,7 @@ int OnCalculate(
   const int &spread[])
 {
   if(rates_total < 100) return 0;
-  if(DonchianLookback < 2) DonchianLookback = 2;
+  int donLookback = (DonchianLookback < 2 ? 2 : DonchianLookback);
 
   ArraySetAsSeries(time, true);
   ArraySetAsSeries(open, true);
@@ -234,7 +234,7 @@ int OnCalculate(
 
   // --- Determine Donchian breakout bounds (exclude current forming bar and signal bar)
   int donStart = sigBar + 1;
-  int donCount = DonchianLookback;
+  int donCount = donLookback;
   if(donStart + donCount >= rates_total) return rates_total;
 
   double donHigh = HighestHigh(high, donStart, donCount);

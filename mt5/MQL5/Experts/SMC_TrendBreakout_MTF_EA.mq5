@@ -7,6 +7,20 @@
 
 #include <Trade/Trade.mqh>
 
+enum ENUM_SL_MODE
+{
+  SL_ATR = 0,          // ATR * multiplier
+  SL_SWING = 1,        // last confirmed swing (fractal) + buffer
+  SL_FIXED_POINTS = 2  // fixed points
+};
+
+enum ENUM_TP_MODE
+{
+  TP_RR = 0,               // RR * SL distance
+  TP_FIXED_POINTS = 1,     // fixed points
+  TP_DONCHIAN_WIDTH = 2    // Donchian channel width * multiplier
+};
+
 input group "Core"
 input bool   EnableTrading         = false; // if false: alerts only
 input long   MagicNumber           = 26012025;
@@ -31,11 +45,24 @@ input int             EMAFast           = 20;
 input int             EMASlow           = 50;
 
 input group "Risk / Orders"
+input ENUM_SL_MODE SLMode                = SL_ATR;
+input ENUM_TP_MODE TPMode                = TP_RR;
+
 input double FixedLots             = 0.10; // used when RiskPercent=0
 input double RiskPercent           = 0.0;  // if >0: position size from SL distance
+input bool   RiskUseEquity         = true; // recommended
+input bool   RiskClampToFreeMargin = true; // reduce lots if not enough margin
+
 input int    ATRPeriod             = 14;
 input double ATR_SL_Mult           = 2.0;
+
+input int    SwingSLBufferPoints   = 20;   // extra points beyond swing (SL_SWING)
+input int    FixedSLPoints         = 500;  // SL_FIXED_POINTS
+
 input double RR                    = 2.0;
+input int    FixedTPPoints         = 1000; // TP_FIXED_POINTS
+input double DonchianTP_Mult       = 1.0;  // TP_DONCHIAN_WIDTH
+
 input int    SlippagePoints        = 30;
 
 input group "Notifications"
@@ -108,15 +135,17 @@ static double NormalizeLots(const string sym, double lots)
   return NormalizeDouble(lots, volDigits);
 }
 
-static double LotsFromRisk(const string sym, const double riskPct, const double slPoints)
+static double LotsFromRisk(const string sym, const double riskPct, const double slPoints, const bool useEquity)
 {
   if(riskPct <= 0.0) return 0.0;
   if(slPoints <= 0.0) return 0.0;
 
-  double bal = AccountInfoDouble(ACCOUNT_BALANCE);
-  double riskMoney = bal * (riskPct/100.0);
+  double base = (useEquity ? AccountInfoDouble(ACCOUNT_EQUITY) : AccountInfoDouble(ACCOUNT_BALANCE));
+  double riskMoney = base * (riskPct/100.0);
 
-  double tickVal = SymbolInfoDouble(sym, SYMBOL_TRADE_TICK_VALUE);
+  // Use LOSS tick value when available (more correct across symbols)
+  double tickVal = SymbolInfoDouble(sym, SYMBOL_TRADE_TICK_VALUE_LOSS);
+  if(tickVal <= 0.0) tickVal = SymbolInfoDouble(sym, SYMBOL_TRADE_TICK_VALUE);
   double tickSz  = SymbolInfoDouble(sym, SYMBOL_TRADE_TICK_SIZE);
   if(tickVal <= 0 || tickSz <= 0) return 0.0;
 
@@ -126,6 +155,46 @@ static double LotsFromRisk(const string sym, const double riskPct, const double 
 
   double lots = riskMoney / (slPoints * valuePerPointPerLot);
   return lots;
+}
+
+static double NormalizePriceToTick(const string sym, double price)
+{
+  double tick = SymbolInfoDouble(sym, SYMBOL_TRADE_TICK_SIZE);
+  if(tick <= 0.0) tick = SymbolInfoDouble(sym, SYMBOL_POINT);
+  int digits = (int)SymbolInfoInteger(sym, SYMBOL_DIGITS);
+  if(tick > 0.0) price = MathRound(price / tick) * tick;
+  return NormalizeDouble(price, digits);
+}
+
+static double MinStopDistancePrice(const string sym)
+{
+  // In points -> convert to price distance. Using max(stops, freeze) is a practical safety buffer.
+  double point = SymbolInfoDouble(sym, SYMBOL_POINT);
+  int stopsLevel  = (int)SymbolInfoInteger(sym, SYMBOL_TRADE_STOPS_LEVEL);
+  int freezeLevel = (int)SymbolInfoInteger(sym, SYMBOL_TRADE_FREEZE_LEVEL);
+  int lvl = (stopsLevel > freezeLevel ? stopsLevel : freezeLevel);
+  return (lvl > 0 ? lvl * point : 0.0);
+}
+
+static double ClampLotsToMargin(const string sym, const ENUM_ORDER_TYPE type, double lots, const double price)
+{
+  if(lots <= 0.0) return 0.0;
+  if(!RiskClampToFreeMargin) return lots;
+
+  double freeMargin = AccountInfoDouble(ACCOUNT_FREEMARGIN);
+  if(freeMargin <= 0.0) return 0.0;
+
+  double margin=0.0;
+  if(!OrderCalcMargin(type, sym, lots, price, margin)) return lots; // if broker doesn't provide calc, don't block
+  if(margin <= freeMargin) return lots;
+
+  // Estimate from 1-lot margin, then clamp down.
+  double margin1=0.0;
+  if(!OrderCalcMargin(type, sym, 1.0, price, margin1)) return lots;
+  if(margin1 <= 0.0) return lots;
+
+  double maxLots = (freeMargin / margin1) * 0.95; // small cushion
+  return MathMin(lots, maxLots);
 }
 
 static void Notify(const string msg)
@@ -197,9 +266,9 @@ void OnTick()
   }
 
   // Donchian bounds
-  if(DonchianLookback < 2) DonchianLookback = 2;
+  int donLookback = (DonchianLookback < 2 ? 2 : DonchianLookback);
   int donStart = sigBar + 1;
-  int donCount = DonchianLookback;
+  int donCount = donLookback;
   if(donStart + donCount >= needBars) return;
   double donHigh = HighestHighMql(rates, donStart, donCount);
   double donLow  = LowestLowMql(rates, donStart, donCount);
@@ -258,7 +327,7 @@ void OnTick()
   if(!EnableTrading) return;
   if(OnePositionPerSymbol && HasOpenPosition(_Symbol, MagicNumber)) return;
 
-  // ATR for SL distance
+  // ATR (always calculated; used for SL_ATR and fallbacks)
   double atr[3];
   ArraySetAsSeries(atr, true);
   if(CopyBuffer(gAtrHandle, 0, sigBar, 1, atr) != 1) return;
@@ -270,13 +339,52 @@ void OnTick()
   double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
 
   double entry = (finalLong ? ask : bid);
-  double slDist = ATR_SL_Mult * atrVal;
-  double sl = (finalLong ? entry - slDist : entry + slDist);
-  double tp = (finalLong ? entry + RR * slDist : entry - RR * slDist);
+  double sl = 0.0, tp = 0.0;
+
+  // --- Build SL
+  if(SLMode == SL_SWING)
+  {
+    // For a long breakout, protective SL typically goes below the last confirmed swing low.
+    // For a short breakout, SL goes above the last confirmed swing high.
+    double buf = SwingSLBufferPoints * point;
+    if(finalLong && lastSwingLowT != 0 && lastSwingLow > 0.0) sl = lastSwingLow - buf;
+    if(finalShort && lastSwingHighT != 0 && lastSwingHigh > 0.0) sl = lastSwingHigh + buf;
+
+    // Fallback if swing is missing/invalid for current entry.
+    if(finalLong && (sl <= 0.0 || sl >= entry)) sl = entry - (ATR_SL_Mult * atrVal);
+    if(finalShort && (sl <= 0.0 || sl <= entry)) sl = entry + (ATR_SL_Mult * atrVal);
+  }
+  else if(SLMode == SL_FIXED_POINTS)
+  {
+    double dist = MathMax(1, FixedSLPoints) * point;
+    sl = (finalLong ? entry - dist : entry + dist);
+  }
+  else // SL_ATR
+  {
+    sl = (finalLong ? entry - (ATR_SL_Mult * atrVal) : entry + (ATR_SL_Mult * atrVal));
+  }
+
+  // --- Build TP
+  if(TPMode == TP_FIXED_POINTS)
+  {
+    double dist = MathMax(1, FixedTPPoints) * point;
+    tp = (finalLong ? entry + dist : entry - dist);
+  }
+  else if(TPMode == TP_DONCHIAN_WIDTH)
+  {
+    double width = MathAbs(donHigh - donLow);
+    if(width <= 0.0) width = ATR_SL_Mult * atrVal; // fallback
+    double dist = DonchianTP_Mult * width;
+    tp = (finalLong ? entry + dist : entry - dist);
+  }
+  else // TP_RR
+  {
+    double slDist = MathAbs(entry - sl);
+    tp = (finalLong ? entry + (RR * slDist) : entry - (RR * slDist));
+  }
 
   // Respect broker minimum stop distance (in points)
-  int stopsLevel = (int)SymbolInfoInteger(_Symbol, SYMBOL_TRADE_STOPS_LEVEL);
-  double minStop = stopsLevel * point;
+  double minStop = MinStopDistancePrice(_Symbol);
   if(minStop > 0)
   {
     if(finalLong)
@@ -292,19 +400,18 @@ void OnTick()
   }
 
   // Respect tick size / digits
-  int digits = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
-  sl = NormalizeDouble(sl, digits);
-  tp = NormalizeDouble(tp, digits);
+  sl = NormalizePriceToTick(_Symbol, sl);
+  tp = NormalizePriceToTick(_Symbol, tp);
 
   // Size
   double slPoints = MathAbs(entry - sl) / point;
   double lots = FixedLots;
   if(RiskPercent > 0.0)
   {
-    double riskLots = LotsFromRisk(_Symbol, RiskPercent, slPoints);
+    double riskLots = LotsFromRisk(_Symbol, RiskPercent, slPoints, RiskUseEquity);
     if(riskLots > 0.0) lots = riskLots;
   }
-  lots = NormalizeLots(_Symbol, lots);
+  lots = NormalizeLots(_Symbol, ClampLotsToMargin(_Symbol, (finalLong ? ORDER_TYPE_BUY : ORDER_TYPE_SELL), lots, entry));
   if(lots <= 0.0) return;
 
   bool ok = false;
