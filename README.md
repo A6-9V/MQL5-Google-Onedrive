@@ -56,3 +56,7 @@ In `SMC_TrendBreakout_MTF_EA`:
 
 - This is a rules-based implementation of common “SMC” ideas (fractal swing BOS/CHoCH) and a Donchian breakout.
 - Test in Strategy Tester and/or demo before using real funds.
+
+### Contact
+
+- Email: `Lengkundee01.org@domain.com`
