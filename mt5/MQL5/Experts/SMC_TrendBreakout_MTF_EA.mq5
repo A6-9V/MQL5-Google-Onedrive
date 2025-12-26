@@ -79,20 +79,6 @@ int gEmaSlowHandle  = INVALID_HANDLE;
 datetime gLastSignalBarTime = 0;
 int gTrendDir = 0; // 1 bullish, -1 bearish, 0 unknown (for CHoCH labelling)
 
-static double HighestHighMql(const MqlRates &rates[], const int start, const int count)
-{
-  double hh = -DBL_MAX;
-  for(int i=start;i<start+count;i++) if(rates[i].high > hh) hh = rates[i].high;
-  return hh;
-}
-
-static double LowestLowMql(const MqlRates &rates[], const int start, const int count)
-{
-  double ll = DBL_MAX;
-  for(int i=start;i<start+count;i++) if(rates[i].low < ll) ll = rates[i].low;
-  return ll;
-}
-
 static int GetMTFDir()
 {
   if(!RequireMTFConfirm) return 0;
@@ -265,13 +251,17 @@ void OnTick()
     if(lastSwingHighT!=0 && lastSwingLowT!=0) break;
   }
 
-  // Donchian bounds
+  // Donchian bounds (optimized)
+  // Using built-in iHighest/iLowest is faster than manual loops in MQL.
   int donLookback = (DonchianLookback < 2 ? 2 : DonchianLookback);
   int donStart = sigBar + 1;
   int donCount = donLookback;
   if(donStart + donCount >= needBars) return;
-  double donHigh = HighestHighMql(rates, donStart, donCount);
-  double donLow  = LowestLowMql(rates, donStart, donCount);
+  int highIndex = iHighest(_Symbol, tf, MODE_HIGH, donCount, donStart);
+  int lowIndex  = iLowest(_Symbol, tf, MODE_LOW, donCount, donStart);
+  if(highIndex < 0 || lowIndex < 0) return; // Error case, data not ready
+  double donHigh = iHigh(_Symbol, tf, highIndex);
+  double donLow  = iLow(_Symbol, tf, lowIndex);
 
   // Lower TF confirmation
   int mtfDir = GetMTFDir();
