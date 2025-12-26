@@ -15,6 +15,13 @@ This repo contains:
 4. In MT5, open **MetaEditor** (or press **F4**) and compile the files.
 5. Back in MT5: **Navigator → Refresh**.
 
+### Optional: package / deploy helpers
+
+- Create a zip you can copy to your PC:
+  - `bash scripts/package_mt5.sh` → outputs `dist/Exness_MT5_MQL5.zip`
+- Copy directly into your MT5 Data Folder (run this on the machine that has MT5 installed):
+  - `bash scripts/deploy_mt5.sh "/path/from/MT5/File->Open Data Folder"`
+
 ### Use the indicator
 
 - Attach `SMC_TrendBreakout_MTF` to a chart (your main timeframe).
