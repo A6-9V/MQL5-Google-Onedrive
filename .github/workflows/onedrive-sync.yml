@@ -29,24 +29,34 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Check OneDrive sync configuration
+        env:
+          RCLONE_CONFIG_B64: ${{ secrets.RCLONE_CONFIG_B64 }}
+        run: |
+          if [[ -z "${RCLONE_CONFIG_B64:-}" ]]; then
+            echo "RCLONE_ENABLED=false" >> "$GITHUB_ENV"
+            echo "Skipping OneDrive sync: missing secret RCLONE_CONFIG_B64."
+            exit 0
+          fi
+          echo "RCLONE_ENABLED=true" >> "$GITHUB_ENV"
+
       - name: Install rclone
+        if: env.RCLONE_ENABLED == 'true'
         run: |
           sudo apt-get update
           sudo apt-get install -y rclone
 
       - name: Configure rclone
+        if: env.RCLONE_ENABLED == 'true'
         env:
           RCLONE_CONFIG_B64: ${{ secrets.RCLONE_CONFIG_B64 }}
         run: |
-          if [[ -z "${RCLONE_CONFIG_B64:-}" ]]; then
-            echo "Missing secret: RCLONE_CONFIG_B64" >&2
-            exit 1
-          fi
           mkdir -p "$HOME/.config/rclone"
           echo "$RCLONE_CONFIG_B64" | base64 -d > "$HOME/.config/rclone/rclone.conf"
           rclone config show >/dev/null
 
       - name: Sync mt5/MQL5 to OneDrive
+        if: env.RCLONE_ENABLED == 'true'
         run: |
           SRC="mt5/MQL5"
           DEST="${ONEDRIVE_REMOTE}:${ONEDRIVE_PATH}"
