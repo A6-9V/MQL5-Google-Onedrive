@@ -1,0 +1,7 @@
+# Default owners for everything in the repo.
+# Adjust to your team/users as needed.
+* @A6-9V
+
+# MT5 code owners (optional split)
+/mt5/ @A6-9V
+/scripts/ @A6-9V

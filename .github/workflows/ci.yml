@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - master
+
+permissions:
+  contents: read
+
+jobs:
+  validate-and-package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate repository
+        run: python3 scripts/ci_validate_repo.py
+
+      - name: Validate shell scripts (bash -n)
+        run: |
+          bash -n scripts/package_mt5.sh
+          bash -n scripts/deploy_mt5.sh
+
+      - name: Package MT5 sources
+        run: bash scripts/package_mt5.sh
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Exness_MT5_MQL5
+          path: dist/Exness_MT5_MQL5.zip
