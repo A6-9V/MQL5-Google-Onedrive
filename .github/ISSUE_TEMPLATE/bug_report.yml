@@ -1,0 +1,48 @@
+name: Bug report
+description: Something is broken or behaving unexpectedly
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you expect to happen, and what happened instead?
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Attach indicator/EA to X symbol on Y timeframe
+        2. Settings used:
+        3. What you clicked / what the market did:
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: MetaEditor / Journal logs
+      description: Paste relevant compile output and terminal Journal/Experts logs.
+      render: text
+    validations:
+      required: false
+
+  - type: input
+    id: mt5
+    attributes:
+      label: MT5 broker / build
+      description: e.g. Exness MT5, build number if known
+    validations:
+      required: false
+
+  - type: input
+    id: os
+    attributes:
+      label: OS
+      description: e.g. Windows 11 25H2
+    validations:
+      required: false

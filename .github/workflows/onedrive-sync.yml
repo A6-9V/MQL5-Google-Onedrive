@@ -1,0 +1,54 @@
+name: Sync to OneDrive (rclone)
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: onedrive-sync-main
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    env:
+      # Required secrets:
+      # - RCLONE_CONFIG_B64: base64 encoded rclone.conf (contains your OneDrive remote)
+      #
+      # Optional:
+      # - ONEDRIVE_REMOTE: remote name in rclone.conf (default: onedrive)
+      # - ONEDRIVE_PATH: destination path (default: Apps/MT5/MQL5)
+      ONEDRIVE_REMOTE: ${{ secrets.ONEDRIVE_REMOTE || 'onedrive' }}
+      ONEDRIVE_PATH: ${{ secrets.ONEDRIVE_PATH || 'Apps/MT5/MQL5' }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install rclone
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y rclone
+
+      - name: Configure rclone
+        env:
+          RCLONE_CONFIG_B64: ${{ secrets.RCLONE_CONFIG_B64 }}
+        run: |
+          if [[ -z "${RCLONE_CONFIG_B64:-}" ]]; then
+            echo "Missing secret: RCLONE_CONFIG_B64" >&2
+            exit 1
+          fi
+          mkdir -p "$HOME/.config/rclone"
+          echo "$RCLONE_CONFIG_B64" | base64 -d > "$HOME/.config/rclone/rclone.conf"
+          rclone config show >/dev/null
+
+      - name: Sync mt5/MQL5 to OneDrive
+        run: |
+          SRC="mt5/MQL5"
+          DEST="${ONEDRIVE_REMOTE}:${ONEDRIVE_PATH}"
+          echo "Syncing: ${SRC} -> ${DEST}"
+          rclone sync "${SRC}" "${DEST}" --checksum --create-empty-src-dirs --delete-excluded

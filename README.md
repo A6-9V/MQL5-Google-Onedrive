@@ -22,6 +22,40 @@ This repo contains:
 - Copy directly into your MT5 Data Folder (run this on the machine that has MT5 installed):
   - `bash scripts/deploy_mt5.sh "/path/from/MT5/File->Open Data Folder"`
 
+### GitHub automation (reviews, CI, auto-merge, OneDrive sync)
+
+This repo includes GitHub Actions workflows under `.github/workflows/`:
+
+- **CI (`CI`)**: runs on pull requests and pushes to `main/master`
+  - Validates repo structure
+  - Builds `dist/Exness_MT5_MQL5.zip` and uploads it as an artifact
+- **Auto-merge enablement (`Enable auto-merge (label-driven)`)**: if a PR has the label **`automerge`**, it will enable GitHub’s auto-merge (squash). Your branch protection rules still control *when* it can merge (required reviews, required CI, etc.).
+- **OneDrive sync (`Sync to OneDrive (rclone)`)**: on pushes to `main` (and manual runs), syncs `mt5/MQL5` to OneDrive via `rclone`.
+
+Recommended repo settings (GitHub → **Settings**):
+
+- **Branch protection (main)**:
+  - Require pull request reviews (at least 1)
+  - Require status checks: `CI / validate-and-package`
+  - (Optional) Require CODEOWNERS review
+- **Auto-merge**: enable “Allow auto-merge” in repo settings
+
+OneDrive sync setup (required secrets):
+
+- **`RCLONE_CONFIG_B64`**: base64 of your `rclone.conf` containing a OneDrive remote.
+
+Example (run locally, then paste into GitHub Secrets):
+
+```bash
+rclone config
+base64 -w0 ~/.config/rclone/rclone.conf
+```
+
+Optional secrets:
+
+- **`ONEDRIVE_REMOTE`**: remote name in `rclone.conf` (default: `onedrive`)
+- **`ONEDRIVE_PATH`**: destination folder path (default: `Apps/MT5/MQL5`)
+
 ### Use the indicator
 
 - Attach `SMC_TrendBreakout_MTF` to a chart (your main timeframe).
