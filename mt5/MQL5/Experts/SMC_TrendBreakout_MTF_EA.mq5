@@ -79,6 +79,17 @@ int gEmaSlowHandle  = INVALID_HANDLE;
 datetime gLastSignalBarTime = 0;
 int gTrendDir = 0; // 1 bullish, -1 bearish, 0 unknown (for CHoCH labelling)
 
+// --- Cached symbol properties (performance)
+// Initialized once in OnInit to avoid repeated calls in OnTick.
+static double G_POINT = 0.0;
+static double G_TICK_SIZE = 0.0;
+static double G_TICK_VALUE = 0.0;
+static double G_VOL_MIN = 0.0;
+static double G_VOL_MAX = 0.0;
+static double G_VOL_STEP = 0.0;
+static int    G_DIGITS = 2;
+static int    G_STOPS_LEVEL = 0;
+
 static int GetMTFDir()
 {
   if(!RequireMTFConfirm) return 0;
@@ -109,13 +120,10 @@ static bool HasOpenPosition(const string sym, const long magic)
 
 static double NormalizeLots(const string sym, double lots)
 {
-  double minLot = SymbolInfoDouble(sym, SYMBOL_VOLUME_MIN);
-  double maxLot = SymbolInfoDouble(sym, SYMBOL_VOLUME_MAX);
-  double step   = SymbolInfoDouble(sym, SYMBOL_VOLUME_STEP);
-  if(step <= 0) step = 0.01;
-  lots = MathMax(minLot, MathMin(maxLot, lots));
-  lots = MathFloor(lots/step) * step;
-  int volDigits = (int)MathRound(-MathLog10(step));
+  // Use cached properties
+  lots = MathMax(G_VOL_MIN, MathMin(G_VOL_MAX, lots));
+  lots = MathFloor(lots/G_VOL_STEP) * G_VOL_STEP;
+  int volDigits = (int)MathRound(-MathLog10(G_VOL_STEP));
   if(volDigits < 0) volDigits = 2;
   if(volDigits > 8) volDigits = 8;
   return NormalizeDouble(lots, volDigits);
@@ -129,14 +137,8 @@ static double LotsFromRisk(const string sym, const double riskPct, const double 
   double base = (useEquity ? AccountInfoDouble(ACCOUNT_EQUITY) : AccountInfoDouble(ACCOUNT_BALANCE));
   double riskMoney = base * (riskPct/100.0);
 
-  // Use LOSS tick value when available (more correct across symbols)
-  double tickVal = SymbolInfoDouble(sym, SYMBOL_TRADE_TICK_VALUE_LOSS);
-  if(tickVal <= 0.0) tickVal = SymbolInfoDouble(sym, SYMBOL_TRADE_TICK_VALUE);
-  double tickSz  = SymbolInfoDouble(sym, SYMBOL_TRADE_TICK_SIZE);
-  if(tickVal <= 0 || tickSz <= 0) return 0.0;
-
-  double point = SymbolInfoDouble(sym, SYMBOL_POINT);
-  double valuePerPointPerLot = tickVal * (point / tickSz);
+  if(G_TICK_VALUE <= 0 || G_TICK_SIZE <= 0) return 0.0;
+  double valuePerPointPerLot = G_TICK_VALUE * (G_POINT / G_TICK_SIZE);
   if(valuePerPointPerLot <= 0) return 0.0;
 
   double lots = riskMoney / (slPoints * valuePerPointPerLot);
@@ -145,21 +147,16 @@ static double LotsFromRisk(const string sym, const double riskPct, const double 
 
 static double NormalizePriceToTick(const string sym, double price)
 {
-  double tick = SymbolInfoDouble(sym, SYMBOL_TRADE_TICK_SIZE);
-  if(tick <= 0.0) tick = SymbolInfoDouble(sym, SYMBOL_POINT);
-  int digits = (int)SymbolInfoInteger(sym, SYMBOL_DIGITS);
+  // Use cached properties
+  double tick = (G_TICK_SIZE > 0.0 ? G_TICK_SIZE : G_POINT);
   if(tick > 0.0) price = MathRound(price / tick) * tick;
-  return NormalizeDouble(price, digits);
+  return NormalizeDouble(price, G_DIGITS);
 }
 
 static double MinStopDistancePrice(const string sym)
 {
-  // In points -> convert to price distance. Using max(stops, freeze) is a practical safety buffer.
-  double point = SymbolInfoDouble(sym, SYMBOL_POINT);
-  int stopsLevel  = (int)SymbolInfoInteger(sym, SYMBOL_TRADE_STOPS_LEVEL);
-  int freezeLevel = (int)SymbolInfoInteger(sym, SYMBOL_TRADE_FREEZE_LEVEL);
-  int lvl = (stopsLevel > freezeLevel ? stopsLevel : freezeLevel);
-  return (lvl > 0 ? lvl * point : 0.0);
+  // Use cached properties
+  return (G_STOPS_LEVEL > 0 ? G_STOPS_LEVEL * G_POINT : 0.0);
 }
 
 static double ClampLotsToMargin(const string sym, const ENUM_ORDER_TYPE type, double lots, const double price)
@@ -204,6 +201,22 @@ int OnInit()
 
   gTrade.SetExpertMagicNumber(MagicNumber);
   gTrade.SetDeviationInPoints(SlippagePoints);
+
+  // --- Cache symbol properties for performance
+  G_POINT = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
+  G_TICK_SIZE = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_SIZE);
+  G_TICK_VALUE = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE_LOSS);
+  if(G_TICK_VALUE <= 0.0) G_TICK_VALUE = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE);
+  G_VOL_MIN = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN);
+  G_VOL_MAX = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MAX);
+  G_VOL_STEP = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_STEP);
+  if(G_VOL_STEP <= 0) G_VOL_STEP = 0.01;
+  G_DIGITS = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
+
+  int stopsLevel  = (int)SymbolInfoInteger(_Symbol, SYMBOL_TRADE_STOPS_LEVEL);
+  int freezeLevel = (int)SymbolInfoInteger(_Symbol, SYMBOL_TRADE_FREEZE_LEVEL);
+  G_STOPS_LEVEL = MathMax(stopsLevel, freezeLevel);
+
   return INIT_SUCCEEDED;
 }
 
@@ -324,7 +337,6 @@ void OnTick()
   double atrVal = atr[0];
   if(atrVal <= 0) return;
 
-  double point = _Point;
   double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
   double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
 
@@ -336,7 +348,7 @@ void OnTick()
   {
     // For a long breakout, protective SL typically goes below the last confirmed swing low.
     // For a short breakout, SL goes above the last confirmed swing high.
-    double buf = SwingSLBufferPoints * point;
+    double buf = SwingSLBufferPoints * G_POINT;
     if(finalLong && lastSwingLowT != 0 && lastSwingLow > 0.0) sl = lastSwingLow - buf;
     if(finalShort && lastSwingHighT != 0 && lastSwingHigh > 0.0) sl = lastSwingHigh + buf;
 
