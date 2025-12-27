@@ -337,6 +337,8 @@ void OnTick()
   double atrVal = atr[0];
   if(atrVal <= 0) return;
 
+  // Cached point size (fallback to terminal-provided _Point)
+  double point = (G_POINT > 0.0 ? G_POINT : _Point);
   double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
   double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
 
