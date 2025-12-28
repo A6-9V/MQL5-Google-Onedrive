@@ -339,8 +339,9 @@ void OnTick()
 
   // Cached point size (fallback to terminal-provided _Point)
   double point = (G_POINT > 0.0 ? G_POINT : _Point);
-  double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
-  double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+  // PERF: Use pre-defined Ask/Bid globals in OnTick to avoid function call overhead.
+  double ask = Ask;
+  double bid = Bid;
 
   double entry = (finalLong ? ask : bid);
   double sl = 0.0, tp = 0.0;
