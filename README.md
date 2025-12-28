@@ -5,6 +5,11 @@ This repo contains:
 - `mt5/MQL5/Indicators/SMC_TrendBreakout_MTF.mq5`: visual indicator (BOS/CHoCH + Donchian breakout + lower-timeframe confirmation).
 - `mt5/MQL5/Experts/SMC_TrendBreakout_MTF_EA.mq5`: Expert Advisor (alerts + optional auto-trading).
 
+### Render workspace
+
+My Blue watermelon Workspace  
+tea-d1joqqi4d50c738aiujg
+
 ### Install into Exness MetaTrader 5
 
 1. Open **Exness MT5**.
