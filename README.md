@@ -98,3 +98,4 @@ In `SMC_TrendBreakout_MTF_EA`:
 ### Contact
 
 - Email: `Lengkundee01.org@domain.com`
+- WhatsApp: [Agent community](https://chat.whatsapp.com/DYemXrBnMD63K55bjUMKYF)
