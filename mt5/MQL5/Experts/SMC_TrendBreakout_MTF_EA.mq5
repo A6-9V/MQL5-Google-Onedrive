@@ -232,6 +232,20 @@ void OnTick()
 {
   ENUM_TIMEFRAMES tf = (SignalTF==PERIOD_CURRENT ? (ENUM_TIMEFRAMES)_Period : SignalTF);
 
+  // --- ⚡ Bolt: Performance Optimization ---
+  // Efficiently check for a new bar before running expensive calculations.
+  // Instead of copying 400 bars on every tick, we copy only 2 to see if a new bar has formed.
+  // The main logic only proceeds if `gLastSignalBarTime` is outdated.
+  MqlRates checkRates[2];
+  if(CopyRates(_Symbol, tf, 0, 2, checkRates) < 2)
+    return; // Not enough history yet, wait for more bars.
+
+  const int checkBarIdx = (FireOnClose ? 1 : 0);
+  datetime newBarTime = checkRates[checkBarIdx].time;
+
+  if(newBarTime == gLastSignalBarTime)
+    return; // No new bar, exit immediately. This saves significant CPU cycles.
+
   // Pull recent bars from SignalTF
   MqlRates rates[400];
   ArraySetAsSeries(rates, true);
@@ -239,13 +253,10 @@ void OnTick()
   if(needBars < 100) return;
   if(CopyRates(_Symbol, tf, 0, needBars, rates) < 100) return;
 
+  gLastSignalBarTime = newBarTime; // Update the time to the current bar's timestamp.
+
   const int sigBar = (FireOnClose ? 1 : 0);
   if(sigBar >= needBars-1) return;
-
-  // Run once per signal bar
-  datetime sigTime = rates[sigBar].time;
-  if(sigTime == gLastSignalBarTime) return;
-  gLastSignalBarTime = sigTime;
 
   // Get fractals (for structure break)
   int frNeed = MathMin(300, needBars);
