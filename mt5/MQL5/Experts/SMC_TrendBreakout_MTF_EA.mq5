@@ -79,6 +79,12 @@ int gEmaSlowHandle  = INVALID_HANDLE;
 datetime gLastSignalBarTime = 0;
 int gTrendDir = 0; // 1 bullish, -1 bearish, 0 unknown (for CHoCH labelling)
 
+// --- MTF Cache (performance)
+// Cache the MTF direction to avoid recalculating on every new bar of the main timeframe.
+// The MTF direction is only recalculated when a new bar appears on the lower timeframe itself.
+static datetime gLastLowerTFBarTime = 0;
+static int gCachedMTFDir = 0;
+
 // --- Cached symbol properties (performance)
 // Initialized once in OnInit to avoid repeated calls in OnTick.
 static double G_POINT = 0.0;
@@ -95,14 +101,36 @@ static int GetMTFDir()
   if(!RequireMTFConfirm) return 0;
   if(gEmaFastHandle==INVALID_HANDLE || gEmaSlowHandle==INVALID_HANDLE) return 0;
 
+  // PERF: Check if a new bar has formed on the lower timeframe. If not, use the cached value.
+  datetime latestLowerTFBarTime = iTime(_Symbol, LowerTF, 0);
+  if(latestLowerTFBarTime == gLastLowerTFBarTime)
+  {
+    return gCachedMTFDir; // No new bar, return cached direction
+  }
+
+  // New bar detected, recalculate the MTF direction
+  gLastLowerTFBarTime = latestLowerTFBarTime;
+
   double fast[2], slow[2];
   ArraySetAsSeries(fast, true);
   ArraySetAsSeries(slow, true);
-  if(CopyBuffer(gEmaFastHandle, 0, 1, 1, fast) != 1) return 0;
-  if(CopyBuffer(gEmaSlowHandle, 0, 1, 1, slow) != 1) return 0;
-  if(fast[0] > slow[0]) return 1;
-  if(fast[0] < slow[0]) return -1;
-  return 0;
+  if(CopyBuffer(gEmaFastHandle, 0, 1, 1, fast) != 1)
+  {
+      gCachedMTFDir = 0; // On error, reset cache
+      return 0;
+  }
+  if(CopyBuffer(gEmaSlowHandle, 0, 1, 1, slow) != 1)
+  {
+      gCachedMTFDir = 0; // On error, reset cache
+      return 0;
+  }
+
+  int dir = 0;
+  if(fast[0] > slow[0]) dir = 1;
+  else if(fast[0] < slow[0]) dir = -1;
+
+  gCachedMTFDir = dir; // Cache the new direction
+  return dir;
 }
 
 static bool HasOpenPosition(const string sym, const long magic)
