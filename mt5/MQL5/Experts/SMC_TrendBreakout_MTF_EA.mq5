@@ -230,7 +230,17 @@ void OnDeinit(const int reason)
 
 void OnTick()
 {
+  // PERF: Only run the full logic once per bar. Using a static variable is a
+  // lightweight way to check if a new bar has formed, which avoids executing
+  // expensive functions like CopyRates() on every single price tick.
+  static datetime lastBarTime = 0;
   ENUM_TIMEFRAMES tf = (SignalTF==PERIOD_CURRENT ? (ENUM_TIMEFRAMES)_Period : SignalTF);
+  datetime currentBarTime = iTime(_Symbol, tf, 0);
+  if(currentBarTime == lastBarTime)
+  {
+    return;
+  }
+  lastBarTime = currentBarTime;
 
   // Pull recent bars from SignalTF
   MqlRates rates[400];
