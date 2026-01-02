@@ -79,6 +79,10 @@ int gEmaSlowHandle  = INVALID_HANDLE;
 datetime gLastSignalBarTime = 0;
 int gTrendDir = 0; // 1 bullish, -1 bearish, 0 unknown (for CHoCH labelling)
 
+// --- MTF Cache (performance)
+static int gLastMtfDir = 0;
+static datetime gLastMtfBarTime = 0;
+
 // --- Cached symbol properties (performance)
 // Initialized once in OnInit to avoid repeated calls in OnTick.
 static double G_POINT = 0.0;
@@ -95,14 +99,27 @@ static int GetMTFDir()
   if(!RequireMTFConfirm) return 0;
   if(gEmaFastHandle==INVALID_HANDLE || gEmaSlowHandle==INVALID_HANDLE) return 0;
 
+  // PERF: Cache MTF direction. Only recalculate when a new bar forms on the lower timeframe.
+  // This avoids expensive CopyBuffer calls on every tick of the primary chart.
+  datetime mtfBarTime = iTime(_Symbol, LowerTF, 0);
+  if(mtfBarTime == gLastMtfBarTime)
+  {
+    return gLastMtfDir;
+  }
+
   double fast[2], slow[2];
   ArraySetAsSeries(fast, true);
   ArraySetAsSeries(slow, true);
   if(CopyBuffer(gEmaFastHandle, 0, 1, 1, fast) != 1) return 0;
   if(CopyBuffer(gEmaSlowHandle, 0, 1, 1, slow) != 1) return 0;
-  if(fast[0] > slow[0]) return 1;
-  if(fast[0] < slow[0]) return -1;
-  return 0;
+
+  int dir = 0;
+  if(fast[0] > slow[0]) dir = 1;
+  else if(fast[0] < slow[0]) dir = -1;
+
+  gLastMtfBarTime = mtfBarTime;
+  gLastMtfDir = dir;
+  return dir;
 }
 
 static bool HasOpenPosition(const string sym, const long magic)
