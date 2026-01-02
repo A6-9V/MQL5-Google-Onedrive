@@ -56,7 +56,7 @@ Ensure the following settings are configured in GitHub:
 
 ### For This Specific PR
 
-To enable auto-merge for the current pull request (`copilot/merge-and-delete-branch`):
+To enable auto-merge for your pull request:
 
 1. Navigate to the pull request in GitHub
 2. Add the `automerge` label
