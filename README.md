@@ -46,6 +46,8 @@ Recommended repo settings (GitHub → **Settings**):
   - (Optional) Require CODEOWNERS review
 - **Auto-merge**: enable “Allow auto-merge” in repo settings
 
+For detailed auto-merge setup and usage instructions, see [Auto-Merge Guide](docs/Auto_Merge_Guide.md).
+
 OneDrive sync setup (required secrets):
 
 - **`RCLONE_CONFIG_B64`**: base64 of your `rclone.conf` containing a OneDrive remote.
