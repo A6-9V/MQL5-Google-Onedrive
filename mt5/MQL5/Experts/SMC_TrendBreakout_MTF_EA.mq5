@@ -231,6 +231,18 @@ void OnDeinit(const int reason)
 void OnTick()
 {
   ENUM_TIMEFRAMES tf = (SignalTF==PERIOD_CURRENT ? (ENUM_TIMEFRAMES)_Period : SignalTF);
+  const int sigBar = (FireOnClose ? 1 : 0);
+
+  // --- PERF: New bar check ---
+  // A critical optimization. The logic below only needs to run once per bar,
+  // but OnTick() runs on every price change. This check ensures the
+  // expensive calls (e.g., CopyRates) are only made when a new bar has
+  // actually formed on the signal timeframe. iTime() is a lightweight check.
+  datetime sigTime = iTime(_Symbol, tf, sigBar);
+  if(sigTime <= gLastSignalBarTime) // Use <= to be safe on init and during live/backtest transition
+  {
+    return; // Not a new bar yet, exit early.
+  }
 
   // Pull recent bars from SignalTF
   MqlRates rates[400];
@@ -239,12 +251,10 @@ void OnTick()
   if(needBars < 100) return;
   if(CopyRates(_Symbol, tf, 0, needBars, rates) < 100) return;
 
-  const int sigBar = (FireOnClose ? 1 : 0);
   if(sigBar >= needBars-1) return;
 
-  // Run once per signal bar
-  datetime sigTime = rates[sigBar].time;
-  if(sigTime == gLastSignalBarTime) return;
+  // Now that we have successfully copied rates and passed basic checks,
+  // we can commit to processing this bar to prevent re-execution.
   gLastSignalBarTime = sigTime;
 
   // Get fractals (for structure break)
