@@ -232,6 +232,16 @@ void OnTick()
 {
   ENUM_TIMEFRAMES tf = (SignalTF==PERIOD_CURRENT ? (ENUM_TIMEFRAMES)_Period : SignalTF);
 
+  // --- Optimization: Exit early if a new bar has not formed on the signal timeframe.
+  // This prevents expensive calls (CopyRates, CopyBuffer) from running on every tick.
+  static datetime lastBarTime = 0;
+  datetime newBarTime = iTime(_Symbol, tf, 0);
+  if(newBarTime == lastBarTime)
+  {
+      return;
+  }
+  lastBarTime = newBarTime;
+
   // Pull recent bars from SignalTF
   MqlRates rates[400];
   ArraySetAsSeries(rates, true);
