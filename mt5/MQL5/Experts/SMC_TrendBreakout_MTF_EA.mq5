@@ -68,6 +68,32 @@ input int    SlippagePoints        = 30;
 input group "Notifications"
 input bool   PopupAlerts           = true;
 input bool   PushNotifications     = true;
+input bool   EnableWebRequest      = false; // enable custom web request
+// IMPORTANT: URL must be added to MT5 terminal's allowed list:
+// Tools -> Options -> Expert Advisors -> Allow WebRequest for listed URL
+input string WebRequestURL         = "https://jules.google.com/repo/github/Mouy-leng/ZOLO-A6-9VxNUNA-";
+
+// --- Web request (for external integrations)
+static void SendWebRequest(const string msg)
+{
+  if(!EnableWebRequest || WebRequestURL == "") return;
+
+  char data[], result[];
+  string headers;
+  int timeout = 5000; // 5 seconds
+
+  // Simple JSON payload
+  string json = "{ \"event\": \"signal\", \"message\": \"" + msg + "\" }";
+  StringToCharArray(json, data, 0, StringLen(json), CP_UTF8);
+
+  ResetLastError();
+  int res = WebRequest("POST", WebRequestURL, "Content-Type: application/json", timeout, data, result, headers);
+
+  if(res == -1)
+  {
+    Print("WebRequest error: ", GetLastError());
+  }
+}
 
 CTrade gTrade;
 
@@ -184,6 +210,7 @@ static void Notify(const string msg)
 {
   if(PopupAlerts) Alert(msg);
   if(PushNotifications) SendNotification(msg);
+  SendWebRequest(msg);
 }
 
 int OnInit()
