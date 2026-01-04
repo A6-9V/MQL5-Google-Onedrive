@@ -58,7 +58,7 @@ check_python() {
 check_bash() {
     print_info "Checking for Bash..."
     if command_exists bash; then
-        BASH_VERSION=$(bash --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
+        BASH_VERSION=$(bash --version | grep -oE '[0-9]+\.[0-9]+[0-9.]*' | head -1)
         print_success "Bash found: $BASH_VERSION"
         return 0
     else
@@ -245,7 +245,7 @@ run_all_steps() {
     show_cli_tools_status
     echo ""
     
-    read -p "Would you like to package MT5 files? (y/N): " -n 1 -r
+    read -p "Would you like to package MT5 files? [y/N]: " -n 1 -r
     echo ""
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         package_mt5
