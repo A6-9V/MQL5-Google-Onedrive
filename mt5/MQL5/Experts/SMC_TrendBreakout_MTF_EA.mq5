@@ -231,6 +231,15 @@ void OnDeinit(const int reason)
 void OnTick()
 {
   ENUM_TIMEFRAMES tf = (SignalTF==PERIOD_CURRENT ? (ENUM_TIMEFRAMES)_Period : SignalTF);
+  const int sigBar = (FireOnClose ? 1 : 0);
+
+  // PERF: In MQL5, OnTick() runs on every price change. A lightweight check for a new bar
+  // prevents expensive calculations (like CopyRates) from running multiple times per bar.
+  datetime newBarTime = (datetime)iTime(_Symbol, tf, sigBar);
+  if(newBarTime <= gLastSignalBarTime)
+  {
+    return; // Not a new bar yet, exit early.
+  }
 
   // Pull recent bars from SignalTF
   MqlRates rates[400];
@@ -239,13 +248,12 @@ void OnTick()
   if(needBars < 100) return;
   if(CopyRates(_Symbol, tf, 0, needBars, rates) < 100) return;
 
-  const int sigBar = (FireOnClose ? 1 : 0);
   if(sigBar >= needBars-1) return;
 
   // Run once per signal bar
-  datetime sigTime = rates[sigBar].time;
-  if(sigTime == gLastSignalBarTime) return;
-  gLastSignalBarTime = sigTime;
+  // Now that we have the rates, update the time to prevent re-entry.
+  // This ensures we don't process a bar until its data is successfully copied.
+  gLastSignalBarTime = rates[sigBar].time;
 
   // Get fractals (for structure break)
   int frNeed = MathMin(300, needBars);
