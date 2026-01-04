@@ -58,7 +58,7 @@ check_python() {
 check_bash() {
     print_info "Checking for Bash..."
     if command_exists bash; then
-        BASH_VERSION=$(bash --version | head -n1 | cut -d' ' -f4)
+        BASH_VERSION=$(bash --version | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -1)
         print_success "Bash found: $BASH_VERSION"
         return 0
     else
@@ -137,19 +137,19 @@ show_cli_tools_status() {
     print_header "CLI Tools Status"
     
     local tools=(
-        "gh:GitHub CLI"
-        "firebase:Firebase CLI"
-        "docker:Docker CLI"
-        "cursor-agent:Cursor CLI"
-        "jules:Jules CLI"
+        "gh:GitHub CLI:GitHub_CLI_setup.md"
+        "firebase:Firebase CLI:Firebase_CLI_setup.md"
+        "docker:Docker CLI:Docker_CLI_setup.md"
+        "cursor-agent:Cursor CLI:Cursor_CLI_setup.md"
+        "jules:Jules CLI:Jules_CLI_setup.md"
     )
     
     for tool_info in "${tools[@]}"; do
-        IFS=':' read -r cmd name <<< "$tool_info"
+        IFS=':' read -r cmd name doc <<< "$tool_info"
         if command_exists "$cmd"; then
             print_success "$name is installed"
         else
-            print_warning "$name is NOT installed (see docs/${name// /_}_setup.md)"
+            print_warning "$name is NOT installed (see docs/$doc)"
         fi
     done
 }
