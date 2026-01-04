@@ -253,7 +253,7 @@ void OnTick()
   if(RequireMTFConfirm)
   {
     datetime lowerTFBarTime = iTime(_Symbol, LowerTF, 0);
-    if(lowerTFBarTime > gLastLowerTFBarTime)
+    if(lowerTFBarTime > 0 && lowerTFBarTime > gLastLowerTFBarTime)
     {
       gLastLowerTFBarTime = lowerTFBarTime;
       gCachedMTFDir = GetMTFDir();
