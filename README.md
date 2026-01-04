@@ -10,6 +10,25 @@ This repo contains:
 My Blue watermelon Workspace  
 tea-d1joqqi4d50c738aiujg
 
+### Quick Start: Full Setup
+
+Run the automated setup script to validate your environment and get started:
+
+```bash
+bash setup.sh
+```
+
+This interactive script will:
+- Check for required dependencies (Python 3, Bash, Git)
+- Validate repository structure and shell scripts
+- Show CLI tools installation status (GitHub CLI, Firebase, Docker, Cursor, Jules)
+- Help you package MT5 files
+
+For non-interactive/CI environments:
+```bash
+bash setup.sh --ci
+```
+
 ### Install into Exness MetaTrader 5
 
 1. Open **Exness MT5**.
