@@ -71,7 +71,9 @@ input bool   PushNotifications     = true;
 input bool   EnableWebRequest      = false; // enable custom web request
 // IMPORTANT: URL must be added to MT5 terminal's allowed list:
 // Tools -> Options -> Expert Advisors -> Allow WebRequest for listed URL
-input string WebRequestURL         = "https://jules.google.com/repo/github/Mouy-leng/ZOLO-A6-9VxNUNA-";
+// Integrated with: https://github.com/Mouy-leng/-LengKundee-mql5.github.io.git
+// Plugin: ZOLO-A6-9V-NUNA-
+input string WebRequestURL         = "https://soloist.ai/a6-9v";
 
 // --- Web request (for external integrations)
 static void SendWebRequest(const string msg)

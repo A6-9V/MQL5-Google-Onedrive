@@ -74,6 +74,12 @@ Optional secrets:
 - If you want phone push alerts:
   - MT5 → **Tools → Options → Notifications**
   - enable push notifications and set your MetaQuotes ID.
+- For web request integrations (ZOLO-A6-9V-NUNA- plugin):
+  - Enable `EnableWebRequest` parameter
+  - Add `https://soloist.ai/a6-9v` to MT5's allowed URLs list:
+    - MT5 → **Tools → Options → Expert Advisors**
+    - Check "Allow WebRequest for listed URL"
+    - Add the URL: `https://soloist.ai/a6-9v`
 
 ### Auto SL/TP + risk management (EA)
 
@@ -99,6 +105,9 @@ In `SMC_TrendBreakout_MTF_EA`:
 ### Project links
 
 - Developer tip window project: https://chatgpt.com/g/g-p-691e9c0ace5c8191a1b409c09251cc2b-window-for-developer-tip/project
+- Plugin Integration: ZOLO-A6-9V-NUNA-
+- GitHub Pages: https://github.com/Mouy-leng/-LengKundee-mql5.github.io.git
+- Soloist.ai Endpoint: https://soloist.ai/a6-9v
 
 ### Contact
 
