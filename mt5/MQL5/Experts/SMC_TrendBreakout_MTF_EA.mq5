@@ -257,7 +257,16 @@ void OnDeinit(const int reason)
 
 void OnTick()
 {
+  // --- Performance: Early exit if a new bar hasn't formed yet.
+  // This prevents expensive calls (like CopyRates) from running on every single price tick.
+  static datetime lastBarTime = 0;
   ENUM_TIMEFRAMES tf = (SignalTF==PERIOD_CURRENT ? (ENUM_TIMEFRAMES)_Period : SignalTF);
+  datetime newBarTime = iTime(_Symbol, tf, 0);
+  if(newBarTime == lastBarTime)
+  {
+    return;
+  }
+  lastBarTime = newBarTime;
 
   // Pull recent bars from SignalTF
   MqlRates rates[400];
