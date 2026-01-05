@@ -274,25 +274,7 @@ void OnTick()
   if(sigTime == gLastSignalBarTime) return;
   gLastSignalBarTime = sigTime;
 
-  // Get fractals (for structure break)
-  int frNeed = MathMin(300, needBars);
-  double upFr[300], dnFr[300];
-  ArraySetAsSeries(upFr, true);
-  ArraySetAsSeries(dnFr, true);
-  if(CopyBuffer(gFractalsHandle, 0, 0, frNeed, upFr) <= 0) return;
-  if(CopyBuffer(gFractalsHandle, 1, 0, frNeed, dnFr) <= 0) return;
-
-  double lastSwingHigh = 0.0; datetime lastSwingHighT = 0;
-  double lastSwingLow  = 0.0; datetime lastSwingLowT  = 0;
-  for(int i=sigBar+2; i<frNeed; i++)
-  {
-    if(lastSwingHighT==0 && upFr[i] != 0.0) { lastSwingHigh = upFr[i]; lastSwingHighT = rates[i].time; }
-    if(lastSwingLowT==0  && dnFr[i] != 0.0) { lastSwingLow  = dnFr[i]; lastSwingLowT  = rates[i].time; }
-    if(lastSwingHighT!=0 && lastSwingLowT!=0) break;
-  }
-
-  // Donchian bounds (optimized)
-  // Using built-in iHighest/iLowest is faster than manual loops in MQL.
+  // --- Step 1: Check Donchian Breakout (cheap) ---
   int donLookback = (DonchianLookback < 2 ? 2 : DonchianLookback);
   int donStart = sigBar + 1;
   int donCount = donLookback;
@@ -300,30 +282,54 @@ void OnTick()
   int highIndex = iHighest(_Symbol, tf, MODE_HIGH, donCount, donStart);
   int lowIndex  = iLowest(_Symbol, tf, MODE_LOW, donCount, donStart);
   if(highIndex < 0 || lowIndex < 0) return; // Error case, data not ready
-  // PERF: Access price data directly from the copied 'rates' array.
-  // This avoids the function call overhead of iHigh/iLow, as the data is already in memory.
   double donHigh = rates[highIndex].high;
   double donLow  = rates[lowIndex].low;
+  double closeSig = rates[sigBar].close;
+  bool donLong  = UseDonchianBreakout && (closeSig > donHigh);
+  bool donShort = UseDonchianBreakout && (closeSig < donLow);
 
-  // Lower TF confirmation
+  // --- Step 2: Check MTF confirmation (expensive, but a strong filter) ---
   int mtfDir = GetMTFDir();
   bool mtfOkLong  = (!RequireMTFConfirm) || (mtfDir == 1);
   bool mtfOkShort = (!RequireMTFConfirm) || (mtfDir == -1);
 
-  // Signals
-  bool smcLong=false, smcShort=false, donLong=false, donShort=false;
-  double closeSig = rates[sigBar].close;
+  // --- Step 3: Early exit pre-check ---
+  // PERF: If no Donchian signal is present and SMC is disabled, no trade is possible.
+  // Exit early to avoid the expensive fractal calculations below.
+  if(!donLong && !donShort && !UseSMC) return;
+
+  // --- Step 4: Check SMC signal (expensive, run only if needed) ---
+  bool smcLong=false, smcShort=false;
+  double lastSwingHigh = 0.0; datetime lastSwingHighT = 0;
+  double lastSwingLow  = 0.0; datetime lastSwingLowT  = 0;
+
+  // PERF: Only calculate fractals if SMC is used for entry OR for swing SL.
+  // This avoids expensive CopyBuffer calls on every bar if not required.
+  bool needFractalData = UseSMC || SLMode == SL_SWING;
+  if(needFractalData)
+  {
+    int frNeed = MathMin(300, needBars);
+    double upFr[300], dnFr[300];
+    ArraySetAsSeries(upFr, true);
+    ArraySetAsSeries(dnFr, true);
+    if(CopyBuffer(gFractalsHandle, 0, 0, frNeed, upFr) > 0 && CopyBuffer(gFractalsHandle, 1, 0, frNeed, dnFr) > 0)
+    {
+      for(int i=sigBar+2; i<frNeed; i++)
+      {
+        if(lastSwingHighT==0 && upFr[i] != 0.0) { lastSwingHigh = upFr[i]; lastSwingHighT = rates[i].time; }
+        if(lastSwingLowT==0  && dnFr[i] != 0.0) { lastSwingLow  = dnFr[i]; lastSwingLowT  = rates[i].time; }
+        if(lastSwingHighT!=0 && lastSwingLowT!=0) break;
+      }
+    }
+  }
+
   if(UseSMC)
   {
     if(lastSwingHighT!=0 && closeSig > lastSwingHigh) smcLong = true;
     if(lastSwingLowT!=0  && closeSig < lastSwingLow)  smcShort = true;
   }
-  if(UseDonchianBreakout)
-  {
-    if(closeSig > donHigh) donLong = true;
-    if(closeSig < donLow)  donShort = true;
-  }
 
+  // --- Step 5: Combine signals for final decision ---
   bool finalLong  = (smcLong || donLong) && mtfOkLong;
   bool finalShort = (smcShort || donShort) && mtfOkShort;
 
