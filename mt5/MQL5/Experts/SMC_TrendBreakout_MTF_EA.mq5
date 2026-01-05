@@ -104,6 +104,7 @@ int gEmaSlowHandle  = INVALID_HANDLE;
 
 datetime gLastSignalBarTime = 0;
 int gTrendDir = 0; // 1 bullish, -1 bearish, 0 unknown (for CHoCH labelling)
+static datetime gLastTickBarTime = 0; // PERF: For new bar check
 
 // --- Cached symbol properties (performance)
 // Initialized once in OnInit to avoid repeated calls in OnTick.
@@ -257,7 +258,18 @@ void OnDeinit(const int reason)
 
 void OnTick()
 {
+  // --- PERF: Check for new bar on SignalTF before running logic ---
+  // OnTick runs on price change, not bar change. This prevents expensive
+  // calculations on every tick, only running logic once per bar.
+  // Using iTime is a lightweight way to get the latest bar's timestamp.
   ENUM_TIMEFRAMES tf = (SignalTF==PERIOD_CURRENT ? (ENUM_TIMEFRAMES)_Period : SignalTF);
+  datetime latest_bar_time = iTime(_Symbol, tf, 0);
+  if(latest_bar_time == gLastTickBarTime)
+  {
+    return; // Not a new bar, exit early.
+  }
+  gLastTickBarTime = latest_bar_time; // Update for next tick.
+
 
   // Pull recent bars from SignalTF
   MqlRates rates[400];

@@ -1,0 +1,3 @@
+## 2024-07-25 - MQL5 OnTick New Bar Check
+**Learning:** A critical performance optimization for bar-based MQL5 Expert Advisors is to add a check at the beginning of the `OnTick()` function to exit early if a new bar has not yet formed. This prevents expensive calculations (like `CopyRates`) from running on every price tick, as `OnTick` is triggered by price changes, not bar changes.
+**Action:** Always implement a static variable to track the last processed bar's timestamp. At the start of `OnTick`, compare the latest bar's time with the stored time and `return` immediately if they are the same, preventing redundant work.
