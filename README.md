@@ -24,6 +24,26 @@ Quick start:
 4. In MT5, open **MetaEditor** (or press **F4**) and compile the files.
 5. Back in MT5: **Navigator → Refresh**.
 
+### 🚀 Automated Startup (NEW!)
+
+**Quick Start:**
+- **Windows**: `powershell -ExecutionPolicy Bypass -File scripts\startup.ps1`
+- **Linux/WSL**: `./scripts/startup.sh`
+
+**Auto-Start on Boot:**
+- **Windows**: `powershell -ExecutionPolicy Bypass -File scripts\startup.ps1 -CreateScheduledTask`
+- **Linux**: `./scripts/startup.sh --setup-systemd`
+
+📚 **Full Documentation**: [Startup Automation Guide](docs/Startup_Automation_Guide.md) | [Quick Start](docs/Quick_Start_Automation.md)
+
+The automation system handles:
+- MT5 Terminal startup
+- Python scripts execution
+- Scheduled tasks configuration
+- Process monitoring and logging
+- Windows Task Scheduler integration
+- Linux systemd/cron integration
+
 ### Optional: package / deploy helpers
 
 - Create a zip you can copy to your PC:
