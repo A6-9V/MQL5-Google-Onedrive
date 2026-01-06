@@ -148,7 +148,7 @@ After deployment, verify that everything is working:
 - Verify **AutoTrading** is enabled (green button in toolbar)
 - Check **Tools → Options → Expert Advisors** and ensure:
   - "Allow algorithmic trading" is checked
-  - "Allow DLL imports" is checked (not required for this EA, but good to enable)
+  - "Allow DLL imports" remains unchecked for this EA (only enable this for specific, trusted EAs that explicitly require DLLs, as it allows OS-level code execution and increases security risk)
   - Trading URLs are allowed if using notifications
 - Review the Experts log for error messages
 
