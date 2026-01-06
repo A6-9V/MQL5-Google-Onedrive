@@ -60,6 +60,7 @@ This repo includes GitHub Actions workflows under `.github/workflows/`:
   - Builds `dist/Exness_MT5_MQL5.zip` and uploads it as an artifact
 - **Auto-merge enablement (`Enable auto-merge (label-driven)`)**: if a PR has the label **`automerge`**, it will enable GitHub’s auto-merge (squash). Your branch protection rules still control *when* it can merge (required reviews, required CI, etc.).
 - **OneDrive sync (`Sync to OneDrive (rclone)`)**: on pushes to `main` (and manual runs), syncs `mt5/MQL5` to OneDrive via `rclone`.
+- **Trading News Monitor (`Trading News Monitor (Scheduled)`)**: runs every 4 hours to monitor global trading news and report to trading systems via GPT and Perplexity group integrations.
 
 Recommended repo settings (GitHub → **Settings**):
 
@@ -68,6 +69,8 @@ Recommended repo settings (GitHub → **Settings**):
   - Require status checks: `CI / validate-and-package`
   - (Optional) Require CODEOWNERS review
 - **Auto-merge**: enable “Allow auto-merge” in repo settings
+
+For detailed auto-merge setup and usage instructions, see [Auto-Merge Guide](docs/Auto_Merge_Guide.md).
 
 OneDrive sync setup (required secrets):
 
@@ -123,6 +126,17 @@ In `SMC_TrendBreakout_MTF_EA`:
 ### Project links
 
 - Developer tip window project: https://chatgpt.com/g/g-p-691e9c0ace5c8191a1b409c09251cc2b-window-for-developer-tip/project
+- GitHub Profile: https://github.com/A6-9V
+
+### Research Team Integration
+
+This repository integrates with GPT Space and Perplexity groups for automated trading research:
+
+- **GPT Groups**: Used for chart analysis and technical pattern recognition
+- **Perplexity Group**: Monitors global trading news 24/7 and reports directly to trading systems
+- **Automated Schedule**: Trading news monitor runs every 4 hours via GitHub Actions
+
+For detailed setup and usage, see [Trading Research Integration Guide](docs/Trading_Research_Integration.md).
 
 ### Contact
 

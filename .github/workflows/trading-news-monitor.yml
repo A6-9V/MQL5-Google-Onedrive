@@ -1,0 +1,56 @@
+name: Trading News Monitor (Scheduled)
+
+on:
+  schedule:
+    # Run every 4 hours to check for trading news
+    - cron: '0 */4 * * *'
+  workflow_dispatch:
+    # Allow manual trigger for testing
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  monitor-trading-news:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Trading News Monitoring
+        run: |
+          echo "=========================================="
+          echo "Trading News Monitoring System"
+          echo "=========================================="
+          echo ""
+          echo "This scheduled workflow runs every 4 hours to monitor trading news."
+          echo ""
+          echo "NOTE: This is a template/placeholder workflow that demonstrates the"
+          echo "monitoring schedule and integration points. For production use, you"
+          echo "should implement actual API calls to GPT and Perplexity services."
+          echo ""
+          echo "Integration Points:"
+          echo "- GPT Groups: Configured for chart analysis and market research"
+          echo "- Perplexity Group: Configured for real-time trading news aggregation"
+          echo ""
+          echo "Research Team Resources:"
+          echo "- GitHub Profile: https://github.com/A6-9V"
+          echo "- GPT Space: Used for trading system analysis"
+          echo "- Perplexity: Used for global trading news monitoring"
+          echo ""
+          echo "To implement actual monitoring:"
+          echo "1. Add API credentials as GitHub Secrets"
+          echo "2. Install required tools (curl, jq, or API clients)"
+          echo "3. Replace this step with actual API calls"
+          echo "4. Parse and process the results"
+          echo "5. Generate alerts or reports as needed"
+          echo ""
+          echo "Status: Monitoring framework active"
+          echo "Next run scheduled in 4 hours"
+          echo "=========================================="
+
+      - name: Log monitoring activity
+        run: |
+          echo "$(date -u '+%Y-%m-%d %H:%M:%S UTC') - Trading news monitoring completed" >> /tmp/monitor.log
+          cat /tmp/monitor.log || true
