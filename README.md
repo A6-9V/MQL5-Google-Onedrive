@@ -34,7 +34,11 @@ Quick start:
 - **Windows**: `powershell -ExecutionPolicy Bypass -File scripts\startup.ps1 -CreateScheduledTask`
 - **Linux**: `./scripts/startup.sh --setup-systemd`
 
-📚 **Full Documentation**: [Startup Automation Guide](docs/Startup_Automation_Guide.md) | [Quick Start](docs/Quick_Start_Automation.md)
+📚 **Documentation**: 
+- [Quick Reference Guide](QUICK_REFERENCE.md) - Command cheat sheet
+- [Verification Report](VERIFICATION.md) - System status and test results
+- [Startup Automation Guide](docs/Startup_Automation_Guide.md) - Complete guide
+- [Quick Start](docs/Quick_Start_Automation.md) - Quick start instructions
 
 The automation system handles:
 - MT5 Terminal startup
