@@ -186,5 +186,5 @@ This is a rules-based implementation of Smart Money Concepts (SMC) and Donchian 
 
 ## Support
 
-- Email: `Lengkundee01.org@domain.com`
+- Email: `support@example.com`
 - WhatsApp: [Agent community](https://chat.whatsapp.com/DYemXrBnMD63K55bjUMKYF)
