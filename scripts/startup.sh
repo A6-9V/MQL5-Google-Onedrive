@@ -241,10 +241,12 @@ EOF
 setup_cron_job() {
     log_info "Setting up cron job for automatic startup..."
     
-    local cron_entry="@reboot sleep 30 && $SCRIPT_DIR/startup.sh >> $LOGS_DIR/cron_startup.log 2>&1"
+    local startup_script="$SCRIPT_DIR/startup.sh"
+    local log_file="$LOGS_DIR/cron_startup.log"
+    local cron_entry="@reboot sleep 30 && $startup_script >> $log_file 2>&1"
     
     # Check if entry already exists
-    if crontab -l 2>/dev/null | grep -q "$SCRIPT_DIR/startup.sh"; then
+    if crontab -l 2>/dev/null | grep -q "$startup_script"; then
         log_warn "Cron job already exists"
         return 0
     fi

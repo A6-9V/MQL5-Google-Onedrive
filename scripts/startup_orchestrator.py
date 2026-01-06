@@ -53,7 +53,7 @@ class StartupOrchestrator:
 
     def setup_logging(self) -> None:
         """Setup logging configuration."""
-        LOGS_DIR.mkdir(exist_ok=True)
+        LOGS_DIR.mkdir(parents=True, exist_ok=True)
         log_file = LOGS_DIR / f"startup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
         
         logging.basicConfig(

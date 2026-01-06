@@ -241,11 +241,12 @@ function New-StartupScheduledTask {
         -StartWhenAvailable `
         -RunOnlyIfNetworkAvailable
     
-    # Create principal (run with highest privileges)
+    # Create principal (run with user privileges)
+    # Using Limited instead of Highest for security - MT5 doesn't require elevation
     $Principal = New-ScheduledTaskPrincipal `
         -UserId "$env:USERDOMAIN\$env:USERNAME" `
         -LogonType Interactive `
-        -RunLevel Highest
+        -RunLevel Limited
     
     # Register the task
     try {
