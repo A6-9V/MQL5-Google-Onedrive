@@ -103,6 +103,7 @@ int gEmaFastHandle  = INVALID_HANDLE;
 int gEmaSlowHandle  = INVALID_HANDLE;
 
 datetime gLastSignalBarTime = 0;
+datetime gLastOnTickBarTime = 0; // For new bar check optimization
 int gTrendDir = 0; // 1 bullish, -1 bearish, 0 unknown (for CHoCH labelling)
 
 // --- Cached symbol properties (performance)
@@ -258,6 +259,17 @@ void OnDeinit(const int reason)
 void OnTick()
 {
   ENUM_TIMEFRAMES tf = (SignalTF==PERIOD_CURRENT ? (ENUM_TIMEFRAMES)_Period : SignalTF);
+
+  // --- Performance Optimization: New Bar Check ---
+  // Exit early if a new bar has not yet formed on the signal timeframe.
+  // This prevents expensive calculations (like CopyRates) on every price tick.
+  // iTime() is a lightweight call compared to copying entire rate buffers.
+  datetime latestBarTime = iTime(_Symbol, tf, 0);
+  if(latestBarTime == gLastOnTickBarTime && _Period == tf)
+  {
+    return;
+  }
+  gLastOnTickBarTime = latestBarTime;
 
   // Pull recent bars from SignalTF
   MqlRates rates[400];
