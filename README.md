@@ -12,6 +12,10 @@ tea-d1joqqi4d50c738aiujg
 
 ### Install into Exness MetaTrader 5
 
+**📖 For detailed deployment instructions, see [Exness Deployment Guide](docs/Exness_Deployment_Guide.md)**
+
+Quick start:
+
 1. Open **Exness MT5**.
 2. Go to **File → Open Data Folder**.
 3. Copy:
