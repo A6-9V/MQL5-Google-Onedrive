@@ -259,6 +259,18 @@ void OnTick()
 {
   ENUM_TIMEFRAMES tf = (SignalTF==PERIOD_CURRENT ? (ENUM_TIMEFRAMES)_Period : SignalTF);
 
+  // --- PERF: NEW BAR CHECK ---
+  // OnTick() runs on every price tick, but we only need to run the core
+  // logic once per bar. This check exits early if a new bar hasn't formed,
+  // preventing expensive calls to CopyRates and indicator calculations.
+  static datetime lastBarOpenTime = 0;
+  datetime currentBarOpenTime = iTime(_Symbol, tf, 0);
+  if(currentBarOpenTime == lastBarOpenTime)
+  {
+    return; // Not a new bar, exit immediately
+  }
+  lastBarOpenTime = currentBarOpenTime;
+
   // Pull recent bars from SignalTF
   MqlRates rates[400];
   ArraySetAsSeries(rates, true);
