@@ -51,10 +51,12 @@ This method uses the provided deployment script for faster deployment.
    bash scripts/deploy_mt5.sh "/path/to/your/MT5/Data/Folder"
    ```
    
-   Example:
+   Example (replace `ABC123DEF456` with your actual terminal ID):
    ```bash
    bash scripts/deploy_mt5.sh "C:/Users/YourName/AppData/Roaming/MetaQuotes/Terminal/ABC123DEF456/MQL5"
    ```
+   
+   **Note:** The terminal ID (like `ABC123DEF456`) is a unique identifier for your MT5 installation. You can find it by opening File → Open Data Folder in MT5.
 
 4. **Compile and refresh** (as described in Method 1, steps 4-5)
 
@@ -146,8 +148,8 @@ After deployment, verify that everything is working:
 - Verify **AutoTrading** is enabled (green button in toolbar)
 - Check **Tools → Options → Expert Advisors** and ensure:
   - "Allow algorithmic trading" is checked
-  - "Allow DLL imports" is checked if needed
-  - Trading URLs are allowed if needed
+  - "Allow DLL imports" is checked (not required for this EA, but good to enable)
+  - Trading URLs are allowed if using notifications
 - Review the Experts log for error messages
 
 ### Permission errors when deploying
