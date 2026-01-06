@@ -1,0 +1,54 @@
+{
+  "description": "Startup configuration for MQL5 Trading Automation",
+  "version": "1.0.0",
+  "components": [
+    {
+      "name": "Repository Validator",
+      "executable": "python3",
+      "args": ["scripts/ci_validate_repo.py"],
+      "working_dir": null,
+      "wait_seconds": 2,
+      "required": false,
+      "platform_specific": null
+    },
+    {
+      "name": "MT5 Terminal (Exness)",
+      "executable": "C:\\Program Files\\Exness Terminal\\terminal64.exe",
+      "args": ["/portable"],
+      "working_dir": null,
+      "wait_seconds": 15,
+      "required": true,
+      "platform_specific": "windows"
+    },
+    {
+      "name": "Custom Python Script",
+      "executable": "python3",
+      "args": ["scripts/your_custom_script.py"],
+      "working_dir": null,
+      "wait_seconds": 5,
+      "required": false,
+      "platform_specific": null
+    }
+  ],
+  "settings": {
+    "log_retention_days": 30,
+    "max_startup_retries": 3,
+    "startup_delay_seconds": 5
+  },
+  "mt5_paths": {
+    "windows": [
+      "C:\\Program Files\\Exness Terminal\\terminal64.exe",
+      "C:\\Program Files\\MetaTrader 5\\terminal64.exe",
+      "%APPDATA%\\MetaQuotes\\Terminal\\terminal64.exe"
+    ],
+    "wsl": [
+      "/mnt/c/Program Files/Exness Terminal/terminal64.exe",
+      "/mnt/c/Program Files/MetaTrader 5/terminal64.exe"
+    ]
+  },
+  "notifications": {
+    "enabled": false,
+    "email": "",
+    "webhook_url": ""
+  }
+}
