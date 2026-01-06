@@ -176,7 +176,10 @@ python3 scripts/ci_validate_repo.py
 
 1. **MT5 Terminal**: Windows-only application, requires Wine on Linux
 2. **Platform-Specific**: Some components are platform-specific and will be skipped on incompatible systems
-3. **Custom Scripts**: The `scripts/your_custom_script.py` referenced in config needs to be created by the user
+3. **Custom Scripts**: The configuration file references `scripts/your_custom_script.py` as an example placeholder. Users should either:
+   - Create their own custom script at this path
+   - Remove this component from the configuration
+   - Replace it with their actual script path
 
 ## Next Steps
 
@@ -211,7 +214,6 @@ If you encounter issues:
 ## Support
 
 - **GitHub Issues**: https://github.com/A6-9V/MQL5-Google-Onedrive/issues
-- **Email**: Lengkundee01.org@domain.com
 - **WhatsApp Community**: https://chat.whatsapp.com/DYemXrBnMD63K55bjUMKYF
 
 ## Conclusion
@@ -223,4 +225,4 @@ All scripts have been verified, tests pass, and documentation is complete. The s
 ---
 
 *Last Updated: 2026-01-06*  
-*Verified By: GitHub Copilot Automation Agent*
+*Automated Verification Status: All tests passed*
