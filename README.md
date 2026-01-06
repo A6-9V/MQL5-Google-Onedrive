@@ -12,6 +12,10 @@ tea-d1joqqi4d50c738aiujg
 
 ### Install into Exness MetaTrader 5
 
+**📖 For detailed deployment instructions, see [Exness Deployment Guide](docs/Exness_Deployment_Guide.md)**
+
+Quick start:
+
 1. Open **Exness MT5**.
 2. Go to **File → Open Data Folder**.
 3. Copy:
@@ -19,6 +23,26 @@ tea-d1joqqi4d50c738aiujg
    - `SMC_TrendBreakout_MTF_EA.mq5` to `MQL5/Experts/`
 4. In MT5, open **MetaEditor** (or press **F4**) and compile the files.
 5. Back in MT5: **Navigator → Refresh**.
+
+### 🚀 Automated Startup (NEW!)
+
+**Quick Start:**
+- **Windows**: `powershell -ExecutionPolicy Bypass -File scripts\startup.ps1`
+- **Linux/WSL**: `./scripts/startup.sh`
+
+**Auto-Start on Boot:**
+- **Windows**: `powershell -ExecutionPolicy Bypass -File scripts\startup.ps1 -CreateScheduledTask`
+- **Linux**: `./scripts/startup.sh --setup-systemd`
+
+📚 **Full Documentation**: [Startup Automation Guide](docs/Startup_Automation_Guide.md) | [Quick Start](docs/Quick_Start_Automation.md)
+
+The automation system handles:
+- MT5 Terminal startup
+- Python scripts execution
+- Scheduled tasks configuration
+- Process monitoring and logging
+- Windows Task Scheduler integration
+- Linux systemd/cron integration
 
 ### Optional: package / deploy helpers
 
