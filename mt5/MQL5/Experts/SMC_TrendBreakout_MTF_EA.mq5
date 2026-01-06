@@ -259,6 +259,17 @@ void OnTick()
 {
   ENUM_TIMEFRAMES tf = (SignalTF==PERIOD_CURRENT ? (ENUM_TIMEFRAMES)_Period : SignalTF);
 
+  // --- PERF: Early exit if a new bar has not yet formed on the signal timeframe.
+  // This prevents expensive calculations (like CopyRates) from running on every price tick
+  // within the same bar. It ensures the main logic runs only once per bar.
+  static datetime lastBarTime = 0;
+  const datetime currentBarTime = iTime(_Symbol, tf, 0);
+  if(currentBarTime == lastBarTime)
+  {
+    return;
+  }
+  lastBarTime = currentBarTime; // A new bar has formed, update and proceed.
+
   // Pull recent bars from SignalTF
   MqlRates rates[400];
   ArraySetAsSeries(rates, true);
