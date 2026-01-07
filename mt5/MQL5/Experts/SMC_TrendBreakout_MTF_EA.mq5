@@ -107,6 +107,10 @@ int gEmaSlowHandle  = INVALID_HANDLE;
 datetime gLastSignalBarTime = 0;
 int gTrendDir = 0; // 1 bullish, -1 bearish, 0 unknown (for CHoCH labelling)
 
+// --- Cached MTF state (performance)
+datetime gLastLowerTFBarTime = 0; // Last bar time on the lower timeframe
+int      gCachedMTFDir       = 0; // Cached direction from the lower timeframe
+
 // --- Cached symbol properties (performance)
 // Initialized once in OnInit to avoid repeated calls in OnTick.
 static double G_POINT = 0.0;
@@ -271,6 +275,20 @@ void OnTick()
   const int sigBar = (FireOnClose ? 1 : 0);
   if(sigBar >= needBars-1) return;
 
+  // PERF: Cache the MTF direction.
+  // The MTF confirmation only needs to be recalculated when a new bar forms
+  // on the *lower* timeframe. Checking this on every tick is expensive.
+  // We use iTime for a lightweight check before calling the more expensive GetMTFDir().
+  if(RequireMTFConfirm)
+  {
+    datetime lowerTFBarTime = iTime(_Symbol, LowerTF, 0);
+    if(lowerTFBarTime > 0 && lowerTFBarTime > gLastLowerTFBarTime)
+    {
+      gLastLowerTFBarTime = lowerTFBarTime;
+      gCachedMTFDir = GetMTFDir();
+    }
+  }
+
   // Run once per signal bar
   datetime sigTime = rates[sigBar].time;
   if(sigTime == gLastSignalBarTime) return;
@@ -307,10 +325,9 @@ void OnTick()
   double donHigh = rates[highIndex].high;
   double donLow  = rates[lowIndex].low;
 
-  // Lower TF confirmation
-  int mtfDir = GetMTFDir();
-  bool mtfOkLong  = (!RequireMTFConfirm) || (mtfDir == 1);
-  bool mtfOkShort = (!RequireMTFConfirm) || (mtfDir == -1);
+  // Lower TF confirmation (uses cached value)
+  bool mtfOkLong  = (!RequireMTFConfirm) || (gCachedMTFDir == 1);
+  bool mtfOkShort = (!RequireMTFConfirm) || (gCachedMTFDir == -1);
 
   // Signals
   bool smcLong=false, smcShort=false, donLong=false, donShort=false;
