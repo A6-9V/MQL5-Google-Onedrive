@@ -107,6 +107,10 @@ int gEmaSlowHandle  = INVALID_HANDLE;
 datetime gLastSignalBarTime = 0;
 int gTrendDir = 0; // 1 bullish, -1 bearish, 0 unknown (for CHoCH labelling)
 
+// --- MTF Caching (performance)
+datetime gLastMtfBarTime = 0;
+int      gCachedMtfDir   = 0;
+
 // --- Cached symbol properties (performance)
 // Initialized once in OnInit to avoid repeated calls in OnTick.
 static double G_POINT = 0.0;
@@ -118,19 +122,48 @@ static double G_VOL_STEP = 0.0;
 static int    G_DIGITS = 2;
 static int    G_STOPS_LEVEL = 0;
 
+// PERF: This function is cached. It only recalculates when a new bar appears on the LowerTF.
+// This prevents expensive, redundant CopyBuffer calls on every tick of the primary chart.
 static int GetMTFDir()
 {
   if(!RequireMTFConfirm) return 0;
-  if(gEmaFastHandle==INVALID_HANDLE || gEmaSlowHandle==INVALID_HANDLE) return 0;
 
-  double fast[2], slow[2];
+  // Check if a new COMPLETED bar has formed on the lower timeframe
+  datetime mtfTime[1]; // Array to hold one timestamp
+  ArraySetAsSeries(mtfTime, true);
+  // Read the timestamp of the last completed bar (index 1)
+  if(CopyTime(_Symbol, LowerTF, 1, 1, mtfTime) != 1) return 0; // On error, return safe default, not stale cache
+  if(mtfTime[0] == gLastMtfBarTime) return gCachedMtfDir; // No new bar, return cached
+
+  // --- New bar detected, recalculate ---
+  gLastMtfBarTime = mtfTime[0];
+
+  if(gEmaFastHandle==INVALID_HANDLE || gEmaSlowHandle==INVALID_HANDLE)
+  {
+    gCachedMtfDir = 0; // Ensure cache is clean if handles are bad
+    return 0;
+  }
+
+  double fast[1], slow[1];
   ArraySetAsSeries(fast, true);
   ArraySetAsSeries(slow, true);
-  if(CopyBuffer(gEmaFastHandle, 0, 1, 1, fast) != 1) return 0;
-  if(CopyBuffer(gEmaSlowHandle, 0, 1, 1, slow) != 1) return 0;
-  if(fast[0] > slow[0]) return 1;
-  if(fast[0] < slow[0]) return -1;
-  return 0;
+  // Read from the last completed bar (index 1), consistent with the time check
+  if(CopyBuffer(gEmaFastHandle, 0, 1, 1, fast) != 1)
+  {
+      gCachedMtfDir = 0; // On error, reset cache to safe default
+      return 0;
+  }
+  if(CopyBuffer(gEmaSlowHandle, 0, 1, 1, slow) != 1)
+  {
+      gCachedMtfDir = 0; // On error, reset cache to safe default
+      return 0;
+  }
+
+  if(fast[0] > slow[0]) gCachedMtfDir = 1;
+  else if(fast[0] < slow[0]) gCachedMtfDir = -1;
+  else gCachedMtfDir = 0;
+
+  return gCachedMtfDir;
 }
 
 static bool HasOpenPosition(const string sym, const long magic)
