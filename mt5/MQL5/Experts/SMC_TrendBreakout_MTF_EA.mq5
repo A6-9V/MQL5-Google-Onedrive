@@ -111,6 +111,10 @@ int gTrendDir = 0; // 1 bullish, -1 bearish, 0 unknown (for CHoCH labelling)
 datetime gLastMtfBarTime = 0;
 int      gCachedMtfDir   = 0;
 
+// --- Bar Caching (performance)
+// PERF: Avoids running heavy logic on every tick if a new bar hasn't formed.
+static datetime gLastBarTime = 0;
+
 // --- Cached symbol properties (performance)
 // Initialized once in OnInit to avoid repeated calls in OnTick.
 static double G_POINT = 0.0;
@@ -293,6 +297,12 @@ void OnDeinit(const int reason)
 void OnTick()
 {
   ENUM_TIMEFRAMES tf = (SignalTF==PERIOD_CURRENT ? (ENUM_TIMEFRAMES)_Period : SignalTF);
+
+  // PERF: Lightweight new bar check. Exit early if a new bar hasn't formed.
+  // This avoids expensive CopyRates calls on every single tick.
+  datetime latestBarTime = iTime(_Symbol, tf, 0);
+  if(latestBarTime == gLastBarTime) return;
+  gLastBarTime = latestBarTime;
 
   // Pull recent bars from SignalTF
   MqlRates rates[400];
