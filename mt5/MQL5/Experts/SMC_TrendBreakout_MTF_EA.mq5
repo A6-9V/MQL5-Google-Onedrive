@@ -293,6 +293,17 @@ void OnDeinit(const int reason)
 void OnTick()
 {
   ENUM_TIMEFRAMES tf = (SignalTF==PERIOD_CURRENT ? (ENUM_TIMEFRAMES)_Period : SignalTF);
+  const int sigBar = (FireOnClose ? 1 : 0);
+
+  // PERF: OnTick runs on every price change. To avoid expensive calculations,
+  // we first check if a new bar has formed on our signal timeframe.
+  // Using CopyTime() is a fast, lightweight way to get just the bar's open time.
+  // We exit early if the bar time hasn't changed, preventing the costly
+  // CopyRates() and subsequent indicator calculations from running unnecessarily.
+  datetime time[1];
+  if(CopyTime(_Symbol, tf, sigBar, 1, time) != 1) return;
+  if(time[0] == gLastSignalBarTime) return;
+  gLastSignalBarTime = time[0];
 
   // Pull recent bars from SignalTF
   MqlRates rates[400];
@@ -301,13 +312,7 @@ void OnTick()
   if(needBars < 100) return;
   if(CopyRates(_Symbol, tf, 0, needBars, rates) < 100) return;
 
-  const int sigBar = (FireOnClose ? 1 : 0);
   if(sigBar >= needBars-1) return;
-
-  // Run once per signal bar
-  datetime sigTime = rates[sigBar].time;
-  if(sigTime == gLastSignalBarTime) return;
-  gLastSignalBarTime = sigTime;
 
   // Get fractals (for structure break)
   int frNeed = MathMin(300, needBars);
