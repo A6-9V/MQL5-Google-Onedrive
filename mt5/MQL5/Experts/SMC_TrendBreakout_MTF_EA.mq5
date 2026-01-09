@@ -68,34 +68,6 @@ input int    SlippagePoints        = 30;
 input group "Notifications"
 input bool   PopupAlerts           = true;
 input bool   PushNotifications     = true;
-input bool   EnableWebRequest      = false; // enable custom web request
-// IMPORTANT: URL must be added to MT5 terminal's allowed list:
-// Tools -> Options -> Expert Advisors -> Allow WebRequest for listed URL
-// Integrated with: https://github.com/Mouy-leng/-LengKundee-mql5.github.io.git
-// Plugin: ZOLO-A6-9V-NUNA-
-input string WebRequestURL         = "https://soloist.ai/a6-9v";
-
-// --- Web request (for external integrations)
-static void SendWebRequest(const string msg)
-{
-  if(!EnableWebRequest || WebRequestURL == "") return;
-
-  char data[], result[];
-  string headers;
-  int timeout = 5000; // 5 seconds
-
-  // Simple JSON payload
-  string json = "{ \"event\": \"signal\", \"message\": \"" + msg + "\" }";
-  StringToCharArray(json, data, 0, StringLen(json), CP_UTF8);
-
-  ResetLastError();
-  int res = WebRequest("POST", WebRequestURL, "Content-Type: application/json", timeout, data, result, headers);
-
-  if(res == -1)
-  {
-    Print("WebRequest error: ", GetLastError());
-  }
-}
 
 CTrade gTrade;
 
@@ -106,10 +78,6 @@ int gEmaSlowHandle  = INVALID_HANDLE;
 
 datetime gLastSignalBarTime = 0;
 int gTrendDir = 0; // 1 bullish, -1 bearish, 0 unknown (for CHoCH labelling)
-
-// --- MTF Caching (performance)
-datetime gLastMtfBarTime = 0;
-int      gCachedMtfDir   = 0;
 
 // --- Cached symbol properties (performance)
 // Initialized once in OnInit to avoid repeated calls in OnTick.
@@ -122,48 +90,34 @@ static double G_VOL_STEP = 0.0;
 static int    G_DIGITS = 2;
 static int    G_STOPS_LEVEL = 0;
 
-// PERF: This function is cached. It only recalculates when a new bar appears on the LowerTF.
-// This prevents expensive, redundant CopyBuffer calls on every tick of the primary chart.
+// --- Cached MTF direction (performance)
+// The lower-TF EMA direction only needs to be checked once per new bar on that TF.
+static datetime g_mtfDir_lastCheckTime = 0;
+static int      g_mtfDir_cachedValue = 0;
+
 static int GetMTFDir()
 {
   if(!RequireMTFConfirm) return 0;
+  if(gEmaFastHandle==INVALID_HANDLE || gEmaSlowHandle==INVALID_HANDLE) return 0;
 
-  // Check if a new COMPLETED bar has formed on the lower timeframe
-  datetime mtfTime[1]; // Array to hold one timestamp
-  ArraySetAsSeries(mtfTime, true);
-  // Read the timestamp of the last completed bar (index 1)
-  if(CopyTime(_Symbol, LowerTF, 1, 1, mtfTime) != 1) return 0; // On error, return safe default, not stale cache
-  if(mtfTime[0] == gLastMtfBarTime) return gCachedMtfDir; // No new bar, return cached
+  // PERF: Only check for new MTF direction on a new bar of the LowerTF.
+  datetime mtf_time[1];
+  if(CopyTime(_Symbol, LowerTF, 0, 1, mtf_time) != 1) return 0; // if data not ready, return neutral
+  if(mtf_time[0] == g_mtfDir_lastCheckTime) return g_mtfDir_cachedValue; // return cached value
+  g_mtfDir_lastCheckTime = mtf_time[0];
 
-  // --- New bar detected, recalculate ---
-  gLastMtfBarTime = mtfTime[0];
-
-  if(gEmaFastHandle==INVALID_HANDLE || gEmaSlowHandle==INVALID_HANDLE)
-  {
-    gCachedMtfDir = 0; // Ensure cache is clean if handles are bad
-    return 0;
-  }
-
-  double fast[1], slow[1];
+  double fast[2], slow[2];
   ArraySetAsSeries(fast, true);
   ArraySetAsSeries(slow, true);
-  // Read from the last completed bar (index 1), consistent with the time check
-  if(CopyBuffer(gEmaFastHandle, 0, 1, 1, fast) != 1)
-  {
-      gCachedMtfDir = 0; // On error, reset cache to safe default
-      return 0;
-  }
-  if(CopyBuffer(gEmaSlowHandle, 0, 1, 1, slow) != 1)
-  {
-      gCachedMtfDir = 0; // On error, reset cache to safe default
-      return 0;
-  }
+  // Using CopyBuffer on bar 1 (last completed bar) to avoid repainting.
+  if(CopyBuffer(gEmaFastHandle, 0, 1, 1, fast) != 1) { g_mtfDir_cachedValue=0; return 0; }
+  if(CopyBuffer(gEmaSlowHandle, 0, 1, 1, slow) != 1) { g_mtfDir_cachedValue=0; return 0; }
 
-  if(fast[0] > slow[0]) gCachedMtfDir = 1;
-  else if(fast[0] < slow[0]) gCachedMtfDir = -1;
-  else gCachedMtfDir = 0;
+  if(fast[0] > slow[0]) g_mtfDir_cachedValue = 1;
+  else if(fast[0] < slow[0]) g_mtfDir_cachedValue = -1;
+  else g_mtfDir_cachedValue = 0;
 
-  return gCachedMtfDir;
+  return g_mtfDir_cachedValue;
 }
 
 static bool HasOpenPosition(const string sym, const long magic)
@@ -245,7 +199,6 @@ static void Notify(const string msg)
 {
   if(PopupAlerts) Alert(msg);
   if(PushNotifications) SendNotification(msg);
-  SendWebRequest(msg);
 }
 
 int OnInit()
