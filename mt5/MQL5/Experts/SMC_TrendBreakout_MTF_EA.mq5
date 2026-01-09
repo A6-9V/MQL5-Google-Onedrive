@@ -294,6 +294,16 @@ void OnTick()
 {
   ENUM_TIMEFRAMES tf = (SignalTF==PERIOD_CURRENT ? (ENUM_TIMEFRAMES)_Period : SignalTF);
 
+  // --- PERF: New-bar check. Prevents running expensive logic on every price tick.
+  // Instead of copying all rate data just to check the bar's timestamp, we use the
+  // lightweight iTime() function to check first. This is a critical optimization.
+  const int sigBar = (FireOnClose ? 1 : 0);
+  datetime sigTime = iTime(_Symbol, tf, sigBar);
+  if(sigTime == gLastSignalBarTime)
+  {
+    return; // Already processed this bar, exit early.
+  }
+
   // Pull recent bars from SignalTF
   MqlRates rates[400];
   ArraySetAsSeries(rates, true);
@@ -301,12 +311,9 @@ void OnTick()
   if(needBars < 100) return;
   if(CopyRates(_Symbol, tf, 0, needBars, rates) < 100) return;
 
-  const int sigBar = (FireOnClose ? 1 : 0);
   if(sigBar >= needBars-1) return;
 
-  // Run once per signal bar
-  datetime sigTime = rates[sigBar].time;
-  if(sigTime == gLastSignalBarTime) return;
+  // Now that we've committed to processing this bar, update the timestamp.
   gLastSignalBarTime = sigTime;
 
   // Get fractals (for structure break)
