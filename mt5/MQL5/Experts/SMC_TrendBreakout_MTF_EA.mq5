@@ -104,7 +104,7 @@ int gAtrHandle      = INVALID_HANDLE;
 int gEmaFastHandle  = INVALID_HANDLE;
 int gEmaSlowHandle  = INVALID_HANDLE;
 
-datetime gLastSignalBarTime = 0;
+datetime gLastBarTime = 0;
 int gTrendDir = 0; // 1 bullish, -1 bearish, 0 unknown (for CHoCH labelling)
 
 // --- MTF Caching (performance)
@@ -294,6 +294,16 @@ void OnTick()
 {
   ENUM_TIMEFRAMES tf = (SignalTF==PERIOD_CURRENT ? (ENUM_TIMEFRAMES)_Period : SignalTF);
 
+  // PERF: OnTick runs on every price change. A bar-based EA only needs to
+  // run its logic once when a new bar appears. This check provides an
+  // efficient early exit to prevent expensive calculations on every tick.
+  datetime time[1];
+  ArraySetAsSeries(time, true);
+  // Copy the timestamp of the most recent bar (index 0)
+  if(CopyTime(_Symbol, tf, 0, 1, time) != 1) return; // Error reading time
+  if(time[0] == gLastBarTime) return; // Not a new bar yet, exit
+  gLastBarTime = time[0]; // New bar detected, update and proceed
+
   // Pull recent bars from SignalTF
   MqlRates rates[400];
   ArraySetAsSeries(rates, true);
@@ -303,11 +313,6 @@ void OnTick()
 
   const int sigBar = (FireOnClose ? 1 : 0);
   if(sigBar >= needBars-1) return;
-
-  // Run once per signal bar
-  datetime sigTime = rates[sigBar].time;
-  if(sigTime == gLastSignalBarTime) return;
-  gLastSignalBarTime = sigTime;
 
   // Get fractals (for structure break)
   int frNeed = MathMin(300, needBars);
