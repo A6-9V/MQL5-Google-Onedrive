@@ -5,6 +5,28 @@ This repo contains:
 - `mt5/MQL5/Indicators/SMC_TrendBreakout_MTF.mq5`: visual indicator (BOS/CHoCH + Donchian breakout + lower-timeframe confirmation).
 - `mt5/MQL5/Experts/SMC_TrendBreakout_MTF_EA.mq5`: Expert Advisor (alerts + optional auto-trading).
 
+### ☁️ Cloud Deployment
+
+**Deploy to cloud platforms:**
+- **Render.com**: Auto-deploy with `render.yaml`
+- **Railway.app**: Deploy with `railway.json`
+- **Fly.io**: Deploy with `fly.toml`
+- **Docker**: Build and deploy anywhere
+
+**Quick Deploy:**
+```bash
+# Setup all platform configs
+python scripts/deploy_cloud.py all
+
+# Deploy to specific platform
+python scripts/deploy_cloud.py render
+python scripts/deploy_cloud.py railway
+python scripts/deploy_cloud.py flyio
+python scripts/deploy_cloud.py docker --build
+```
+
+📖 **For detailed cloud deployment instructions, see [Cloud Deployment Guide](docs/Cloud_Deployment_Guide.md)**
+
 ### Render workspace
 
 My Blue watermelon Workspace  
