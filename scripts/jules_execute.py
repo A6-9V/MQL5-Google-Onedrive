@@ -41,14 +41,18 @@ def main():
     print()
     
     # Check if Jules is installed
-    result = subprocess.run(["jules", "--version"], capture_output=True, text=True)
-    if result.returncode != 0:
+    try:
+        result = subprocess.run(["jules", "--version"], capture_output=True, text=True, timeout=5)
+        if result.returncode != 0:
+            raise FileNotFoundError
+    except (FileNotFoundError, subprocess.TimeoutExpired):
         print("❌ Jules CLI is not installed or not authenticated.")
         print("\nTo set up Jules:")
         print("1. Install: npm install -g @google/jules")
         print("2. Login: jules login")
         print("3. Authorize GitHub App for your organization")
         print("\nSee docs/Jules_CLI_setup.md for details")
+        print("\nSee docs/Jules_Execution_Guide.md for usage instructions")
         return 1
     
     print("✅ Jules CLI is available")
