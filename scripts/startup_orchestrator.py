@@ -73,13 +73,17 @@ class StartupOrchestrator:
             self.logger.warning(f"Config file not found: {self.config_file}")
             self.logger.info("Using default configuration")
             self.components = self.get_default_components()
+            self.config_data = None
         else:
             with open(self.config_file, 'r') as f:
-                config_data = json.load(f)
+                self.config_data = json.load(f)
                 self.components = [
-                    ComponentConfig(**comp) for comp in config_data.get('components', [])
+                    ComponentConfig(**comp) for comp in self.config_data.get('components', [])
                 ]
             self.logger.info(f"Loaded configuration from {self.config_file}")
+            max_retries = self.config_data.get('settings', {}).get('max_startup_retries', 1)
+            if max_retries > 1:
+                self.logger.info(f"Retry enabled: up to {max_retries} retries for failed components")
 
     def get_default_components(self) -> list[ComponentConfig]:
         """Return default component configuration."""
@@ -236,7 +240,7 @@ class StartupOrchestrator:
             return not component.required
 
     def start_all(self) -> bool:
-        """Start all configured components."""
+        """Start all configured components with retry logic."""
         if not self.check_system_requirements():
             return False
 
@@ -244,12 +248,35 @@ class StartupOrchestrator:
         self.logger.info("Starting all components...")
         self.logger.info("=" * 60)
         
+        # Load retry settings from config
+        max_retries = 1  # Default to 1 attempt (no retry)
+        if hasattr(self, 'config_data') and self.config_data:
+            max_retries = self.config_data.get('settings', {}).get('max_startup_retries', 1)
+        
         success = True
         for component in self.components:
-            if not self.start_component(component):
-                self.logger.error(f"Failed to start required component: {component.name}")
-                success = False
-                break
+            retry_count = 0
+            component_success = False
+            
+            while retry_count <= max_retries:
+                if retry_count > 0:
+                    self.logger.info(f"Retry attempt {retry_count}/{max_retries} for {component.name}...")
+                    time.sleep(2)  # Brief delay before retry
+                
+                component_success = self.start_component(component)
+                
+                if component_success:
+                    break
+                
+                retry_count += 1
+            
+            if not component_success:
+                if component.required:
+                    self.logger.error(f"Failed to start required component: {component.name} after {retry_count} attempt(s)")
+                    success = False
+                    break
+                else:
+                    self.logger.warning(f"Optional component {component.name} failed but continuing...")
         
         if success:
             self.logger.info("=" * 60)
