@@ -294,6 +294,17 @@ void OnTick()
 {
   ENUM_TIMEFRAMES tf = (SignalTF==PERIOD_CURRENT ? (ENUM_TIMEFRAMES)_Period : SignalTF);
 
+  // PERF: Lightweight check for a new bar on the signal timeframe.
+  // This allows an early exit on most ticks, avoiding the expensive CopyRates call below.
+  const int sigBar = (FireOnClose ? 1 : 0);
+  datetime newBarTime = iTime(_Symbol, tf, sigBar);
+  if(newBarTime == 0 || newBarTime == gLastSignalBarTime) // 0 if history is not ready
+  {
+    return;
+  }
+  // New bar detected, update the time and proceed.
+  gLastSignalBarTime = newBarTime;
+
   // Pull recent bars from SignalTF
   MqlRates rates[400];
   ArraySetAsSeries(rates, true);
@@ -301,13 +312,9 @@ void OnTick()
   if(needBars < 100) return;
   if(CopyRates(_Symbol, tf, 0, needBars, rates) < 100) return;
 
-  const int sigBar = (FireOnClose ? 1 : 0);
   if(sigBar >= needBars-1) return;
 
-  // Run once per signal bar
-  datetime sigTime = rates[sigBar].time;
-  if(sigTime == gLastSignalBarTime) return;
-  gLastSignalBarTime = sigTime;
+  // Run once per signal bar -- check is now performed above, before CopyRates.
 
   // Get fractals (for structure break)
   int frNeed = MathMin(300, needBars);
