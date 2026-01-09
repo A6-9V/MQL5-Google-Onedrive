@@ -105,6 +105,7 @@ int gEmaFastHandle  = INVALID_HANDLE;
 int gEmaSlowHandle  = INVALID_HANDLE;
 
 datetime gLastSignalBarTime = 0;
+datetime gLastBarCheckTime   = 0; // Performance: for new bar check
 int gTrendDir = 0; // 1 bullish, -1 bearish, 0 unknown (for CHoCH labelling)
 
 // --- MTF Caching (performance)
@@ -293,6 +294,16 @@ void OnDeinit(const int reason)
 void OnTick()
 {
   ENUM_TIMEFRAMES tf = (SignalTF==PERIOD_CURRENT ? (ENUM_TIMEFRAMES)_Period : SignalTF);
+
+  // PERF: Check for a new bar on the signal timeframe before running logic.
+  // This is a critical optimization that prevents the EA from running expensive
+  // calculations on every single price tick. The logic should only run once per bar.
+  // Using CopyTime is a lightweight way to fetch the latest bar's timestamp.
+  datetime latestBarTime[1];
+  ArraySetAsSeries(latestBarTime, true);
+  if(CopyTime(_Symbol, tf, 0, 1, latestBarTime) != 1) return; // Error fetching time
+  if(latestBarTime[0] == gLastBarCheckTime) return; // Not a new bar, exit early.
+  gLastBarCheckTime = latestBarTime[0]; // Update the time for the next check.
 
   // Pull recent bars from SignalTF
   MqlRates rates[400];
