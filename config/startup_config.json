@@ -4,7 +4,7 @@
   "components": [
     {
       "name": "Repository Validator",
-      "executable": "python3",
+      "executable": "python",
       "args": ["scripts/ci_validate_repo.py"],
       "working_dir": null,
       "wait_seconds": 2,
@@ -13,21 +13,12 @@
     },
     {
       "name": "MT5 Terminal (Exness)",
-      "executable": "C:\\Program Files\\Exness Terminal\\terminal64.exe",
+      "executable": "C:\\Program Files\\MetaTrader 5 EXNESS\\terminal64.exe",
       "args": ["/portable"],
       "working_dir": null,
       "wait_seconds": 15,
       "required": true,
       "platform_specific": "windows"
-    },
-    {
-      "name": "Custom Python Script",
-      "executable": "python3",
-      "args": ["scripts/your_custom_script.py"],
-      "working_dir": null,
-      "wait_seconds": 5,
-      "required": false,
-      "platform_specific": null
     }
   ],
   "settings": {
@@ -37,6 +28,7 @@
   },
   "mt5_paths": {
     "windows": [
+      "C:\\Program Files\\MetaTrader 5 EXNESS\\terminal64.exe",
       "C:\\Program Files\\Exness Terminal\\terminal64.exe",
       "C:\\Program Files\\MetaTrader 5\\terminal64.exe",
       "%APPDATA%\\MetaQuotes\\Terminal\\terminal64.exe"

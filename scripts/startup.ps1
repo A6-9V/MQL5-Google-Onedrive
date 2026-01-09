@@ -111,6 +111,7 @@ function Start-MT5Terminal {
     
     # Try to find and start MT5 Terminal
     $MT5Paths = @(
+        "C:\Program Files\MetaTrader 5 EXNESS\terminal64.exe",
         "C:\Program Files\Exness Terminal\terminal64.exe",
         "C:\Program Files\MetaTrader 5\terminal64.exe",
         "$env:APPDATA\MetaQuotes\Terminal\terminal64.exe",
@@ -146,7 +147,7 @@ function Start-MT5Terminal {
 }
 
 function Start-PythonOrchestrator {
-    param([bool]$DryRun = $false)
+    param([bool]$DryRun = $false, [bool]$NoWait = $false)
     
     Write-Log "Starting Python orchestrator..." -Level INFO
     
@@ -163,20 +164,29 @@ function Start-PythonOrchestrator {
     }
     
     try {
+        # Use --monitor 0 for infinite monitoring to keep processes running
+        # When NoWait is used (scheduled task), processes should stay alive
+        $MonitorArg = if ($NoWait) { "--monitor", "0" } else { @() }
         $Process = Start-Process -FilePath "python" `
-            -ArgumentList $OrchestratorScript `
+            -ArgumentList (@($OrchestratorScript) + $MonitorArg) `
             -WorkingDirectory $RepoRoot `
             -NoNewWindow `
-            -Wait `
             -PassThru
         
-        if ($Process.ExitCode -eq 0) {
-            Write-Log "Python orchestrator completed successfully" -Level SUCCESS
-            return $true
+        if (-not $NoWait) {
+            $Process.WaitForExit()
+            if ($Process.ExitCode -eq 0) {
+                Write-Log "Python orchestrator completed successfully" -Level SUCCESS
+                return $true
+            }
+            else {
+                Write-Log "Python orchestrator failed with exit code: $($Process.ExitCode)" -Level ERROR
+                return $false
+            }
         }
         else {
-            Write-Log "Python orchestrator failed with exit code: $($Process.ExitCode)" -Level ERROR
-            return $false
+            Write-Log "Python orchestrator started in background (monitoring mode)" -Level SUCCESS
+            return $true
         }
     }
     catch {
@@ -279,7 +289,7 @@ function Show-Summary {
     Write-Host ""
     
     foreach ($Key in $Results.Keys) {
-        $Status = if ($Results[$Key]) { "✓ PASS" } else { "✗ FAIL" }
+        $Status = if ($Results[$Key]) { "[PASS]" } else { "[FAIL]" }
         $Color = if ($Results[$Key]) { "Green" } else { "Red" }
         Write-Host ("  {0,-30} {1}" -f $Key, $Status) -ForegroundColor $Color
     }
@@ -325,7 +335,7 @@ try {
     
     # Step 2: Start Python orchestrator
     Write-Host ""
-    $Results["Python Orchestrator"] = Start-PythonOrchestrator -DryRun $DryRun
+    $Results["Python Orchestrator"] = Start-PythonOrchestrator -DryRun $DryRun -NoWait $NoWait
     
     # Step 3: Start MT5 Terminal
     Write-Host ""
