@@ -299,10 +299,11 @@ void OnTick()
   // This lightweight check avoids the expensive CopyRates call and all subsequent
   // logic from running on every single tick, only executing once per bar.
   datetime newBarTime = iTime(_Symbol, tf, sigBar);
-  if (newBarTime <= 0) return; // iTime returns 0 on error
-  if (newBarTime == gLastSignalBarTime)
+  if(newBarTime <= 0) return; // iTime returns 0 on error
+
+  if(FireOnClose)
   {
-    return;
+    if(newBarTime == gLastSignalBarTime) return;
   }
   gLastSignalBarTime = newBarTime;
 
