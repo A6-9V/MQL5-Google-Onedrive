@@ -292,7 +292,7 @@ void OnTick()
   int donLookback = (DonchianLookback < 2 ? 2 : DonchianLookback);
   int donStart = sigBar + 1;
   int donCount = donLookback;
-  if(donStart + donCount >= needBars) return;
+  if(donStart + donCount > needBars) return;
   int highIndex = iHighest(_Symbol, tf, MODE_HIGH, donCount, donStart);
   int lowIndex  = iLowest(_Symbol, tf, MODE_LOW, donCount, donStart);
   if(highIndex < 0 || lowIndex < 0) return; // Error case, data not ready
