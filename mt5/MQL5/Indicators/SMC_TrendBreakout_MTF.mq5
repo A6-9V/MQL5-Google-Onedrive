@@ -127,21 +127,33 @@ static double LowestLow(const double &low[], const int start, const int count)
   return ll;
 }
 
+// --- Cached MTF direction (performance)
+static datetime g_mtfDir_lastCheckTime = 0;
+static int      g_mtfDir_cachedValue = 0;
+
 static int GetMTFDir()
 {
   if(!RequireMTFConfirm) return 0;
   if(gEmaFastHandle==INVALID_HANDLE || gEmaSlowHandle==INVALID_HANDLE) return 0;
 
+  // PERF: Only check for new MTF direction on a new bar of the LowerTF.
+  datetime mtf_time[1];
+  if(CopyTime(_Symbol, LowerTF, 0, 1, mtf_time) != 1) return 0;
+  if(mtf_time[0] == g_mtfDir_lastCheckTime) return g_mtfDir_cachedValue;
+  g_mtfDir_lastCheckTime = mtf_time[0];
+
   double fast[2], slow[2];
   ArraySetAsSeries(fast, true);
   ArraySetAsSeries(slow, true);
 
-  if(CopyBuffer(gEmaFastHandle, 0, 1, 1, fast) != 1) return 0; // last closed bar on lower TF
-  if(CopyBuffer(gEmaSlowHandle, 0, 1, 1, slow) != 1) return 0;
+  if(CopyBuffer(gEmaFastHandle, 0, 1, 1, fast) != 1) { g_mtfDir_cachedValue=0; return 0; }
+  if(CopyBuffer(gEmaSlowHandle, 0, 1, 1, slow) != 1) { g_mtfDir_cachedValue=0; return 0; }
 
-  if(fast[0] > slow[0]) return 1;
-  if(fast[0] < slow[0]) return -1;
-  return 0;
+  if(fast[0] > slow[0]) g_mtfDir_cachedValue = 1;
+  else if(fast[0] < slow[0]) g_mtfDir_cachedValue = -1;
+  else g_mtfDir_cachedValue = 0;
+
+  return g_mtfDir_cachedValue;
 }
 
 int OnInit()
