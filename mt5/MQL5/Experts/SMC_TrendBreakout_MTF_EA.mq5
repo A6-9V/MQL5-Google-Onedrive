@@ -288,18 +288,22 @@ void OnTick()
   }
 
   // Donchian bounds (optimized)
-  // Using built-in iHighest/iLowest is faster than manual loops in MQL.
+  // PERF: Calculate Donchian channel by iterating over the local 'rates' array.
+  // This is faster than iHighest/iLowest because the price data has already been
+  // copied into memory, so we avoid redundant function calls and history lookups.
   int donLookback = (DonchianLookback < 2 ? 2 : DonchianLookback);
   int donStart = sigBar + 1;
-  int donCount = donLookback;
-  if(donStart + donCount >= needBars) return;
-  int highIndex = iHighest(_Symbol, tf, MODE_HIGH, donCount, donStart);
-  int lowIndex  = iLowest(_Symbol, tf, MODE_LOW, donCount, donStart);
-  if(highIndex < 0 || lowIndex < 0) return; // Error case, data not ready
-  // PERF: Access price data directly from the copied 'rates' array.
-  // This avoids the function call overhead of iHigh/iLow, as the data is already in memory.
-  double donHigh = rates[highIndex].high;
-  double donLow  = rates[lowIndex].low;
+  int donEnd = donStart + donLookback;
+  if(donEnd > needBars) return;
+
+  double donHigh = rates[donStart].high;
+  double donLow  = rates[donStart].low;
+
+  for(int i = donStart + 1; i < donEnd; i++)
+  {
+    if(rates[i].high > donHigh) donHigh = rates[i].high;
+    if(rates[i].low < donLow)   donLow = rates[i].low;
+  }
 
   // Lower TF confirmation
   int mtfDir = GetMTFDir();
