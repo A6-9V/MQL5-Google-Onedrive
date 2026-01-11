@@ -270,36 +270,51 @@ void OnTick()
   // Now that we've passed all checks and copied rates, we can commit to this bar time.
   gLastSignalBarTime = sigTime;
 
-  // Get fractals (for structure break)
-  int frNeed = MathMin(300, needBars);
-  double upFr[300], dnFr[300];
-  ArraySetAsSeries(upFr, true);
-  ArraySetAsSeries(dnFr, true);
-  if(CopyBuffer(gFractalsHandle, 0, 0, frNeed, upFr) <= 0) return;
-  if(CopyBuffer(gFractalsHandle, 1, 0, frNeed, dnFr) <= 0) return;
-
+  // --- Lazy Calculation: Fractals (for SMC and Swing SL) ---
+  // Only calculate swing points if the user has enabled a feature that needs them.
+  // This avoids expensive CopyBuffer calls for users who only use Donchian breakouts.
   double lastSwingHigh = 0.0; datetime lastSwingHighT = 0;
   double lastSwingLow  = 0.0; datetime lastSwingLowT  = 0;
-  for(int i=sigBar+2; i<frNeed; i++)
+  if(UseSMC || SLMode == SL_SWING)
   {
-    if(lastSwingHighT==0 && upFr[i] != 0.0) { lastSwingHigh = upFr[i]; lastSwingHighT = rates[i].time; }
-    if(lastSwingLowT==0  && dnFr[i] != 0.0) { lastSwingLow  = dnFr[i]; lastSwingLowT  = rates[i].time; }
-    if(lastSwingHighT!=0 && lastSwingLowT!=0) break;
+    int frNeed = MathMin(300, needBars);
+    double upFr[300], dnFr[300];
+    ArraySetAsSeries(upFr, true);
+    ArraySetAsSeries(dnFr, true);
+    if(CopyBuffer(gFractalsHandle, 0, 0, frNeed, upFr) > 0 &&
+       CopyBuffer(gFractalsHandle, 1, 0, frNeed, dnFr) > 0)
+    {
+      for(int i=sigBar+2; i<frNeed; i++)
+      {
+        if(lastSwingHighT==0 && upFr[i] != 0.0) { lastSwingHigh = upFr[i]; lastSwingHighT = rates[i].time; }
+        if(lastSwingLowT==0  && dnFr[i] != 0.0) { lastSwingLow  = dnFr[i]; lastSwingLowT  = rates[i].time; }
+        if(lastSwingHighT!=0 && lastSwingLowT!=0) break;
+      }
+    }
+    // Note: If CopyBuffer fails, swings will be 0, and logic will proceed without them.
   }
 
-  // Donchian bounds (optimized)
-  // Using built-in iHighest/iLowest is faster than manual loops in MQL.
-  int donLookback = (DonchianLookback < 2 ? 2 : DonchianLookback);
-  int donStart = sigBar + 1;
-  int donCount = donLookback;
-  if(donStart + donCount > needBars) return;
-  int highIndex = iHighest(_Symbol, tf, MODE_HIGH, donCount, donStart);
-  int lowIndex  = iLowest(_Symbol, tf, MODE_LOW, donCount, donStart);
-  if(highIndex < 0 || lowIndex < 0) return; // Error case, data not ready
-  // PERF: Access price data directly from the copied 'rates' array.
-  // This avoids the function call overhead of iHigh/iLow, as the data is already in memory.
-  double donHigh = rates[highIndex].high;
-  double donLow  = rates[lowIndex].low;
+  // --- Lazy Calculation: Donchian Channel ---
+  // Only calculate Donchian bounds if the user has enabled a feature that needs them.
+  // This avoids expensive iHighest/iLowest calls for users who only use SMC signals.
+  double donHigh = 0.0, donLow = 0.0;
+  if(UseDonchianBreakout || TPMode == TP_DONCHIAN_WIDTH)
+  {
+    int donLookback = (DonchianLookback < 2 ? 2 : DonchianLookback);
+    int donStart = sigBar + 1;
+    int donCount = donLookback;
+    if(donStart + donCount <= needBars)
+    {
+      int highIndex = iHighest(_Symbol, tf, MODE_HIGH, donCount, donStart);
+      int lowIndex  = iLowest(_Symbol, tf, MODE_LOW, donCount, donStart);
+      if(highIndex >= 0 && lowIndex >= 0)
+      {
+        donHigh = rates[highIndex].high;
+        donLow  = rates[lowIndex].low;
+      }
+    }
+    // Note: If iHighest/iLowest fail, donHigh/donLow will be 0.
+  }
 
   // Lower TF confirmation
   int mtfDir = GetMTFDir();
