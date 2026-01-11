@@ -287,19 +287,22 @@ void OnTick()
     if(lastSwingHighT!=0 && lastSwingLowT!=0) break;
   }
 
-  // Donchian bounds (optimized)
-  // Using built-in iHighest/iLowest is faster than manual loops in MQL.
-  int donLookback = (DonchianLookback < 2 ? 2 : DonchianLookback);
-  int donStart = sigBar + 1;
-  int donCount = donLookback;
-  if(donStart + donCount > needBars) return;
-  int highIndex = iHighest(_Symbol, tf, MODE_HIGH, donCount, donStart);
-  int lowIndex  = iLowest(_Symbol, tf, MODE_LOW, donCount, donStart);
-  if(highIndex < 0 || lowIndex < 0) return; // Error case, data not ready
-  // PERF: Access price data directly from the copied 'rates' array.
-  // This avoids the function call overhead of iHigh/iLow, as the data is already in memory.
-  double donHigh = rates[highIndex].high;
-  double donLow  = rates[lowIndex].low;
+  // PERF: Defer Donchian channel calculation until it's actually needed.
+  double donHigh = 0.0, donLow = 0.0;
+  if(UseDonchianBreakout || TPMode == TP_DONCHIAN_WIDTH)
+  {
+    // Using built-in iHighest/iLowest is faster than manual loops in MQL.
+    int donLookback = (DonchianLookback < 2 ? 2 : DonchianLookback);
+    int donStart = sigBar + 1;
+    int donCount = donLookback;
+    if(donStart + donCount > needBars) return;
+    int highIndex = iHighest(_Symbol, tf, MODE_HIGH, donCount, donStart);
+    int lowIndex  = iLowest(_Symbol, tf, MODE_LOW, donCount, donStart);
+    if(highIndex < 0 || lowIndex < 0) return; // Error case, data not ready
+    // PERF: Access price data directly from the copied 'rates' array.
+    donHigh = rates[highIndex].high;
+    donLow  = rates[lowIndex].low;
+  }
 
   // Lower TF confirmation
   int mtfDir = GetMTFDir();
