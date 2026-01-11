@@ -287,19 +287,33 @@ void OnTick()
     if(lastSwingHighT!=0 && lastSwingLowT!=0) break;
   }
 
-  // Donchian bounds (optimized)
-  // Using built-in iHighest/iLowest is faster than manual loops in MQL.
-  int donLookback = (DonchianLookback < 2 ? 2 : DonchianLookback);
-  int donStart = sigBar + 1;
-  int donCount = donLookback;
-  if(donStart + donCount > needBars) return;
-  int highIndex = iHighest(_Symbol, tf, MODE_HIGH, donCount, donStart);
-  int lowIndex  = iLowest(_Symbol, tf, MODE_LOW, donCount, donStart);
-  if(highIndex < 0 || lowIndex < 0) return; // Error case, data not ready
-  // PERF: Access price data directly from the copied 'rates' array.
-  // This avoids the function call overhead of iHigh/iLow, as the data is already in memory.
-  double donHigh = rates[highIndex].high;
-  double donLow  = rates[lowIndex].low;
+  // Donchian bounds (lazily calculated)
+  double donHigh = 0.0, donLow = 0.0;
+
+  // PERF: Defer the expensive Donchian calculation until it's actually needed.
+  // This avoids running iHighest/iLowest on every new bar if the user has
+  // disabled both the Donchian breakout signal and the Donchian TP mode.
+  if(UseDonchianBreakout || TPMode == TP_DONCHIAN_WIDTH)
+  {
+    // Using built-in iHighest/iLowest is faster than manual loops in MQL.
+    int donLookback = (DonchianLookback < 2 ? 2 : DonchianLookback);
+    int donStart = sigBar + 1;
+    int donCount = donLookback;
+    if(donStart + donCount <= needBars)
+    {
+      int highIndex = iHighest(_Symbol, tf, MODE_HIGH, donCount, donStart);
+      int lowIndex  = iLowest(_Symbol, tf, MODE_LOW, donCount, donStart);
+
+      // PERF: Access price data directly from the copied 'rates' array.
+      // This avoids the function call overhead of iHigh/iLow.
+      if(highIndex >= 0 && lowIndex >= 0)
+      {
+        donHigh = rates[highIndex].high;
+        donLow  = rates[lowIndex].low;
+      }
+    }
+    // If not enough bars, donHigh/donLow remain 0.0, which is handled gracefully later.
+  }
 
   // Lower TF confirmation
   int mtfDir = GetMTFDir();
@@ -316,8 +330,9 @@ void OnTick()
   }
   if(UseDonchianBreakout)
   {
-    if(closeSig > donHigh) donLong = true;
-    if(closeSig < donLow)  donShort = true;
+    // Ensure donHigh/donLow have been calculated before using them.
+    if(donHigh > 0.0 && closeSig > donHigh) donLong = true;
+    if(donLow > 0.0 && closeSig < donLow)  donShort = true;
   }
 
   bool finalLong  = (smcLong || donLong) && mtfOkLong;
