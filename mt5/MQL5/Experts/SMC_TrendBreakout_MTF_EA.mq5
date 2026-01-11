@@ -270,21 +270,25 @@ void OnTick()
   // Now that we've passed all checks and copied rates, we can commit to this bar time.
   gLastSignalBarTime = sigTime;
 
-  // Get fractals (for structure break)
-  int frNeed = MathMin(300, needBars);
-  double upFr[300], dnFr[300];
-  ArraySetAsSeries(upFr, true);
-  ArraySetAsSeries(dnFr, true);
-  if(CopyBuffer(gFractalsHandle, 0, 0, frNeed, upFr) <= 0) return;
-  if(CopyBuffer(gFractalsHandle, 1, 0, frNeed, dnFr) <= 0) return;
-
   double lastSwingHigh = 0.0; datetime lastSwingHighT = 0;
   double lastSwingLow  = 0.0; datetime lastSwingLowT  = 0;
-  for(int i=sigBar+2; i<frNeed; i++)
+
+  // PERF: Lazy calculation of fractals.
+  // Only perform these expensive CopyBuffer calls if features that require the data are enabled.
+  if(UseSMC || SLMode == SL_SWING)
   {
-    if(lastSwingHighT==0 && upFr[i] != 0.0) { lastSwingHigh = upFr[i]; lastSwingHighT = rates[i].time; }
-    if(lastSwingLowT==0  && dnFr[i] != 0.0) { lastSwingLow  = dnFr[i]; lastSwingLowT  = rates[i].time; }
-    if(lastSwingHighT!=0 && lastSwingLowT!=0) break;
+    int frNeed = MathMin(300, needBars);
+    double upFr[300], dnFr[300];
+    ArraySetAsSeries(upFr, true);
+    ArraySetAsSeries(dnFr, true);
+    if(CopyBuffer(gFractalsHandle, 0, 0, frNeed, upFr) <= 0) return;
+    if(CopyBuffer(gFractalsHandle, 1, 0, frNeed, dnFr) <= 0) return;
+
+    for(int i=sigBar+2; i<frNeed; i++) {
+      if(lastSwingHighT==0 && upFr[i] != 0.0) { lastSwingHigh = upFr[i]; lastSwingHighT = rates[i].time; }
+      if(lastSwingLowT==0  && dnFr[i] != 0.0) { lastSwingLow  = dnFr[i]; lastSwingLowT  = rates[i].time; }
+      if(lastSwingHighT!=0 && lastSwingLowT!=0) break;
+    }
   }
 
   // Donchian bounds (optimized)
