@@ -306,12 +306,7 @@ void OnTick()
   double donHigh = rates[highIndex].high;
   double donLow  = rates[lowIndex].low;
 
-  // Lower TF confirmation
-  int mtfDir = GetMTFDir();
-  bool mtfOkLong  = (!RequireMTFConfirm) || (mtfDir == 1);
-  bool mtfOkShort = (!RequireMTFConfirm) || (mtfDir == -1);
-
-  // Signals
+  // --- Primary Signals ---
   bool smcLong=false, smcShort=false, donLong=false, donShort=false;
   double closeSig = rates[sigBar].close;
   if(UseSMC)
@@ -325,9 +320,23 @@ void OnTick()
     if(closeSig < donLow)  donShort = true;
   }
 
-  bool finalLong  = (smcLong || donLong) && mtfOkLong;
-  bool finalShort = (smcShort || donShort) && mtfOkShort;
+  bool primaryLong = smcLong || donLong;
+  bool primaryShort = smcShort || donShort;
 
+  // PERF: Early exit if no primary signal exists. This avoids the expensive MTF
+  // confirmation call on the vast majority of bars where no trade is possible.
+  if(!primaryLong && !primaryShort) return;
+
+  // --- Secondary Confirmation (MTF) ---
+  // This block only runs if a primary signal was found.
+  int mtfDir = GetMTFDir();
+  bool mtfOkLong  = (!RequireMTFConfirm) || (mtfDir == 1);
+  bool mtfOkShort = (!RequireMTFConfirm) || (mtfDir == -1);
+
+  bool finalLong  = primaryLong && mtfOkLong;
+  bool finalShort = primaryShort && mtfOkShort;
+
+  // Final check in case MTF invalidated the signal
   if(!finalLong && !finalShort) return;
 
   // CHoCH / BOS label (informational)
