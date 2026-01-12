@@ -264,6 +264,20 @@ void OnTick()
   datetime sigTime = time[sigBar];
   if(sigTime == gLastSignalBarTime) return; // Not a new signal bar, exit early.
 
+  // PERF: When firing on close, check for a new bar in a lightweight way before copying all rates.
+  if(FireOnClose)
+  {
+      // The time of the last closed bar. iTime is fast.
+      datetime lastBarTime = (datetime)iTime(_Symbol, tf, 1);
+
+      // If we've already processed this bar time, exit.
+      // The > 0 check handles the initial run where gLastSignalBarTime is 0.
+      if(lastBarTime == gLastSignalBarTime && gLastSignalBarTime > 0)
+      {
+          return;
+      }
+  }
+
   // Pull recent bars from SignalTF
   MqlRates rates[400];
   ArraySetAsSeries(rates, true);
