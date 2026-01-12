@@ -79,6 +79,9 @@ int gEmaSlowHandle  = INVALID_HANDLE;
 datetime gLastSignalBarTime = 0;
 int gTrendDir = 0; // 1 bullish, -1 bearish, 0 unknown (for CHoCH labelling)
 
+// PERF: Cached validated Donchian lookback.
+int gDonchianLookback = 20;
+
 // --- Cached symbol properties (performance)
 // Initialized once in OnInit to avoid repeated calls in OnTick.
 static double G_POINT = 0.0;
@@ -232,6 +235,9 @@ int OnInit()
   int freezeLevel = (int)SymbolInfoInteger(_Symbol, SYMBOL_TRADE_FREEZE_LEVEL);
   G_STOPS_LEVEL = MathMax(stopsLevel, freezeLevel);
 
+  // PERF: Validate and cache Donchian lookback once.
+  gDonchianLookback = (DonchianLookback < 2 ? 2 : DonchianLookback);
+
   return INIT_SUCCEEDED;
 }
 
@@ -289,9 +295,8 @@ void OnTick()
 
   // Donchian bounds (optimized)
   // Using built-in iHighest/iLowest is faster than manual loops in MQL.
-  int donLookback = (DonchianLookback < 2 ? 2 : DonchianLookback);
   int donStart = sigBar + 1;
-  int donCount = donLookback;
+  int donCount = gDonchianLookback;
   if(donStart + donCount > needBars) return;
   int highIndex = iHighest(_Symbol, tf, MODE_HIGH, donCount, donStart);
   int lowIndex  = iLowest(_Symbol, tf, MODE_LOW, donCount, donStart);
