@@ -264,6 +264,18 @@ void OnTick()
   datetime sigTime = time[sigBar];
   if(sigTime == gLastSignalBarTime) return; // Not a new signal bar, exit early.
 
+  // PERF: Early exit if a new bar has not formed on the signal timeframe.
+  // This is a critical optimization that prevents the expensive CopyRates
+  // and all subsequent indicator calculations from running on every single tick.
+  // The main logic only needs to run once per bar.
+  static datetime gLastTickBarTime = 0;
+  datetime newBarTime = iTime(_Symbol, tf, 0);
+  if(newBarTime == gLastTickBarTime)
+  {
+    return;
+  }
+  gLastTickBarTime = newBarTime;
+
   // Pull recent bars from SignalTF
   MqlRates rates[400];
   ArraySetAsSeries(rates, true);
