@@ -77,6 +77,7 @@ int gEmaFastHandle  = INVALID_HANDLE;
 int gEmaSlowHandle  = INVALID_HANDLE;
 
 datetime gLastSignalBarTime = 0;
+static datetime G_LAST_BAR_TIME = 0; // PERF: Prevent re-running on every tick
 int gTrendDir = 0; // 1 bullish, -1 bearish, 0 unknown (for CHoCH labelling)
 
 // PERF: Cached validated Donchian lookback.
@@ -263,6 +264,16 @@ void OnTick()
 
   datetime sigTime = time[sigBar];
   if(sigTime == gLastSignalBarTime) return; // Not a new signal bar, exit early.
+
+  // PERF: Only run on the open of a new bar to avoid expensive calls on every tick.
+  datetime latestBarTime = (datetime)SeriesInfoInteger(_Symbol, tf, SERIES_LASTBAR_DATE);
+  if(latestBarTime == G_LAST_BAR_TIME)
+  {
+    // On FireOnClose=false, we might still want to check tick-level breakouts
+    // of the most recent candle. For now, this is a bar-based EA.
+    return;
+  }
+  G_LAST_BAR_TIME = latestBarTime;
 
   // Pull recent bars from SignalTF
   MqlRates rates[400];
