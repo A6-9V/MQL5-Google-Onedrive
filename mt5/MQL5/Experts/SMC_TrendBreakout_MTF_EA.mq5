@@ -306,12 +306,7 @@ void OnTick()
   double donHigh = rates[highIndex].high;
   double donLow  = rates[lowIndex].low;
 
-  // Lower TF confirmation
-  int mtfDir = GetMTFDir();
-  bool mtfOkLong  = (!RequireMTFConfirm) || (mtfDir == 1);
-  bool mtfOkShort = (!RequireMTFConfirm) || (mtfDir == -1);
-
-  // Signals
+  // --- Primary Signals (SMC / Donchian)
   bool smcLong=false, smcShort=false, donLong=false, donShort=false;
   double closeSig = rates[sigBar].close;
   if(UseSMC)
@@ -324,6 +319,15 @@ void OnTick()
     if(closeSig > donHigh) donLong = true;
     if(closeSig < donLow)  donShort = true;
   }
+
+  // PERF: Early exit if no primary signal exists.
+  // This defers the (potentially expensive) GetMTFDir() call until it's actually needed.
+  if(!(smcLong || donLong || smcShort || donShort)) return;
+
+  // Lower TF confirmation (only checked if a primary signal exists)
+  int mtfDir = GetMTFDir();
+  bool mtfOkLong  = (!RequireMTFConfirm) || (mtfDir == 1);
+  bool mtfOkShort = (!RequireMTFConfirm) || (mtfDir == -1);
 
   bool finalLong  = (smcLong || donLong) && mtfOkLong;
   bool finalShort = (smcShort || donShort) && mtfOkShort;
