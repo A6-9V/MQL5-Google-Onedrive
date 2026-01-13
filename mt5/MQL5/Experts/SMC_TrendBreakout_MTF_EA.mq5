@@ -312,12 +312,7 @@ void OnTick()
   double donLow  = donchianDn[0];
   if(donHigh <= 0 || donLow <= 0) return; // Data not ready or invalid
 
-  // Lower TF confirmation
-  int mtfDir = GetMTFDir();
-  bool mtfOkLong  = (!RequireMTFConfirm) || (mtfDir == 1);
-  bool mtfOkShort = (!RequireMTFConfirm) || (mtfDir == -1);
-
-  // Signals
+  // --- Primary Signals (without MTF confirmation yet) ---
   bool smcLong=false, smcShort=false, donLong=false, donShort=false;
   double closeSig = rates[sigBar].close;
   if(UseSMC)
@@ -330,6 +325,15 @@ void OnTick()
     if(closeSig > donHigh) donLong = true;
     if(closeSig < donLow)  donShort = true;
   }
+
+  // PERF: Early exit if no primary signal exists. This avoids the GetMTFDir()
+  // call (which performs a CopyTime) on the vast majority of bars.
+  if(!(smcLong || donLong || smcShort || donShort)) return;
+
+  // --- Lower TF confirmation (only after a primary signal) ---
+  int mtfDir = GetMTFDir();
+  bool mtfOkLong  = (!RequireMTFConfirm) || (mtfDir == 1);
+  bool mtfOkShort = (!RequireMTFConfirm) || (mtfDir == -1);
 
   bool finalLong  = (smcLong || donLong) && mtfOkLong;
   bool finalShort = (smcShort || donShort) && mtfOkShort;
