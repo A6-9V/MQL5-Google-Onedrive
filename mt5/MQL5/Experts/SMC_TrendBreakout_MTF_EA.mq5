@@ -93,6 +93,7 @@ static double G_VOL_MAX = 0.0;
 static double G_VOL_STEP = 0.0;
 static int    G_DIGITS = 2;
 static int    G_STOPS_LEVEL = 0;
+static double G_MIN_STOP_PRICE = 0.0;
 
 // --- Cached MTF direction (performance)
 // The lower-TF EMA direction only needs to be checked once per new bar on that TF.
@@ -172,12 +173,6 @@ static double NormalizePriceToTick(const string sym, double price)
   return NormalizeDouble(price, G_DIGITS);
 }
 
-static double MinStopDistancePrice(const string sym)
-{
-  // Use cached properties
-  return (G_STOPS_LEVEL > 0 ? G_STOPS_LEVEL * G_POINT : 0.0);
-}
-
 static double ClampLotsToMargin(const string sym, const ENUM_ORDER_TYPE type, double lots, const double price)
 {
   if(lots <= 0.0) return 0.0;
@@ -241,6 +236,7 @@ int OnInit()
   int stopsLevel  = (int)SymbolInfoInteger(_Symbol, SYMBOL_TRADE_STOPS_LEVEL);
   int freezeLevel = (int)SymbolInfoInteger(_Symbol, SYMBOL_TRADE_FREEZE_LEVEL);
   G_STOPS_LEVEL = MathMax(stopsLevel, freezeLevel);
+  G_MIN_STOP_PRICE = (G_STOPS_LEVEL > 0 ? G_STOPS_LEVEL * G_POINT : 0.0);
 
   // PERF: Validate and cache Donchian lookback once.
   gDonchianLookback = (DonchianLookback < 2 ? 2 : DonchianLookback);
@@ -430,18 +426,17 @@ void OnTick()
   }
 
   // Respect broker minimum stop distance (in points)
-  double minStop = MinStopDistancePrice(_Symbol);
-  if(minStop > 0)
+  if(G_MIN_STOP_PRICE > 0)
   {
     if(finalLong)
     {
-      if(entry - sl < minStop) sl = entry - minStop;
-      if(tp - entry < minStop) tp = entry + minStop;
+      if(entry - sl < G_MIN_STOP_PRICE) sl = entry - G_MIN_STOP_PRICE;
+      if(tp - entry < G_MIN_STOP_PRICE) tp = entry + G_MIN_STOP_PRICE;
     }
     else
     {
-      if(sl - entry < minStop) sl = entry + minStop;
-      if(entry - tp < minStop) tp = entry - minStop;
+      if(sl - entry < G_MIN_STOP_PRICE) sl = entry + G_MIN_STOP_PRICE;
+      if(entry - tp < G_MIN_STOP_PRICE) tp = entry - G_MIN_STOP_PRICE;
     }
   }
 
