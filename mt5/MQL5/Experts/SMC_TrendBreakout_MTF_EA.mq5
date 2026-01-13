@@ -228,6 +228,7 @@ int OnInit()
 
   // --- Cache symbol properties for performance
   G_POINT = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
+  if(G_POINT <= 0.0) G_POINT = _Point; // Fallback
   G_TICK_SIZE = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_SIZE);
   G_TICK_VALUE = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE_LOSS);
   if(G_TICK_VALUE <= 0.0) G_TICK_VALUE = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE);
@@ -377,8 +378,8 @@ void OnTick()
   double atrVal = atr[0];
   if(atrVal <= 0) return;
 
-  // Cached point size (fallback to terminal-provided _Point)
-  double point = (G_POINT > 0.0 ? G_POINT : _Point);
+  // PERF: G_POINT is now guaranteed to be valid from OnInit.
+  double point = G_POINT;
   // PERF: Use pre-defined Ask/Bid globals in OnTick to avoid function call overhead.
   double ask = Ask;
   double bid = Bid;
