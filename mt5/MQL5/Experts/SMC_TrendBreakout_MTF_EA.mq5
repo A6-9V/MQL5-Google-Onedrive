@@ -73,6 +73,7 @@ CTrade gTrade;
 
 int gFractalsHandle = INVALID_HANDLE;
 int gAtrHandle      = INVALID_HANDLE;
+int gDonchianHandle = INVALID_HANDLE;
 int gEmaFastHandle  = INVALID_HANDLE;
 int gEmaSlowHandle  = INVALID_HANDLE;
 
@@ -214,6 +215,11 @@ int OnInit()
   gAtrHandle = iATR(_Symbol, tf, ATRPeriod);
   if(gAtrHandle == INVALID_HANDLE) return INIT_FAILED;
 
+  // PERF: Validate and cache Donchian lookback once.
+  gDonchianLookback = (DonchianLookback < 2 ? 2 : DonchianLookback);
+  gDonchianHandle = iDonchian(_Symbol, tf, gDonchianLookback);
+  if(gDonchianHandle == INVALID_HANDLE) return INIT_FAILED;
+
   gEmaFastHandle = iMA(_Symbol, LowerTF, EMAFast, 0, MODE_EMA, PRICE_CLOSE);
   gEmaSlowHandle = iMA(_Symbol, LowerTF, EMASlow, 0, MODE_EMA, PRICE_CLOSE);
 
@@ -245,6 +251,7 @@ void OnDeinit(const int reason)
 {
   if(gFractalsHandle != INVALID_HANDLE) IndicatorRelease(gFractalsHandle);
   if(gAtrHandle != INVALID_HANDLE) IndicatorRelease(gAtrHandle);
+  if(gDonchianHandle != INVALID_HANDLE) IndicatorRelease(gDonchianHandle);
   if(gEmaFastHandle != INVALID_HANDLE) IndicatorRelease(gEmaFastHandle);
   if(gEmaSlowHandle != INVALID_HANDLE) IndicatorRelease(gEmaSlowHandle);
 }
@@ -293,18 +300,17 @@ void OnTick()
     if(lastSwingHighT!=0 && lastSwingLowT!=0) break;
   }
 
-  // Donchian bounds (optimized)
-  // Using built-in iHighest/iLowest is faster than manual loops in MQL.
+  // --- Donchian Channel (using native indicator for performance) ---
+  // The native iDonchian is faster as the terminal manages state and calculations.
+  double donchianUp[1], donchianDn[1];
+  // We need the Donchian value from the bar *preceding* the signal bar.
   int donStart = sigBar + 1;
-  int donCount = gDonchianLookback;
-  if(donStart + donCount > needBars) return;
-  int highIndex = iHighest(_Symbol, tf, MODE_HIGH, donCount, donStart);
-  int lowIndex  = iLowest(_Symbol, tf, MODE_LOW, donCount, donStart);
-  if(highIndex < 0 || lowIndex < 0) return; // Error case, data not ready
-  // PERF: Access price data directly from the copied 'rates' array.
-  // This avoids the function call overhead of iHigh/iLow, as the data is already in memory.
-  double donHigh = rates[highIndex].high;
-  double donLow  = rates[lowIndex].low;
+  if(CopyBuffer(gDonchianHandle, 0, donStart, 1, donchianUp) != 1) return;
+  if(CopyBuffer(gDonchianHandle, 1, donStart, 1, donchianDn) != 1) return;
+
+  double donHigh = donchianUp[0];
+  double donLow  = donchianDn[0];
+  if(donHigh <= 0 || donLow <= 0) return; // Data not ready or invalid
 
   // Lower TF confirmation
   int mtfDir = GetMTFDir();
