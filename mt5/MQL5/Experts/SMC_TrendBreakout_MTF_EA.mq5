@@ -300,25 +300,13 @@ void OnTick()
   datetime sigTime = time[sigBar];
   if(sigTime == gLastSignalBarTime) return; // Not a new signal bar, exit early.
 
-  // Pull recent bars from SignalTF
-  MqlRates rates[400];
-  ArraySetAsSeries(rates, true);
-  int needBars = MathMin(400, Bars(_Symbol, tf));
-  if(needBars < 100) return;
-  if(CopyRates(_Symbol, tf, 0, needBars, rates) < 100) return;
-
-  if(sigBar >= needBars-1) return;
-
-  // Now that we've passed all checks and copied rates, we can commit to this bar time.
+  // Now that we've passed all checks, we can commit to this bar time.
   gLastSignalBarTime = sigTime;
 
-  // Get fractals (for structure break)
-  int frNeed = MathMin(300, needBars);
-  double upFr[300], dnFr[300];
-  ArraySetAsSeries(upFr, true);
-  ArraySetAsSeries(dnFr, true);
-  if(CopyBuffer(gFractalsHandle, 0, 0, frNeed, upFr) <= 0) return;
-  if(CopyBuffer(gFractalsHandle, 1, 0, frNeed, dnFr) <= 0) return;
+  // --- Data Loading ---
+  // PERF: Defer expensive data loading. Only load full history if needed.
+  MqlRates rates[400];
+  ArraySetAsSeries(rates, true);
 
   double lastSwingHigh = 0.0; datetime lastSwingHighT = 0;
   double lastSwingLow  = 0.0; datetime lastSwingLowT  = 0;
@@ -326,12 +314,33 @@ void OnTick()
   // PERF: Lazy Calculation - only search for swings if needed for SMC or SL.
   if(UseSMC || SLMode == SL_SWING)
   {
+    // This path requires a deep history for fractal/swing analysis.
+    int needBars = MathMin(400, Bars(_Symbol, tf));
+    if(needBars < 100) return;
+    if(CopyRates(_Symbol, tf, 0, needBars, rates) < 100) return;
+    if(sigBar >= needBars-1) return;
+
+    // Get fractals (for structure break)
+    int frNeed = MathMin(300, needBars);
+    double upFr[300], dnFr[300];
+    ArraySetAsSeries(upFr, true);
+    ArraySetAsSeries(dnFr, true);
+    if(CopyBuffer(gFractalsHandle, 0, 0, frNeed, upFr) <= 0) return;
+    if(CopyBuffer(gFractalsHandle, 1, 0, frNeed, dnFr) <= 0) return;
+
     for(int i=sigBar+2; i<frNeed; i++)
     {
       if(lastSwingHighT==0 && upFr[i] != 0.0) { lastSwingHigh = upFr[i]; lastSwingHighT = rates[i].time; }
       if(lastSwingLowT==0  && dnFr[i] != 0.0) { lastSwingLow  = dnFr[i]; lastSwingLowT  = rates[i].time; }
       if(lastSwingHighT!=0 && lastSwingLowT!=0) break;
     }
+  }
+  else
+  {
+    // This path is much lighter, only needing the most recent bar data.
+    int needBars = sigBar + 2; // Need just enough for the signal bar.
+    if(Bars(_Symbol, tf) < needBars) return;
+    if(CopyRates(_Symbol, tf, 0, needBars, rates) < needBars) return;
   }
 
   // --- Donchian Channel (using native indicator for performance) ---
