@@ -290,11 +290,16 @@ void OnTick()
 
   double lastSwingHigh = 0.0; datetime lastSwingHighT = 0;
   double lastSwingLow  = 0.0; datetime lastSwingLowT  = 0;
-  for(int i=sigBar+2; i<frNeed; i++)
+
+  // PERF: Lazy Calculation - only search for swings if needed for SMC or SL.
+  if(UseSMC || SLMode == SL_SWING)
   {
-    if(lastSwingHighT==0 && upFr[i] != 0.0) { lastSwingHigh = upFr[i]; lastSwingHighT = rates[i].time; }
-    if(lastSwingLowT==0  && dnFr[i] != 0.0) { lastSwingLow  = dnFr[i]; lastSwingLowT  = rates[i].time; }
-    if(lastSwingHighT!=0 && lastSwingLowT!=0) break;
+    for(int i=sigBar+2; i<frNeed; i++)
+    {
+      if(lastSwingHighT==0 && upFr[i] != 0.0) { lastSwingHigh = upFr[i]; lastSwingHighT = rates[i].time; }
+      if(lastSwingLowT==0  && dnFr[i] != 0.0) { lastSwingLow  = dnFr[i]; lastSwingLowT  = rates[i].time; }
+      if(lastSwingHighT!=0 && lastSwingLowT!=0) break;
+    }
   }
 
   // --- Donchian Channel (using native indicator for performance) ---
