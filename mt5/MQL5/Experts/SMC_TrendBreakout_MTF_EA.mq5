@@ -100,6 +100,39 @@ static double G_MIN_STOP_PRICE = 0.0;
 static datetime g_mtfDir_lastCheckTime = 0;
 static int      g_mtfDir_cachedValue = 0;
 
+// --- Cached ATR value (performance)
+// The ATR value is only calculated if/when needed during a single OnTick event.
+static double   g_atr_cachedValue = 0.0;
+static datetime g_atr_lastCheckTime = 0;
+
+// PERF: Lazy-loads the ATR value.
+// Avoids calling CopyBuffer for ATR on every signal if the user's SL/TP settings don't require it.
+static double GetATR(const int sigBar)
+{
+  // If we already have a valid ATR for this signal bar, return it.
+  if(g_atr_lastCheckTime == gLastSignalBarTime && g_atr_cachedValue > 0.0)
+  {
+    return g_atr_cachedValue;
+  }
+
+  g_atr_lastCheckTime = gLastSignalBarTime; // Mark this bar time as checked.
+  g_atr_cachedValue = 0.0; // Reset cache.
+
+  if(gAtrHandle == INVALID_HANDLE) return 0.0;
+
+  double atr[1];
+  // Using CopyBuffer on the signal bar (e.g. bar 1 for closed bar)
+  if(CopyBuffer(gAtrHandle, 0, sigBar, 1, atr) != 1) return 0.0;
+
+  if(atr[0] > 0.0)
+  {
+    g_atr_cachedValue = atr[0];
+  }
+
+  return g_atr_cachedValue;
+}
+
+
 static int GetMTFDir()
 {
   if(!RequireMTFConfirm) return 0;
@@ -372,13 +405,6 @@ void OnTick()
   if(!EnableTrading) return;
   if(OnePositionPerSymbol && HasOpenPosition(_Symbol, MagicNumber)) return;
 
-  // ATR (always calculated; used for SL_ATR and fallbacks)
-  double atr[3];
-  ArraySetAsSeries(atr, true);
-  if(CopyBuffer(gAtrHandle, 0, sigBar, 1, atr) != 1) return;
-  double atrVal = atr[0];
-  if(atrVal <= 0) return;
-
   // PERF: G_POINT is now guaranteed to be valid from OnInit.
   double point = G_POINT;
   // PERF: Use pre-defined Ask/Bid globals in OnTick to avoid function call overhead.
@@ -398,8 +424,17 @@ void OnTick()
     if(finalShort && lastSwingHighT != 0 && lastSwingHigh > 0.0) sl = lastSwingHigh + buf;
 
     // Fallback if swing is missing/invalid for current entry.
-    if(finalLong && (sl <= 0.0 || sl >= entry)) sl = entry - (ATR_SL_Mult * atrVal);
-    if(finalShort && (sl <= 0.0 || sl <= entry)) sl = entry + (ATR_SL_Mult * atrVal);
+    double atrVal = 0.0; // will be lazy-loaded by GetATR if needed.
+    if(finalLong && (sl <= 0.0 || sl >= entry))
+    {
+      atrVal = GetATR(sigBar);
+      if(atrVal > 0.0) sl = entry - (ATR_SL_Mult * atrVal);
+    }
+    if(finalShort && (sl <= 0.0 || sl <= entry))
+    {
+      if(atrVal <= 0.0) atrVal = GetATR(sigBar);
+      if(atrVal > 0.0) sl = entry + (ATR_SL_Mult * atrVal);
+    }
   }
   else if(SLMode == SL_FIXED_POINTS)
   {
@@ -408,7 +443,8 @@ void OnTick()
   }
   else // SL_ATR
   {
-    sl = (finalLong ? entry - (ATR_SL_Mult * atrVal) : entry + (ATR_SL_Mult * atrVal));
+    double atrVal = GetATR(sigBar);
+    if(atrVal > 0.0) sl = (finalLong ? entry - (ATR_SL_Mult * atrVal) : entry + (ATR_SL_Mult * atrVal));
   }
 
   // --- Build TP
@@ -420,7 +456,11 @@ void OnTick()
   else if(TPMode == TP_DONCHIAN_WIDTH)
   {
     double width = MathAbs(donHigh - donLow);
-    if(width <= 0.0) width = ATR_SL_Mult * atrVal; // fallback
+    if(width <= 0.0)
+    {
+      double atrVal = GetATR(sigBar);
+      if(atrVal > 0.0) width = ATR_SL_Mult * atrVal; // fallback
+    }
     double dist = DonchianTP_Mult * width;
     tp = (finalLong ? entry + dist : entry - dist);
   }
