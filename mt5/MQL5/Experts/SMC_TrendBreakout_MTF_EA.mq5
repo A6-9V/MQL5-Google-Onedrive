@@ -125,6 +125,38 @@ static int GetMTFDir()
   return g_mtfDir_cachedValue;
 }
 
+// --- Cached ATR value (performance)
+// The ATR only needs to be calculated once per OnTick event, and only if needed.
+static double   g_atr_cachedValue = 0.0;
+static datetime g_atr_cacheTime = 0; // The bar time this cache is valid for.
+
+// PERF: Lazy-loads the ATR value for the current signal bar.
+// This avoids an expensive CopyBuffer call if the SL/TP modes do not require ATR.
+static double GetATR(const int signalBar, const datetime signalBarTime)
+{
+  // If we already calculated ATR for this specific bar, return the cached value.
+  if(g_atr_cacheTime == signalBarTime && g_atr_cachedValue > 0.0)
+  {
+    return g_atr_cachedValue;
+  }
+
+  // Reset cache if the bar time is different.
+  if(g_atr_cacheTime != signalBarTime)
+  {
+    g_atr_cachedValue = 0.0;
+    g_atr_cacheTime = signalBarTime;
+  }
+
+  if(gAtrHandle == INVALID_HANDLE) return 0.0;
+
+  double atr[1];
+  if(CopyBuffer(gAtrHandle, 0, signalBar, 1, atr) != 1) return 0.0;
+  if(atr[0] <= 0.0) return 0.0;
+
+  g_atr_cachedValue = atr[0]; // Cache the valid ATR.
+  return g_atr_cachedValue;
+}
+
 static bool HasOpenPosition(const string sym, const long magic)
 {
   for(int i=PositionsTotal()-1;i>=0;i--)
@@ -372,13 +404,6 @@ void OnTick()
   if(!EnableTrading) return;
   if(OnePositionPerSymbol && HasOpenPosition(_Symbol, MagicNumber)) return;
 
-  // ATR (always calculated; used for SL_ATR and fallbacks)
-  double atr[3];
-  ArraySetAsSeries(atr, true);
-  if(CopyBuffer(gAtrHandle, 0, sigBar, 1, atr) != 1) return;
-  double atrVal = atr[0];
-  if(atrVal <= 0) return;
-
   // PERF: G_POINT is now guaranteed to be valid from OnInit.
   double point = G_POINT;
   // PERF: Use pre-defined Ask/Bid globals in OnTick to avoid function call overhead.
@@ -398,8 +423,16 @@ void OnTick()
     if(finalShort && lastSwingHighT != 0 && lastSwingHigh > 0.0) sl = lastSwingHigh + buf;
 
     // Fallback if swing is missing/invalid for current entry.
-    if(finalLong && (sl <= 0.0 || sl >= entry)) sl = entry - (ATR_SL_Mult * atrVal);
-    if(finalShort && (sl <= 0.0 || sl <= entry)) sl = entry + (ATR_SL_Mult * atrVal);
+    if((finalLong && (sl <= 0.0 || sl >= entry)) || (finalShort && (sl <= 0.0 || sl <= entry)))
+    {
+      // PERF: ATR is lazy-loaded only for this fallback case.
+      double atrVal = GetATR(sigBar, sigTime);
+      if(atrVal > 0.0)
+      {
+        if(finalLong) sl = entry - (ATR_SL_Mult * atrVal);
+        else sl = entry + (ATR_SL_Mult * atrVal);
+      }
+    }
   }
   else if(SLMode == SL_FIXED_POINTS)
   {
@@ -408,7 +441,21 @@ void OnTick()
   }
   else // SL_ATR
   {
-    sl = (finalLong ? entry - (ATR_SL_Mult * atrVal) : entry + (ATR_SL_Mult * atrVal));
+    // PERF: ATR is lazy-loaded only when this SL mode is active.
+    double atrVal = GetATR(sigBar, sigTime);
+    if(atrVal > 0.0)
+    {
+      sl = (finalLong ? entry - (ATR_SL_Mult * atrVal) : entry + (ATR_SL_Mult * atrVal));
+    }
+  }
+
+  // CRITICAL: If SL is 0 after this block, it means a required calculation
+  // (like GetATR) failed. Abort to prevent placing a trade with no stop loss.
+  if(sl == 0.0)
+  {
+    // Optionally notify the user about the failure.
+    // Notify(StringFormat("SL calculation failed for %s.", _Symbol));
+    return;
   }
 
   // --- Build TP
@@ -420,7 +467,12 @@ void OnTick()
   else if(TPMode == TP_DONCHIAN_WIDTH)
   {
     double width = MathAbs(donHigh - donLow);
-    if(width <= 0.0) width = ATR_SL_Mult * atrVal; // fallback
+    if(width <= 0.0)
+    {
+      // PERF: ATR is lazy-loaded only for this fallback case.
+      double atrVal = GetATR(sigBar, sigTime);
+      if(atrVal > 0.0) width = ATR_SL_Mult * atrVal; // fallback
+    }
     double dist = DonchianTP_Mult * width;
     tp = (finalLong ? entry + dist : entry - dist);
   }
@@ -429,6 +481,9 @@ void OnTick()
     double slDist = MathAbs(entry - sl);
     tp = (finalLong ? entry + (RR * slDist) : entry - (RR * slDist));
   }
+
+  // CRITICAL: If TP is 0, it means a calculation failed. Abort.
+  if(tp == 0.0) return;
 
   // Respect broker minimum stop distance (in points)
   if(G_MIN_STOP_PRICE > 0)
