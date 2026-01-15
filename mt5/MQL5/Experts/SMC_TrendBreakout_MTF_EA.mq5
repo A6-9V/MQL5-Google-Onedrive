@@ -308,9 +308,6 @@ void OnTick()
 
   // --- Data Loading & Primary Signals ---
   // PERF: Defer expensive data loading. Only load full history if needed.
-  MqlRates rates[400];
-  ArraySetAsSeries(rates, true);
-
   double lastSwingHigh = 0.0; datetime lastSwingHighT = 0;
   double lastSwingLow  = 0.0; datetime lastSwingLowT  = 0;
   double closeSig = 0.0;
@@ -318,6 +315,10 @@ void OnTick()
   // PERF: Lazy Calculation - only search for swings if needed for SMC or SL.
   if(UseSMC || SLMode == SL_SWING)
   {
+    // PERF: Array allocation is deferred to this block to avoid overhead on the lighter path.
+    MqlRates rates[400];
+    ArraySetAsSeries(rates, true);
+
     // This path requires a deep history for fractal/swing analysis.
     int needBars = MathMin(400, Bars(_Symbol, gSignalTf));
     if(needBars < 100) return;
