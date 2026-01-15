@@ -24,6 +24,11 @@ venv/
 env/
 ENV/
 
+# Local env files (secrets)
+.env
+.env.*
+!.env.example
+
 # IDE
 .vscode/
 .idea/
