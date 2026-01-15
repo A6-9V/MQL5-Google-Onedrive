@@ -5,12 +5,38 @@ This repo contains:
 - `mt5/MQL5/Indicators/SMC_TrendBreakout_MTF.mq5`: visual indicator (BOS/CHoCH + Donchian breakout + lower-timeframe confirmation).
 - `mt5/MQL5/Experts/SMC_TrendBreakout_MTF_EA.mq5`: Expert Advisor (alerts + optional auto-trading).
 
+### ☁️ Cloud Deployment
+
+**Deploy to cloud platforms:**
+- **Render.com**: Auto-deploy with `render.yaml`
+- **Railway.app**: Deploy with `railway.json`
+- **Fly.io**: Deploy with `fly.toml`
+- **Docker**: Build and deploy anywhere
+
+**Quick Deploy:**
+```bash
+# Setup all platform configs
+python scripts/deploy_cloud.py all
+
+# Deploy to specific platform
+python scripts/deploy_cloud.py render
+python scripts/deploy_cloud.py railway
+python scripts/deploy_cloud.py flyio
+python scripts/deploy_cloud.py docker --build
+```
+
+📖 **For detailed cloud deployment instructions, see [Cloud Deployment Guide](docs/Cloud_Deployment_Guide.md)**
+
 ### Render workspace
 
-My Blue watermelon Workspace  
+My Blue watermelon Workspace
 tea-d1joqqi4d50c738aiujg
 
 ### Install into Exness MetaTrader 5
+
+**📖 For detailed deployment instructions, see [Exness Deployment Guide](docs/Exness_Deployment_Guide.md)**
+
+Quick start:
 
 1. Open **Exness MT5**.
 2. Go to **File → Open Data Folder**.
@@ -19,6 +45,30 @@ tea-d1joqqi4d50c738aiujg
    - `SMC_TrendBreakout_MTF_EA.mq5` to `MQL5/Experts/`
 4. In MT5, open **MetaEditor** (or press **F4**) and compile the files.
 5. Back in MT5: **Navigator → Refresh**.
+
+### 🚀 Automated Startup (NEW!)
+
+**Quick Start:**
+- **Windows**: `powershell -ExecutionPolicy Bypass -File scripts\startup.ps1`
+- **Linux/WSL**: `./scripts/startup.sh`
+
+**Auto-Start on Boot:**
+- **Windows**: `powershell -ExecutionPolicy Bypass -File scripts\startup.ps1 -CreateScheduledTask`
+- **Linux**: `./scripts/startup.sh --setup-systemd`
+
+📚 **Documentation**:
+- [Quick Reference Guide](QUICK_REFERENCE.md) - Command cheat sheet
+- [Verification Report](VERIFICATION.md) - System status and test results
+- [Startup Automation Guide](docs/Startup_Automation_Guide.md) - Complete guide
+- [Quick Start](docs/Quick_Start_Automation.md) - Quick start instructions
+
+The automation system handles:
+- MT5 Terminal startup
+- Python scripts execution
+- Scheduled tasks configuration
+- Process monitoring and logging
+- Windows Task Scheduler integration
+- Linux systemd/cron integration
 
 ### Optional: package / deploy helpers
 
@@ -61,6 +111,13 @@ Optional secrets:
 - **`ONEDRIVE_REMOTE`**: remote name in `rclone.conf` (default: `onedrive`)
 - **`ONEDRIVE_PATH`**: destination folder path (default: `Apps/MT5/MQL5`)
 
+Firefox Relay API key (optional secrets):
+
+- **`SCRSOR`**
+- **`COPILOT`**
+
+Set both to your Firefox Relay profile API key (`https://relay.firefox.com/accounts/profile/`). Store these as GitHub Secrets or in a local `.env` file (see `.env.example`). Do not commit secret values.
+
 ### Use the indicator
 
 - Attach `SMC_TrendBreakout_MTF` to a chart (your main timeframe).
@@ -74,6 +131,12 @@ Optional secrets:
 - If you want phone push alerts:
   - MT5 → **Tools → Options → Notifications**
   - enable push notifications and set your MetaQuotes ID.
+- For web request integrations (ZOLO-A6-9V-NUNA- plugin):
+  - Enable `EnableWebRequest` parameter
+  - Add `https://soloist.ai/a6-9v` to MT5's allowed URLs list:
+    - MT5 → **Tools → Options → Expert Advisors**
+    - Check "Allow WebRequest for listed URL"
+    - Add the URL: `https://soloist.ai/a6-9v`
 
 ### Auto SL/TP + risk management (EA)
 
@@ -99,6 +162,9 @@ In `SMC_TrendBreakout_MTF_EA`:
 ### Project links
 
 - Developer tip window project: https://chatgpt.com/g/g-p-691e9c0ace5c8191a1b409c09251cc2b-window-for-developer-tip/project
+- Plugin Integration: ZOLO-A6-9V-NUNA-
+- GitHub Pages: https://github.com/Mouy-leng/-LengKundee-mql5.github.io.git
+- Soloist.ai Endpoint: https://soloist.ai/a6-9v
 
 ### Contact
 
