@@ -80,6 +80,9 @@ int gEmaSlowHandle  = INVALID_HANDLE;
 datetime gLastSignalBarTime = 0;
 int gTrendDir = 0; // 1 bullish, -1 bearish, 0 unknown (for CHoCH labelling)
 
+// PERF: Cached signal timeframe.
+ENUM_TIMEFRAMES gSignalTf = PERIOD_CURRENT;
+
 // PERF: Cached validated Donchian lookback.
 int gDonchianLookback = 20;
 
@@ -234,17 +237,18 @@ static void Notify(const string msg)
 
 int OnInit()
 {
-  ENUM_TIMEFRAMES tf = (SignalTF==PERIOD_CURRENT ? (ENUM_TIMEFRAMES)_Period : SignalTF);
+  // PERF: Calculate and cache the signal timeframe once.
+  gSignalTf = (SignalTF==PERIOD_CURRENT ? (ENUM_TIMEFRAMES)_Period : SignalTF);
 
-  gFractalsHandle = iFractals(_Symbol, tf);
+  gFractalsHandle = iFractals(_Symbol, gSignalTf);
   if(gFractalsHandle == INVALID_HANDLE) return INIT_FAILED;
 
-  gAtrHandle = iATR(_Symbol, tf, ATRPeriod);
+  gAtrHandle = iATR(_Symbol, gSignalTf, ATRPeriod);
   if(gAtrHandle == INVALID_HANDLE) return INIT_FAILED;
 
   // PERF: Validate and cache Donchian lookback once.
   gDonchianLookback = (DonchianLookback < 2 ? 2 : DonchianLookback);
-  gDonchianHandle = iDonchian(_Symbol, tf, gDonchianLookback);
+  gDonchianHandle = iDonchian(_Symbol, gSignalTf, gDonchianLookback);
   if(gDonchianHandle == INVALID_HANDLE) return INIT_FAILED;
 
   gEmaFastHandle = iMA(_Symbol, LowerTF, EMAFast, 0, MODE_EMA, PRICE_CLOSE);
@@ -290,12 +294,11 @@ void OnTick()
   // PERF: Early exit if a new bar hasn't formed on the signal timeframe.
   // This is a critical optimization that prevents expensive calls (like CopyRates)
   // from running on every single price tick within the same bar.
-  ENUM_TIMEFRAMES tf = (SignalTF == PERIOD_CURRENT ? (ENUM_TIMEFRAMES)_Period : SignalTF);
   const int sigBar = (FireOnClose ? 1 : 0);
   datetime time[2]; // Index 0 is current bar, 1 is last closed bar.
   ArraySetAsSeries(time, true);
   // Ensure we have enough bars to get the time for our signal bar.
-  if(CopyTime(_Symbol, tf, 0, sigBar + 1, time) <= sigBar) return;
+  if(CopyTime(_Symbol, gSignalTf, 0, sigBar + 1, time) <= sigBar) return;
 
   datetime sigTime = time[sigBar];
   if(sigTime == gLastSignalBarTime) return; // Not a new signal bar, exit early.
@@ -317,9 +320,9 @@ void OnTick()
     ArraySetAsSeries(rates, true);
 
     // This path requires a deep history for fractal/swing analysis.
-    int needBars = MathMin(400, Bars(_Symbol, tf));
+    int needBars = MathMin(400, Bars(_Symbol, gSignalTf));
     if(needBars < 100) return;
-    if(CopyRates(_Symbol, tf, 0, needBars, rates) < 100) return;
+    if(CopyRates(_Symbol, gSignalTf, 0, needBars, rates) < 100) return;
     if(sigBar >= needBars-1) return;
     closeSig = rates[sigBar].close; // Get close from the full rates array.
 
@@ -342,7 +345,7 @@ void OnTick()
   {
     // This path is much lighter.
     // PERF: Use the lightweight iClose() instead of heavy CopyRates() just to get a single price.
-    closeSig = iClose(_Symbol, tf, sigBar);
+    closeSig = iClose(_Symbol, gSignalTf, sigBar);
     if(closeSig <= 0.0) return; // Abort if price is invalid.
   }
 
@@ -406,7 +409,7 @@ void OnTick()
                             _Symbol,
                             (finalLong ? "LONG" : "SHORT"),
                             kind,
-                            EnumToString(tf),
+                            EnumToString(gSignalTf),
                             EnumToString(LowerTF),
                             (smcLong||smcShort ? "Y" : "N"),
                             (donLong||donShort ? "Y" : "N"));
