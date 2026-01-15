@@ -303,13 +303,14 @@ void OnTick()
   // Now that we've passed all checks, we can commit to this bar time.
   gLastSignalBarTime = sigTime;
 
-  // --- Data Loading ---
+  // --- Data Loading & Primary Signals ---
   // PERF: Defer expensive data loading. Only load full history if needed.
   MqlRates rates[400];
   ArraySetAsSeries(rates, true);
 
   double lastSwingHigh = 0.0; datetime lastSwingHighT = 0;
   double lastSwingLow  = 0.0; datetime lastSwingLowT  = 0;
+  double closeSig = 0.0;
 
   // PERF: Lazy Calculation - only search for swings if needed for SMC or SL.
   if(UseSMC || SLMode == SL_SWING)
@@ -319,6 +320,7 @@ void OnTick()
     if(needBars < 100) return;
     if(CopyRates(_Symbol, tf, 0, needBars, rates) < 100) return;
     if(sigBar >= needBars-1) return;
+    closeSig = rates[sigBar].close; // Get close from the full rates array.
 
     // Get fractals (for structure break)
     int frNeed = MathMin(300, needBars);
@@ -337,10 +339,10 @@ void OnTick()
   }
   else
   {
-    // This path is much lighter, only needing the most recent bar data.
-    int needBars = sigBar + 2; // Need just enough for the signal bar.
-    if(Bars(_Symbol, tf) < needBars) return;
-    if(CopyRates(_Symbol, tf, 0, needBars, rates) < needBars) return;
+    // This path is much lighter.
+    // PERF: Use the lightweight iClose() instead of heavy CopyRates() just to get a single price.
+    closeSig = iClose(_Symbol, tf, sigBar);
+    if(closeSig <= 0.0) return; // Abort if price is invalid.
   }
 
   // --- Donchian Channel (using native indicator for performance) ---
@@ -357,7 +359,6 @@ void OnTick()
 
   // --- Primary Signals (without MTF confirmation yet) ---
   bool smcLong=false, smcShort=false, donLong=false, donShort=false;
-  double closeSig = rates[sigBar].close;
   if(UseSMC)
   {
     if(lastSwingHighT!=0 && closeSig > lastSwingHigh) smcLong = true;
