@@ -111,6 +111,13 @@ Optional secrets:
 - **`ONEDRIVE_REMOTE`**: remote name in `rclone.conf` (default: `onedrive`)
 - **`ONEDRIVE_PATH`**: destination folder path (default: `Apps/MT5/MQL5`)
 
+Firefox Relay API key (optional secrets):
+
+- **`SCRSOR`**
+- **`COPILOT`**
+
+Set both to your Firefox Relay profile API key (`https://relay.firefox.com/accounts/profile/`). Store these as GitHub Secrets or in a local `.env` file (see `.env.example`). Do not commit secret values.
+
 ### Use the indicator
 
 - Attach `SMC_TrendBreakout_MTF` to a chart (your main timeframe).
