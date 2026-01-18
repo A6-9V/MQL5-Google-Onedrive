@@ -34,6 +34,8 @@ tea-d1joqqi4d50c738aiujg
 
 ### Install into Exness MetaTrader 5
 
+> **⚠️ Note:** Custom Indicators and EAs are **not supported** on the Exness Web Terminal. You must use the **Desktop** version of MT5.
+
 **📖 For detailed deployment instructions, see [Exness Deployment Guide](docs/Exness_Deployment_Guide.md)**
 
 Quick start:

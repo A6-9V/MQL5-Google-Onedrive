@@ -2,6 +2,12 @@
 
 This guide explains how to deploy the SMC + Trend Breakout (MTF) indicators and Expert Advisors to your Exness MetaTrader 5 terminal.
 
+## ⚠️ Important: Web Terminal vs Desktop
+
+**Custom Indicators and Expert Advisors (EAs) cannot be installed on the Exness Web Terminal (browser-based).**
+
+To use the tools in this repository, you **must** use the **Exness MetaTrader 5 Desktop Application** (Windows, or Mac/Linux via Wine/Crossover).
+
 ## Prerequisites
 
 - **Exness MetaTrader 5** installed on your computer
