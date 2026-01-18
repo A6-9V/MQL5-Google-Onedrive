@@ -1,5 +1,7 @@
 # Quick Start - Automation Scripts
 
+> **⚠️ Important:** These automation scripts control the **Exness MetaTrader 5 Desktop Application**. They are **not** compatible with the Exness Web Terminal.
+
 ## 🚀 One-Command Startup
 
 ### Windows

@@ -2,6 +2,8 @@
 
 This guide explains how to deploy the MQL5 Trading Automation system to various cloud platforms.
 
+> **⚠️ Important:** These deployment methods run the **automation system** (Python scripts) or a headless MT5 instance. They do **not** enable custom indicators or EAs on the **Exness Web Terminal**. For charting and manual trading with custom tools, you must use the **Exness MetaTrader 5 Desktop Application**.
+
 ## Supported Platforms
 
 - **Render.com** - Simple web service deployment

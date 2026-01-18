@@ -33,7 +33,7 @@ This repository is integrated with the ZOLO-A6-9V-NUNA- plugin system, providing
 ### For Traders
 
 1. **Add the URL to MT5's allowed list**:
-   - Open MetaTrader 5
+   - Open **Exness MetaTrader 5 Desktop Application** (Web Terminal is not supported)
    - Go to **Tools → Options → Expert Advisors**
    - Check "Allow WebRequest for listed URL"
    - Add: `https://soloist.ai/a6-9v`
