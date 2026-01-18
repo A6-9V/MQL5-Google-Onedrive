@@ -147,13 +147,55 @@ primary_region = "iad"
             f.write(config)
         print("✅ Created fly.toml")
     
-    print("\nTo deploy to Fly.io:")
-    print("1. Install Fly CLI: https://fly.io/docs/getting-started/installing-flyctl/")
-    print("2. Run: fly auth login")
-    print("3. Run: fly launch")
-    print("4. Run: fly deploy")
+    # Check if flyctl is available
+    try:
+        result = subprocess.run(
+            ["flyctl", "version"],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        if result.returncode != 0:
+            print("❌ flyctl not found or not working properly")
+            print("Install Fly CLI: https://fly.io/docs/getting-started/installing-flyctl/")
+            return False
+    except FileNotFoundError:
+        print("❌ flyctl not found. Install Fly CLI: https://fly.io/docs/getting-started/installing-flyctl/")
+        return False
+    except Exception as e:
+        print(f"❌ Error checking flyctl: {e}")
+        return False
     
-    return True
+    print("✅ flyctl found")
+    
+    # Try to deploy
+    print("\n🚀 Starting deployment to Fly.io...")
+    try:
+        result = subprocess.run(
+            ["flyctl", "deploy"],
+            cwd=REPO_ROOT,
+            timeout=600  # 10 minute timeout
+        )
+        
+        if result.returncode == 0:
+            print("✅ Deployment to Fly.io completed successfully!")
+            return True
+        else:
+            print("⚠️ Deployment may have failed. Check the output above.")
+            print("\nIf this is the first deployment, you may need to run:")
+            print("  flyctl launch")
+            return False
+            
+    except subprocess.TimeoutExpired:
+        print("⏱️ Deployment timed out after 10 minutes")
+        return False
+    except Exception as e:
+        print(f"❌ Error during deployment: {e}")
+        print("\nYou may need to run manually:")
+        print("  flyctl auth login")
+        print("  flyctl launch  (first time only)")
+        print("  flyctl deploy")
+        return False
 
 
 def main():
