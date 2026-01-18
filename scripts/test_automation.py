@@ -7,6 +7,9 @@ Run this to verify all scripts are working correctly.
 import json
 import subprocess
 import sys
+import concurrent.futures
+import contextlib
+import io
 from pathlib import Path
 
 
@@ -122,6 +125,29 @@ def test_validator():
     print("✓ Repository validator OK")
 
 
+def run_test_captured(test_func):
+    """Run a test function and capture its output."""
+    output_capture = io.StringIO()
+    success = False
+    error_info = None
+
+    try:
+        with contextlib.redirect_stdout(output_capture), contextlib.redirect_stderr(output_capture):
+            test_func()
+        success = True
+    except AssertionError as e:
+        error_info = (str(e), "FAILED")
+    except Exception as e:
+        error_info = (str(e), "ERROR")
+
+    return {
+        "func_name": test_func.__name__,
+        "output": output_capture.getvalue(),
+        "success": success,
+        "error_info": error_info
+    }
+
+
 def main():
     """Run all tests."""
     print("=" * 60)
@@ -138,17 +164,43 @@ def main():
     ]
     
     failed = []
-    for test in tests:
-        try:
-            test()
-        except AssertionError as e:
-            print(f"✗ {test.__name__} FAILED: {e}")
-            failed.append((test.__name__, str(e)))
-        except Exception as e:
-            print(f"✗ {test.__name__} ERROR: {e}")
-            failed.append((test.__name__, str(e)))
-        print()
     
+    # Run tests in parallel
+    # Use ProcessPoolExecutor because contextlib.redirect_stdout is not thread-safe
+    # (sys.stdout is global). Processes provide isolation for output capturing.
+    with concurrent.futures.ProcessPoolExecutor() as executor:
+        # Submit all tests
+        future_to_test = {executor.submit(run_test_captured, test): test for test in tests}
+
+        # Process results as they complete
+        for future in concurrent.futures.as_completed(future_to_test):
+            result = future.result()
+
+            # Print the captured output
+            # Tests typically print newline at the end of their last print statement,
+            # or we rely on the fact that print() adds a newline.
+            # However, if we print `result["output"]` which ends in newline, and then `print()`,
+            # we might get double newlines.
+            # But the original code loop had `print()` after `try/except`.
+            # So `test()` runs (prints stuff), then `print()` (newline).
+            # So I should preserve that `print()`.
+
+            output = result["output"]
+            if output:
+                print(output, end="")
+                # If the last character was not a newline, we might want one.
+                # But typically print() adds one.
+                # Let's assume captured output ends with newline if the last call was print().
+                # Actually, print("foo") -> "foo\n".
+                # So output is "Testing...\n✓ ... OK\n"
+
+            if not result["success"]:
+                msg, type_ = result["error_info"]
+                print(f"✗ {result['func_name']} {type_}: {msg}")
+                failed.append((result['func_name'], msg))
+
+            print() # Spacer between tests
+
     print("=" * 60)
     if not failed:
         print("All tests passed! ✓")
