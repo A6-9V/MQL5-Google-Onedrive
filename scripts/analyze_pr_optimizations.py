@@ -7,6 +7,7 @@ import subprocess
 import sys
 from pathlib import Path
 from collections import defaultdict
+import concurrent.futures
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 EA_FILE = REPO_ROOT / "mt5" / "MQL5" / "Experts" / "SMC_TrendBreakout_MTF_EA.mq5"
@@ -80,6 +81,25 @@ def analyze_optimization(diff_text):
     return optimizations
 
 
+def process_pr(pr_num):
+    """Fetch and analyze a single PR. Returns tuple (pr_num, data, success)."""
+    try:
+        branch = fetch_pr(pr_num)
+        if branch:
+            diff = get_pr_diff(pr_num, branch)
+            analysis = analyze_optimization(diff)
+            data = {
+                "branch": branch,
+                "analysis": analysis,
+                "diff": diff[:500] if diff else None  # First 500 chars
+            }
+            return pr_num, data, True
+        else:
+            return pr_num, None, False
+    except Exception as e:
+        return pr_num, None, False
+
+
 def main():
     """Main analysis function."""
     print("=" * 80)
@@ -95,20 +115,22 @@ def main():
     
     pr_analyses = {}
     
-    for pr_num in priority_prs:
-        print(f"Fetching PR #{pr_num}...", end=" ")
-        branch = fetch_pr(pr_num)
-        if branch:
-            print("✓")
-            diff = get_pr_diff(pr_num, branch)
-            analysis = analyze_optimization(diff)
-            pr_analyses[pr_num] = {
-                "branch": branch,
-                "analysis": analysis,
-                "diff": diff[:500] if diff else None  # First 500 chars
-            }
-        else:
-            print("✗ Failed")
+    # Use ThreadPoolExecutor for parallel processing
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+        # Submit all tasks
+        future_to_pr = {executor.submit(process_pr, pr_num): pr_num for pr_num in priority_prs}
+
+        for future in concurrent.futures.as_completed(future_to_pr):
+            pr_num = future_to_pr[future]
+            try:
+                pr_num, data, success = future.result()
+                if success:
+                    print(f"Fetching PR #{pr_num}... ✓")
+                    pr_analyses[pr_num] = data
+                else:
+                    print(f"Fetching PR #{pr_num}... ✗ Failed")
+            except Exception as exc:
+                print(f"Fetching PR #{pr_num} generated an exception: {exc}")
     
     print()
     print("=" * 80)
@@ -132,16 +154,17 @@ def main():
             opt_types.append("copyrates")
         
         opt_key = "+".join(opt_types) if opt_types else "unknown"
-        by_type[opt_key].append((pr_num, analysis))
+        by_type[opt_key].append((pr_num, data))
     
     # Print summary
     for opt_type, prs in sorted(by_type.items()):
         print(f"\n{opt_type.upper()}: {len(prs)} PRs")
-        for pr_num, analysis in prs:
+        for pr_num, data in prs:
+            analysis = data['analysis']
             print(f"  PR #{pr_num}: {analysis['lines_changed']} lines changed")
-            if analysis['diff']:
+            if data['diff']:
                 # Show first few lines of diff
-                preview = analysis['diff'][:200].replace('\n', ' ')
+                preview = data['diff'][:200].replace('\n', ' ')
                 print(f"    Preview: {preview}...")
     
     # Identify duplicates
