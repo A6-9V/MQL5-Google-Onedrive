@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  mql5-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: mql5-trading-dev
+    restart: unless-stopped
+    volumes:
+      - .:/app
+      - ./config:/app/config
+      - ./logs:/app/logs
+      - ./mt5:/app/mt5
+      - python-cache:/root/.cache/pip
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app
+      - TZ=UTC
+      - ENV=development
+    ports:
+      - "8080:8080"
+      - "5000:5000"
+      - "3000:3000"
+    networks:
+      - mql5-dev-network
+    stdin_open: true
+    tty: true
+    command: tail -f /dev/null
+
+  # Optional: Add services for testing
+  telegram-bot-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: mql5-telegram-bot-dev
+    restart: unless-stopped
+    volumes:
+      - .:/app
+      - ./config:/app/config
+    environment:
+      - PYTHONUNBUFFERED=1
+      - PYTHONPATH=/app
+      - TZ=UTC
+      - ENV=development
+    networks:
+      - mql5-dev-network
+    command: python scripts/telegram_deploy_bot.py
+    depends_on:
+      - mql5-dev
+
+volumes:
+  python-cache:
+
+networks:
+  mql5-dev-network:
+    driver: bridge

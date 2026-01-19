@@ -36,6 +36,9 @@ ENV/
 *.swo
 *~
 
+# Dev Container (keep config, ignore cache)
+.devcontainer/.cache/
+
 # OS
 Thumbs.db
 Desktop.ini
