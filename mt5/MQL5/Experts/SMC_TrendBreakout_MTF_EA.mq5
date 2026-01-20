@@ -149,15 +149,14 @@ void OnTick()
       return;
    }
    
-   //--- Check for new bar
+   //--- Consolidate CopyRates for new bar check and price data
    MqlRates rates[];
    ArraySetAsSeries(rates, true);
-   if(CopyRates(_Symbol, _Period, 0, 1, rates) <= 0) return;
+   if(CopyRates(_Symbol, _Period, 0, 3, rates) <= 0) return; // Fetch 3 bars for logic
+   
+   //--- Check for new bar
    datetime currentBarTime = rates[0].time;
-   bool isNewBar = (currentBarTime != lastBarTime);
-   
-   if(!isNewBar) return; // Only check on new bar
-   
+   if(currentBarTime == lastBarTime) return; // Only check on new bar
    lastBarTime = currentBarTime;
    
    //--- Check if position already open
@@ -190,17 +189,15 @@ void OnTick()
    if(CopyBuffer(emaSlowHandle, 0, 0, 3, emaSlow) <= 0) return;
    
    //--- Get current prices
-   double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
-   double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   // Using predefined variables Ask and Bid is faster than SymbolInfoDouble()
+   double ask = Ask;
+   double bid = Bid;
    
-   MqlRates ratesFull[];
-   ArraySetAsSeries(ratesFull, true);
-   if(CopyRates(_Symbol, _Period, 0, 3, ratesFull) <= 0) return;
-   
+   //--- Extract close prices from the rates array we already fetched
    double close[3];
-   close[0] = ratesFull[0].close;
-   close[1] = ratesFull[1].close;
-   close[2] = ratesFull[2].close;
+   close[0] = rates[0].close;
+   close[1] = rates[1].close;
+   close[2] = rates[2].close;
    
    //--- Lower TF Confirmation: Check EMA direction
    bool bullishConfirmation = (emaFast[0] > emaSlow[0] && emaFast[1] > emaSlow[1]);
@@ -224,7 +221,8 @@ void OnTick()
 //+------------------------------------------------------------------+
 void OpenBuyTrade()
 {
-   double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+   // Using predefined variable Ask is faster than SymbolInfoDouble()
+   double ask = Ask;
    double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
    int digits = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
    
@@ -259,7 +257,8 @@ void OpenBuyTrade()
 //+------------------------------------------------------------------+
 void OpenSellTrade()
 {
-   double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   // Using predefined variable Bid is faster than SymbolInfoDouble()
+   double bid = Bid;
    double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
    int digits = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
    
