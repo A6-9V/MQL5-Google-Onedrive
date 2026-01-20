@@ -198,13 +198,41 @@ primary_region = "iad"
         return False
 
 
+def deploy_gcp():
+    """Deploy to Google Cloud Platform"""
+    print("=" * 60)
+    print("Deploying to Google Cloud Platform (GCP)")
+    print("=" * 60)
+
+    app_yaml = REPO_ROOT / "app.yaml"
+    if not app_yaml.exists():
+        print("❌ app.yaml not found. Please run 'python scripts/deploy_cloud.py gcp' again after ensuring it exists.")
+        return False
+
+    print("✅ app.yaml found")
+
+    print("\nTo deploy to Google Cloud Platform (App Engine):")
+    print("1. Install Google Cloud SDK (gcloud CLI)")
+    print("2. Login: gcloud auth login")
+    print("3. Set Project: gcloud config set project infra-outrider-snqdt")
+    print("4. Enable App Engine: gcloud app create --region=us-central (or your preferred region)")
+    print("5. Deploy: gcloud app deploy")
+
+    print("\nAlternatively, to deploy to Cloud Run (recommended):")
+    print("1. Set Project: gcloud config set project infra-outrider-snqdt")
+    print("2. Enable Services: gcloud services enable run.googleapis.com cloudbuild.googleapis.com")
+    print("3. Deploy: gcloud run deploy mql5-automation --source . --region us-central1 --allow-unauthenticated")
+
+    return True
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Deploy MQL5 Trading Automation to cloud platforms"
     )
     parser.add_argument(
         "platform",
-        choices=["render", "railway", "docker", "flyio", "all"],
+        choices=["render", "railway", "docker", "flyio", "gcp", "all"],
         help="Cloud platform to deploy to"
     )
     parser.add_argument(
@@ -223,6 +251,8 @@ def main():
         deploy_docker()
     elif args.platform == "flyio":
         deploy_flyio()
+    elif args.platform == "gcp":
+        deploy_gcp()
     elif args.platform == "all":
         print("Setting up configurations for all platforms...\n")
         deploy_render()
@@ -230,6 +260,8 @@ def main():
         deploy_railway()
         print()
         deploy_flyio()
+        print()
+        deploy_gcp()
         print()
         if args.build:
             deploy_docker()
