@@ -189,9 +189,9 @@ void OnTick()
    if(CopyBuffer(emaFastHandle, 0, 0, 3, emaFast) <= 0) return;
    if(CopyBuffer(emaSlowHandle, 0, 0, 3, emaSlow) <= 0) return;
    
-   //--- Get current prices
-   double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
-   double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   //--- Get current prices (using pre-defined variables for performance)
+   double ask = Ask;
+   double bid = Bid;
    
    MqlRates ratesFull[];
    ArraySetAsSeries(ratesFull, true);
@@ -224,7 +224,8 @@ void OnTick()
 //+------------------------------------------------------------------+
 void OpenBuyTrade()
 {
-   double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+   // Use pre-defined Ask variable for performance
+   double ask = Ask;
    double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
    int digits = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
    
@@ -259,7 +260,8 @@ void OpenBuyTrade()
 //+------------------------------------------------------------------+
 void OpenSellTrade()
 {
-   double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   // Use pre-defined Bid variable for performance
+   double bid = Bid;
    double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
    int digits = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
    
