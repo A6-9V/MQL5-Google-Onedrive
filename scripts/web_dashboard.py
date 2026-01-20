@@ -5,25 +5,45 @@ import markdown
 
 app = Flask(__name__)
 
+# Cache storage: filepath -> (mtime, html_content)
+_content_cache = {}
+
+def get_cached_markdown(filepath):
+    """
+    Returns the markdown content of a file converted to HTML, using a cache
+    that invalidates based on file modification time.
+    """
+    if not os.path.exists(filepath):
+        return None
+
+    try:
+        mtime = os.path.getmtime(filepath)
+        if filepath in _content_cache:
+            cached_mtime, cached_html = _content_cache[filepath]
+            if cached_mtime == mtime:
+                return cached_html
+
+        # Cache miss or file changed
+        with open(filepath, 'r', encoding='utf-8') as f:
+            content = f.read()
+
+        html_content = markdown.markdown(content)
+        _content_cache[filepath] = (mtime, html_content)
+        return html_content
+    except Exception as e:
+        print(f"Error reading/converting {filepath}: {e}")
+        return None
+
 @app.route('/')
 @app.route('/health')
 def health_check():
     try:
-        readme_path = os.path.join(os.path.dirname(__file__), '..', 'README.md')
-        verification_path = os.path.join(os.path.dirname(__file__), '..', 'VERIFICATION.md')
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        readme_path = os.path.join(base_dir, '..', 'README.md')
+        verification_path = os.path.join(base_dir, '..', 'VERIFICATION.md')
 
-        readme_content = ""
-        if os.path.exists(readme_path):
-            with open(readme_path, 'r', encoding='utf-8') as f:
-                readme_content = f.read()
-
-        verification_content = ""
-        if os.path.exists(verification_path):
-            with open(verification_path, 'r', encoding='utf-8') as f:
-                verification_content = f.read()
-
-        html_readme = markdown.markdown(readme_content) if readme_content else "<p>README.md not found.</p>"
-        html_verification = markdown.markdown(verification_content) if verification_content else "<p>VERIFICATION.md not found.</p>"
+        html_readme = get_cached_markdown(readme_path) or "<p>README.md not found.</p>"
+        html_verification = get_cached_markdown(verification_path) or "<p>VERIFICATION.md not found.</p>"
 
         return render_template_string("""
         <!DOCTYPE html>

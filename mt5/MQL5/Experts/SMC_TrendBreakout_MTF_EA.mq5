@@ -27,7 +27,7 @@ enum ENUM_TP_MODE
 };
 
 input group "Core"
-input bool   EnableTrading         = false; // if false: alerts only
+input bool   EnableTrading         = true; // if false: alerts only
 input long   MagicNumber           = 26012025;
 input bool   OnePositionPerSymbol  = true;
 
@@ -54,7 +54,7 @@ input ENUM_SL_MODE SLMode                = SL_ATR;
 input ENUM_TP_MODE TPMode                = TP_RR;
 
 input double FixedLots             = 0.10; // used when RiskPercent=0
-input double RiskPercent           = 0.0;  // if >0: position size from SL distance
+input double RiskPercent           = 1.0;  // if >0: position size from SL distance
 input bool   RiskUseEquity         = true; // recommended
 input bool   RiskClampToFreeMargin = true; // reduce lots if not enough margin
 
