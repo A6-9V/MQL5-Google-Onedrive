@@ -70,6 +70,16 @@ int emaSlowHandle = INVALID_HANDLE;
 datetime lastBarTime = 0;
 bool positionOpen = false;
 
+//--- Cached Symbol Properties
+double g_point;
+int    g_digits;
+double g_tickValue;
+double g_tickSize;
+double g_minLot;
+double g_maxLot;
+double g_lotStep;
+double g_marginInitial;
+
 //+------------------------------------------------------------------+
 //| Expert initialization function                                     |
 //+------------------------------------------------------------------+
@@ -108,6 +118,16 @@ int OnInit()
       return(INIT_FAILED);
    }
    
+   //--- Cache symbol properties to avoid repeated calls in OnTick
+   g_point         = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
+   g_digits        = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
+   g_tickValue     = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE);
+   g_tickSize      = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_SIZE);
+   g_minLot        = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN);
+   g_maxLot        = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MAX);
+   g_lotStep       = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_STEP);
+   g_marginInitial = SymbolInfoDouble(_Symbol, SYMBOL_MARGIN_INITIAL);
+
    Print("SMC Trend Breakout MTF EA initialized successfully");
    Print("Account: ", AccountInfoInteger(ACCOUNT_LOGIN));
    Print("Risk Percent: ", RiskPercent, "%");
@@ -225,8 +245,6 @@ void OnTick()
 void OpenBuyTrade()
 {
    double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
-   double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
-   int digits = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
    
    //--- Calculate Stop Loss
    double sl = CalculateSL(ask, false);
@@ -237,8 +255,8 @@ void OpenBuyTrade()
    if(tp <= 0) return;
    
    //--- Normalize prices
-   sl = NormalizeDouble(sl, digits);
-   tp = NormalizeDouble(tp, digits);
+   sl = NormalizeDouble(sl, g_digits);
+   tp = NormalizeDouble(tp, g_digits);
    
    //--- Calculate lot size
    double lots = CalculateLots(ask - sl);
@@ -260,8 +278,6 @@ void OpenBuyTrade()
 void OpenSellTrade()
 {
    double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
-   double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
-   int digits = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
    
    //--- Calculate Stop Loss
    double sl = CalculateSL(bid, true);
@@ -272,8 +288,8 @@ void OpenSellTrade()
    if(tp <= 0) return;
    
    //--- Normalize prices
-   sl = NormalizeDouble(sl, digits);
-   tp = NormalizeDouble(tp, digits);
+   sl = NormalizeDouble(sl, g_digits);
+   tp = NormalizeDouble(tp, g_digits);
    
    //--- Calculate lot size
    double lots = CalculateLots(sl - bid);
@@ -308,22 +324,20 @@ double CalculateSL(double price, bool isSell)
       }
    }
    else if(SLMode == SL_FIXED_POINTS) {
-      double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
       if(isSell) {
-         sl = price + (FixedSLPoints * point);
+         sl = price + (FixedSLPoints * g_point);
       } else {
-         sl = price - (FixedSLPoints * point);
+         sl = price - (FixedSLPoints * g_point);
       }
    }
    else if(SLMode == SL_SWING) {
       // Simplified swing - use ATR as fallback
       if(CopyBuffer(atrHandle, 0, 0, 1, atr) <= 0) return 0;
       double atrValue = atr[0];
-      double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
       if(isSell) {
-         sl = price + (atrValue * ATR_SL_Mult) + (SwingSLBufferPoints * point);
+         sl = price + (atrValue * ATR_SL_Mult) + (SwingSLBufferPoints * g_point);
       } else {
-         sl = price - (atrValue * ATR_SL_Mult) - (SwingSLBufferPoints * point);
+         sl = price - (atrValue * ATR_SL_Mult) - (SwingSLBufferPoints * g_point);
       }
    }
    
@@ -346,11 +360,10 @@ double CalculateTP(double price, double sl, bool isSell)
       }
    }
    else if(TPMode == TP_FIXED_POINTS) {
-      double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
       if(isSell) {
-         tp = price - (FixedTPPoints * point);
+         tp = price - (FixedTPPoints * g_point);
       } else {
-         tp = price + (FixedTPPoints * point);
+         tp = price + (FixedTPPoints * g_point);
       }
    }
    else if(TPMode == TP_DONCHIAN_WIDTH) {
@@ -388,21 +401,12 @@ double CalculateLots(double slDistance)
    //--- Calculate risk amount
    double riskAmount = accountBalance * (RiskPercent / 100.0);
    
-   //--- Get tick value and size
-   double tickValue = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE);
-   double tickSize = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_SIZE);
-   double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
-   
    //--- Calculate lots
-   double lots = (riskAmount / (slDistance / point * tickSize / point * tickValue));
+   double lots = (riskAmount / (slDistance / g_point * g_tickSize / g_point * g_tickValue));
    
    //--- Normalize lot size
-   double minLot = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN);
-   double maxLot = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MAX);
-   double lotStep = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_STEP);
-   
-   lots = MathFloor(lots / lotStep) * lotStep;
-   lots = MathMax(minLot, MathMin(lots, maxLot));
+   lots = MathFloor(lots / g_lotStep) * g_lotStep;
+   lots = MathMax(g_minLot, MathMin(lots, g_maxLot));
    
    //--- Apply user limits
    lots = MathMax(MinLots, MathMin(lots, MaxLots));
@@ -410,11 +414,11 @@ double CalculateLots(double slDistance)
    //--- Check margin if needed
    if(RiskClampToFreeMargin) {
       double freeMargin = AccountInfoDouble(ACCOUNT_MARGIN_FREE);
-      double marginRequired = SymbolInfoDouble(_Symbol, SYMBOL_MARGIN_INITIAL) * lots;
+      double marginRequired = g_marginInitial * lots;
       if(marginRequired > freeMargin) {
-         lots = (freeMargin / SymbolInfoDouble(_Symbol, SYMBOL_MARGIN_INITIAL));
-         lots = MathFloor(lots / lotStep) * lotStep;
-         lots = MathMax(minLot, MathMin(lots, MaxLots));
+         lots = (freeMargin / g_marginInitial);
+         lots = MathFloor(lots / g_lotStep) * g_lotStep;
+         lots = MathMax(g_minLot, MathMin(lots, g_maxLot));
       }
    }
    
