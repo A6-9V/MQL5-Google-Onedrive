@@ -73,7 +73,7 @@ input int    SlippagePoints        = 30;
 input group "Gemini AI"
 input bool   UseGeminiFilter       = false; // Enable Gemini AI confirmation
 input string GeminiApiKey          = "";    // Paste your Gemini API Key here
-input string GeminiModel           = "gemini-1.5-pro"; // e.g., gemini-1.5-flash, gemini-1.5-pro, gemini-3.0-flash
+input string GeminiModel           = "gemini-1.5-flash"; // e.g., gemini-1.5-flash, gemini-1.5-pro, gemini-3.0-flash
 
 input group "Notifications"
 input bool   PopupAlerts           = true;
