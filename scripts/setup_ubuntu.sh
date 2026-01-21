@@ -95,7 +95,7 @@ setup_python_env() {
         # or warn.
 
         # Check if we are in a virtual environment
-        if [[ "$VIRTUAL_ENV" != "" ]]; then
+        if [[ "${VIRTUAL_ENV:-}" != "" ]]; then
             pip install -r "$REPO_ROOT/requirements.txt"
         else
             log_warn "Not in a virtual environment. Installing to user directory."
@@ -107,7 +107,7 @@ setup_python_env() {
     # Install bot requirements
     if [[ -f "$SCRIPT_DIR/requirements_bot.txt" ]]; then
         log_info "Installing bot requirements..."
-        if [[ "$VIRTUAL_ENV" != "" ]]; then
+        if [[ "${VIRTUAL_ENV:-}" != "" ]]; then
             pip install -r "$SCRIPT_DIR/requirements_bot.txt"
         else
             pip3 install --user -r "$SCRIPT_DIR/requirements_bot.txt" || \

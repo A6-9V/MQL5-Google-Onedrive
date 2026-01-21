@@ -21,7 +21,7 @@ This repository is integrated with the ZOLO-A6-9V-NUNA- plugin system, providing
 ### For Developers
 
 1. **Get the required files**:
-   - **ZOLO Bridge Files**: Download from [OneDrive](https://1drv.ms/f/c/8F247B1B46E82304/IgADmTTSH3ENQZHNdCritmVOAXdZxJgYzp-6HimzfbEUc_A)
+   - **ZOLO Bridge Files**: Download from [OneDrive](https://1drv.ms/f/c/8F247B1B46E82304/IgD1kzWZy3hoQLE0TosohQyuASp-Jn7voeWISoIJn5BkHRU)
    - **Web Interface**:
      ```bash
      git clone https://github.com/Mouy-leng/-LengKundee-mql5.github.io.git
