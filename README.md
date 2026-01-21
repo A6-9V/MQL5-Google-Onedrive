@@ -25,6 +25,19 @@ python scripts/deploy_cloud.py flyio
 python scripts/deploy_cloud.py docker --build
 ```
 
+**🐳 Docker Hub Deployment:**
+
+1. **Publish Image** (Run locally):
+   ```bash
+   ./scripts/deploy_docker_hub.sh <USERNAME> <TOKEN>
+   ```
+
+2. **Run on VPS/Laptop**:
+   ```bash
+   # Update and run
+   ./scripts/update_vps.sh <USERNAME> <TOKEN>
+   ```
+
 📖 **For detailed cloud deployment instructions, see [Cloud Deployment Guide](docs/Cloud_Deployment_Guide.md)**
 
 ### Render workspace
@@ -52,6 +65,14 @@ Quick start:
 
 **Quick Start:**
 - **Windows**: `powershell -ExecutionPolicy Bypass -File scripts\startup.ps1`
+- **Ubuntu/VPS**:
+  ```bash
+  # First time setup (installs Python, Wine, etc.)
+  bash scripts/setup_ubuntu.sh
+
+  # Start the system
+  ./scripts/startup.sh
+  ```
 - **Linux/WSL**: `./scripts/startup.sh`
 
 **Auto-Start on Boot:**
@@ -151,10 +172,10 @@ bash scripts/set_github_secrets.sh vault
   - enable push notifications and set your MetaQuotes ID.
 - For web request integrations (ZOLO-A6-9V-NUNA- plugin):
   - Enable `EnableWebRequest` parameter
-  - Add `https://soloist.ai/a6-9v` to MT5's allowed URLs list:
+  - Add `http://203.147.134.90` to MT5's allowed URLs list:
     - MT5 → **Tools → Options → Expert Advisors**
     - Check "Allow WebRequest for listed URL"
-    - Add the URL: `https://soloist.ai/a6-9v`
+    - Add the URL: `http://203.147.134.90`
 
 ### 🤖 AI Integration (Gemini)
 
@@ -197,7 +218,7 @@ In `SMC_TrendBreakout_MTF_EA`:
 - Developer tip window project: https://chatgpt.com/g/g-p-691e9c0ace5c8191a1b409c09251cc2b-window-for-developer-tip/project
 - Plugin Integration: [ZOLO-A6-9V-NUNA-](https://1drv.ms/f/c/8F247B1B46E82304/IgADmTTSH3ENQZHNdCritmVOAXdZxJgYzp-6HimzfbEUc_A)
 - GitHub Pages: https://github.com/Mouy-leng/-LengKundee-mql5.github.io.git
-- Soloist.ai Endpoint: https://soloist.ai/a6-9v
+- ZOLO Bridge Endpoint: http://203.147.134.90
 
 ### Contact
 
