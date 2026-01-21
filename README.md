@@ -120,6 +120,22 @@ Firefox Relay API key (optional secrets):
 
 Set both to your Firefox Relay profile API key (`https://relay.firefox.com/accounts/profile/`). Store these as GitHub Secrets or in a local `.env` file (see `.env.example`). Do not commit secret values.
 
+Cloudflare Configuration (required for domain registration/management):
+
+- **`CLOUDFLARE_ZONE_ID`**: Your Cloudflare Zone ID.
+- **`CLOUDFLARE_ACCOUNT_ID`**: Your Cloudflare Account ID.
+- **`DOMAIN_NAME`**: Your domain name (e.g., `Lengkundee01.org`).
+
+Store these as GitHub Secrets or in a local `.env` file. See [Secrets Management Guide](docs/Secrets_Management.md) for more details.
+
+You can use the helper script to set these secrets if you have the GitHub CLI installed:
+
+```bash
+# First, update config/vault.json with your credentials
+# Then run:
+bash scripts/set_github_secrets.sh vault
+```
+
 ### Use the indicator
 
 - Attach `SMC_TrendBreakout_MTF` to a chart (your main timeframe).
