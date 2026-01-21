@@ -1,5 +1,5 @@
 //+------------------------------------------------------------------+
-//| SMC_TrendBreakout_MTF_EA.mq5                                     |
+//| EXNESS_GenX_Trader.mq5                                           |
 //| EA: SMC (BOS/CHoCH) + Donchian breakout + MTF confirmation       |
 //| Alerts / Push notifications + optional auto-trading              |
 //| AI Integration: Gemini API for signal confirmation               |
