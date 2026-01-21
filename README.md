@@ -25,6 +25,19 @@ python scripts/deploy_cloud.py flyio
 python scripts/deploy_cloud.py docker --build
 ```
 
+**🐳 Docker Hub Deployment:**
+
+1. **Publish Image** (Run locally):
+   ```bash
+   ./scripts/deploy_docker_hub.sh <USERNAME> <TOKEN>
+   ```
+
+2. **Run on VPS/Laptop**:
+   ```bash
+   # Update and run
+   ./scripts/update_vps.sh <USERNAME> <TOKEN>
+   ```
+
 📖 **For detailed cloud deployment instructions, see [Cloud Deployment Guide](docs/Cloud_Deployment_Guide.md)**
 
 ### Render workspace
