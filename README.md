@@ -216,7 +216,7 @@ In `SMC_TrendBreakout_MTF_EA`:
 ### Project links
 
 - Developer tip window project: https://chatgpt.com/g/g-p-691e9c0ace5c8191a1b409c09251cc2b-window-for-developer-tip/project
-- Plugin Integration: ZOLO-A6-9V-NUNA-
+- Plugin Integration: [ZOLO-A6-9V-NUNA-](https://1drv.ms/f/c/8F247B1B46E82304/IgADmTTSH3ENQZHNdCritmVOAXdZxJgYzp-6HimzfbEUc_A)
 - GitHub Pages: https://github.com/Mouy-leng/-LengKundee-mql5.github.io.git
 - ZOLO Bridge Endpoint: http://203.147.134.90
 
