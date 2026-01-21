@@ -74,6 +74,7 @@ input group "Gemini AI"
 input bool   UseGeminiFilter       = false; // Enable Gemini AI confirmation
 input string GeminiApiKey          = "";    // Paste your Gemini API Key here
 input string GeminiModel           = "gemini-1.5-flash"; // e.g., gemini-1.5-flash, gemini-1.5-pro, gemini-3.0-flash
+input string PerplexityUrl         = "https://www.perplexity.ai/finance/EURZ"; // Bridge to Perplexity (Manual/Context)
 
 input group "Notifications"
 input bool   PopupAlerts           = true;
@@ -142,9 +143,10 @@ bool AskGemini(string symbol, string type, double price)
   // Construct a simple prompt
   string prompt = StringFormat("I am a trading bot. I have a %s signal for %s at price %f. "
                                "Trend Direction: %s. "
+                               "Reference Context: %s "
                                "Reply strictly with just 'YES' to confirm the trade, or 'NO' to reject it. "
                                "Do not provide any other text or JSON.",
-                               type, symbol, price, (gTrendDir > 0 ? "BULLISH" : (gTrendDir < 0 ? "BEARISH" : "UNKNOWN")));
+                               type, symbol, price, (gTrendDir > 0 ? "BULLISH" : (gTrendDir < 0 ? "BEARISH" : "UNKNOWN")), PerplexityUrl);
 
   // JSON Body: {"contents":[{"parts":[{"text":"prompt"}]}]}
   string body = "{\"contents\":[{\"parts\":[{\"text\":\"" + SanitizeJSON(prompt) + "\"}]}]}";
