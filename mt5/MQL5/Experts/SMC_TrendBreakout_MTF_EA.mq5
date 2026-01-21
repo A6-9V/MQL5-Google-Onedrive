@@ -79,6 +79,10 @@ input group "Notifications"
 input bool   PopupAlerts           = true;
 input bool   PushNotifications     = true;
 
+input group "ZOLO Integration"
+input bool   EnableWebRequest      = false;
+input string WebRequestURL         = "https://soloist.ai/a6-9v";
+
 CTrade gTrade;
 
 int gFractalsHandle = INVALID_HANDLE;
@@ -164,6 +168,31 @@ bool AskGemini(string symbol, string type, double price)
   }
 
   return false;
+}
+
+// --- ZOLO Bridge ---
+void SendSignalToBridge(string msg)
+{
+  if (!EnableWebRequest || WebRequestURL == "") return;
+
+  // Simple JSON construction. msg is safe (internal strings/numbers).
+  string body = "{\"event\":\"signal\",\"message\":\"" + msg + "\"}";
+
+  char data[];
+  int len = StringToCharArray(body, data, 0, WHOLE_ARRAY, CP_UTF8);
+  if (len > 0) ArrayResize(data, len - 1); // Remove null terminator
+
+  char result[];
+  string result_headers;
+  string headers = "Content-Type: application/json";
+
+  int res = WebRequest("POST", WebRequestURL, headers, 5000, data, result, result_headers);
+
+  if (res != 200)
+  {
+    PrintFormat("ZOLO WebRequest failed. Code: %d. URL: %s", res, WebRequestURL);
+    if(res == -1) Print("Error: ", GetLastError());
+  }
 }
 
 static int GetMTFDir()
@@ -477,6 +506,8 @@ void OnTick()
                             (smcLong||smcShort ? "Y" : "N"),
                             (donLong||donShort ? "Y" : "N"));
   Notify(msg);
+
+  if(EnableWebRequest) SendSignalToBridge(msg);
 
   if(!EnableTrading) return;
   if(OnePositionPerSymbol && HasOpenPosition(_Symbol, MagicNumber)) return;
