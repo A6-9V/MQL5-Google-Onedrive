@@ -3,6 +3,15 @@
   "version": "1.0.0",
   "components": [
     {
+      "name": "Web Dashboard",
+      "executable": "python",
+      "args": ["scripts/web_dashboard.py"],
+      "working_dir": null,
+      "wait_seconds": 2,
+      "required": true,
+      "platform_specific": null
+    },
+    {
       "name": "Repository Validator",
       "executable": "python",
       "args": ["scripts/ci_validate_repo.py"],

@@ -19,37 +19,49 @@ def fail(msg: str) -> None:
     raise SystemExit(1)
 
 
-def iter_source_files() -> list[Path]:
+def validate_and_collect_files() -> list[Path]:
+    """
+    Iterates through MQL5 source files, validates them (size & content),
+    and returns a sorted list of valid files.
+    """
     if not MQL5_DIR.exists():
         fail(f"Missing directory: {MQL5_DIR}")
+
     files: list[Path] = []
+
+    # Single pass to find and validate files
     for p in MQL5_DIR.rglob("*"):
-        if p.is_file() and p.suffix.lower() in {".mq5", ".mqh"}:
-            files.append(p)
-    if not files:
-        fail(f"No .mq5/.mqh files found under {MQL5_DIR}")
-    return sorted(files)
+        if not p.is_file():
+            continue
 
+        if p.suffix.lower() not in {".mq5", ".mqh"}:
+            continue
 
-def check_no_nul_bytes(files: list[Path]) -> None:
-    for p in files:
-        data = p.read_bytes()
-        if b"\x00" in data:
-            fail(f"NUL byte found in {p.relative_to(REPO_ROOT)}")
-
-
-def check_reasonable_size(files: list[Path]) -> None:
-    # Avoid accidentally committing huge build artifacts.
-    for p in files:
+        # Optimization: Check size BEFORE reading content
+        # Avoid accidentally committing huge build artifacts.
         sz = p.stat().st_size
         if sz > 5_000_000:
             fail(f"Unexpectedly large source file (>5MB): {p.relative_to(REPO_ROOT)} ({sz} bytes)")
 
+        # Check for NUL bytes
+        try:
+            data = p.read_bytes()
+            if b"\x00" in data:
+                fail(f"NUL byte found in {p.relative_to(REPO_ROOT)}")
+        except Exception as e:
+            fail(f"Failed to read file {p.relative_to(REPO_ROOT)}: {e}")
+
+        files.append(p)
+
+    if not files:
+        fail(f"No .mq5/.mqh files found under {MQL5_DIR}")
+
+    return sorted(files)
+
 
 def main() -> int:
-    files = iter_source_files()
-    check_no_nul_bytes(files)
-    check_reasonable_size(files)
+    # Combined iteration and validation
+    files = validate_and_collect_files()
 
     rel = [str(p.relative_to(REPO_ROOT)) for p in files]
     print("OK: found source files:")
@@ -60,4 +72,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

@@ -147,12 +147,82 @@ primary_region = "iad"
             f.write(config)
         print("✅ Created fly.toml")
     
-    print("\nTo deploy to Fly.io:")
-    print("1. Install Fly CLI: https://fly.io/docs/getting-started/installing-flyctl/")
-    print("2. Run: fly auth login")
-    print("3. Run: fly launch")
-    print("4. Run: fly deploy")
+    # Check if flyctl is available
+    try:
+        result = subprocess.run(
+            ["flyctl", "version"],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        if result.returncode != 0:
+            print("❌ flyctl not found or not working properly")
+            print("Install Fly CLI: https://fly.io/docs/getting-started/installing-flyctl/")
+            return False
+    except FileNotFoundError:
+        print("❌ flyctl not found. Install Fly CLI: https://fly.io/docs/getting-started/installing-flyctl/")
+        return False
+    except Exception as e:
+        print(f"❌ Error checking flyctl: {e}")
+        return False
     
+    print("✅ flyctl found")
+    
+    # Try to deploy
+    print("\n🚀 Starting deployment to Fly.io...")
+    try:
+        result = subprocess.run(
+            ["flyctl", "deploy"],
+            cwd=REPO_ROOT,
+            timeout=600  # 10 minute timeout
+        )
+        
+        if result.returncode == 0:
+            print("✅ Deployment to Fly.io completed successfully!")
+            return True
+        else:
+            print("⚠️ Deployment may have failed. Check the output above.")
+            print("\nIf this is the first deployment, you may need to run:")
+            print("  flyctl launch")
+            return False
+            
+    except subprocess.TimeoutExpired:
+        print("⏱️ Deployment timed out after 10 minutes")
+        return False
+    except Exception as e:
+        print(f"❌ Error during deployment: {e}")
+        print("\nYou may need to run manually:")
+        print("  flyctl auth login")
+        print("  flyctl launch  (first time only)")
+        print("  flyctl deploy")
+        return False
+
+
+def deploy_gcp():
+    """Deploy to Google Cloud Platform"""
+    print("=" * 60)
+    print("Deploying to Google Cloud Platform (GCP)")
+    print("=" * 60)
+
+    app_yaml = REPO_ROOT / "app.yaml"
+    if not app_yaml.exists():
+        print("❌ app.yaml not found. Please run 'python scripts/deploy_cloud.py gcp' again after ensuring it exists.")
+        return False
+
+    print("✅ app.yaml found")
+
+    print("\nTo deploy to Google Cloud Platform (App Engine):")
+    print("1. Install Google Cloud SDK (gcloud CLI)")
+    print("2. Login: gcloud auth login")
+    print("3. Set Project: gcloud config set project infra-outrider-snqdt")
+    print("4. Enable App Engine: gcloud app create --region=us-central (or your preferred region)")
+    print("5. Deploy: gcloud app deploy")
+
+    print("\nAlternatively, to deploy to Cloud Run (recommended):")
+    print("1. Set Project: gcloud config set project infra-outrider-snqdt")
+    print("2. Enable Services: gcloud services enable run.googleapis.com cloudbuild.googleapis.com")
+    print("3. Deploy: gcloud run deploy mql5-automation --source . --region us-central1 --allow-unauthenticated")
+
     return True
 
 
@@ -162,7 +232,7 @@ def main():
     )
     parser.add_argument(
         "platform",
-        choices=["render", "railway", "docker", "flyio", "all"],
+        choices=["render", "railway", "docker", "flyio", "gcp", "all"],
         help="Cloud platform to deploy to"
     )
     parser.add_argument(
@@ -181,6 +251,8 @@ def main():
         deploy_docker()
     elif args.platform == "flyio":
         deploy_flyio()
+    elif args.platform == "gcp":
+        deploy_gcp()
     elif args.platform == "all":
         print("Setting up configurations for all platforms...\n")
         deploy_render()
@@ -188,6 +260,8 @@ def main():
         deploy_railway()
         print()
         deploy_flyio()
+        print()
+        deploy_gcp()
         print()
         if args.build:
             deploy_docker()

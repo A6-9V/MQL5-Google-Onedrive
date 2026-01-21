@@ -34,6 +34,8 @@ tea-d1joqqi4d50c738aiujg
 
 ### Install into Exness MetaTrader 5
 
+> **⚠️ Note:** Custom Indicators and EAs are **not supported** on the Exness Web Terminal. You must use the **Desktop** version of MT5.
+
 **📖 For detailed deployment instructions, see [Exness Deployment Guide](docs/Exness_Deployment_Guide.md)**
 
 Quick start:
@@ -137,6 +139,21 @@ Set both to your Firefox Relay profile API key (`https://relay.firefox.com/accou
     - MT5 → **Tools → Options → Expert Advisors**
     - Check "Allow WebRequest for listed URL"
     - Add the URL: `https://soloist.ai/a6-9v`
+
+### 🤖 AI Integration (Gemini)
+
+The EA now supports **Google Gemini AI** to confirm trades before entry.
+
+**Setup:**
+1.  **Get an API Key**: Go to [Google AI Studio](https://aistudio.google.com/) and create a free API key.
+2.  **Configure MT5**:
+    *   Go to **Tools → Options → Expert Advisors**.
+    *   Check **"Allow WebRequest for listed URL"**.
+    *   Add the URL: `https://generativelanguage.googleapis.com`
+3.  **Configure the EA**:
+    *   Set `UseGeminiFilter` to `true`.
+    *   Paste your API Key into `GeminiApiKey`.
+    *   (Optional) Change `GeminiModel` if needed (default: `gemini-1.5-flash`).
 
 ### Auto SL/TP + risk management (EA)
 

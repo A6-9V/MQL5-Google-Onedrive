@@ -39,3 +39,6 @@ ENV/
 # OS
 Thumbs.db
 Desktop.ini
+
+# Personal vault - sensitive credentials
+config/vault.json

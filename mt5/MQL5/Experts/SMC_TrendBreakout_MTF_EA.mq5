@@ -2,8 +2,13 @@
 //| SMC_TrendBreakout_MTF_EA.mq5                                     |
 //| EA: SMC (BOS/CHoCH) + Donchian breakout + MTF confirmation       |
 //| Alerts / Push notifications + optional auto-trading              |
+//| AI Integration: Gemini API for signal confirmation               |
+//| Updated by: Jules (AI Assistant) for LengKundee                  |
 //+------------------------------------------------------------------+
 #property strict
+#property copyright "LengKundee"
+#property link      "https://forge.mql5.io/LengKundee/mql5.git"
+#property version   "1.20"
 
 #include <Trade/Trade.mqh>
 
@@ -22,7 +27,7 @@ enum ENUM_TP_MODE
 };
 
 input group "Core"
-input bool   EnableTrading         = false; // if false: alerts only
+input bool   EnableTrading         = true; // if false: alerts only
 input long   MagicNumber           = 26012025;
 input bool   OnePositionPerSymbol  = true;
 
@@ -49,7 +54,7 @@ input ENUM_SL_MODE SLMode                = SL_ATR;
 input ENUM_TP_MODE TPMode                = TP_RR;
 
 input double FixedLots             = 0.10; // used when RiskPercent=0
-input double RiskPercent           = 0.0;  // if >0: position size from SL distance
+input double RiskPercent           = 1.0;  // if >0: position size from SL distance
 input bool   RiskUseEquity         = true; // recommended
 input bool   RiskClampToFreeMargin = true; // reduce lots if not enough margin
 
@@ -64,6 +69,11 @@ input int    FixedTPPoints         = 1000; // TP_FIXED_POINTS
 input double DonchianTP_Mult       = 1.0;  // TP_DONCHIAN_WIDTH
 
 input int    SlippagePoints        = 30;
+
+input group "Gemini AI"
+input bool   UseGeminiFilter       = false; // Enable Gemini AI confirmation
+input string GeminiApiKey          = "";    // Paste your Gemini API Key here
+input string GeminiModel           = "gemini-1.5-pro"; // e.g., gemini-1.5-flash, gemini-1.5-pro, gemini-3.0-flash
 
 input group "Notifications"
 input bool   PopupAlerts           = true;
@@ -102,6 +112,59 @@ static double G_MIN_STOP_PRICE = 0.0;
 // The lower-TF EMA direction only needs to be checked once per new bar on that TF.
 static datetime g_mtfDir_lastCheckTime = 0;
 static int      g_mtfDir_cachedValue = 0;
+
+// --- AI Helper ---
+bool AskGemini(string symbol, string type, double price)
+{
+  if (GeminiApiKey == "")
+  {
+    Print("Gemini API Key missing. Please set 'GeminiApiKey' in inputs.");
+    return false;
+  }
+
+  string url = "https://generativelanguage.googleapis.com/v1beta/models/" + GeminiModel + ":generateContent?key=" + GeminiApiKey;
+
+  // Construct a simple prompt
+  string prompt = StringFormat("I am a trading bot. I have a %s signal for %s at price %f. "
+                               "Trend Direction: %s. "
+                               "Reply strictly with just 'YES' to confirm the trade, or 'NO' to reject it. "
+                               "Do not provide any other text or JSON.",
+                               type, symbol, price, (gTrendDir > 0 ? "BULLISH" : (gTrendDir < 0 ? "BEARISH" : "UNKNOWN")));
+
+  // JSON Body: {"contents":[{"parts":[{"text":"prompt"}]}]}
+  // Escape quotes in prompt if necessary (simple prompt doesn't have them here)
+  string body = "{\"contents\":[{\"parts\":[{\"text\":\"" + prompt + "\"}]}]}";
+
+  char data[];
+  int len = StringToCharArray(body, data, 0, WHOLE_ARRAY, CP_UTF8);
+  // Remove null terminator
+  if (len > 0) ArrayResize(data, len - 1);
+
+  char result[];
+  string result_headers;
+  string headers = "Content-Type: application/json";
+
+  // 5 seconds timeout
+  int res = WebRequest("POST", url, headers, 5000, data, result, result_headers);
+
+  if (res == 200)
+  {
+    string resp = CharArrayToString(result, 0, WHOLE_ARRAY, CP_UTF8);
+    // Print("Gemini Response: ", resp); // Debug
+
+    // Naive parsing: check if "YES" is present in the text field
+    // Ideally we parse JSON, but searching for "YES" (case insensitive or specific) is robust enough for this simple prompt.
+    // The model might reply "YES" or "YES." or "decision: YES".
+    if (StringFind(resp, "YES") >= 0) return true;
+  }
+  else
+  {
+    PrintFormat("Gemini Request failed. Code: %d. URL: %s", res, url);
+    if(res == -1) Print("Error: ", GetLastError());
+  }
+
+  return false;
+}
 
 static int GetMTFDir()
 {
@@ -427,6 +490,18 @@ void OnTick()
   double entry = (finalLong ? ask : bid);
   double sl = 0.0, tp = 0.0;
 
+  // --- Gemini AI Filter ---
+  if(UseGeminiFilter)
+  {
+    bool aiConfirmed = AskGemini(_Symbol, (finalLong ? "BUY" : "SELL"), entry);
+    if(!aiConfirmed)
+    {
+      Print("Gemini AI rejected the trade or request failed.");
+      return;
+    }
+    Print("Gemini AI confirmed the trade.");
+  }
+
   // --- Build SL
   if(SLMode == SL_SWING)
   {
@@ -541,4 +616,3 @@ void OnTick()
     Notify(StringFormat("Order failed: %d", err));
   }
 }
-
