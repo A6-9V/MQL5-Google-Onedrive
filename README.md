@@ -52,6 +52,14 @@ Quick start:
 
 **Quick Start:**
 - **Windows**: `powershell -ExecutionPolicy Bypass -File scripts\startup.ps1`
+- **Ubuntu/VPS**:
+  ```bash
+  # First time setup (installs Python, Wine, etc.)
+  bash scripts/setup_ubuntu.sh
+
+  # Start the system
+  ./scripts/startup.sh
+  ```
 - **Linux/WSL**: `./scripts/startup.sh`
 
 **Auto-Start on Boot:**
