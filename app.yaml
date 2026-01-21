@@ -1,0 +1,19 @@
+runtime: custom
+env: flex
+
+# Service name (optional, defaults to default)
+service: default
+
+# Hardware resources
+resources:
+  cpu: 1
+  memory_gb: 2
+  disk_size_gb: 10
+
+# Scaling settings
+manual_scaling:
+  instances: 1
+
+# Environment variables
+env_variables:
+  PYTHONUNBUFFERED: "1"
