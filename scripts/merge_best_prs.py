@@ -5,6 +5,7 @@ Script to merge best PRs and close duplicates
 
 import subprocess
 import sys
+import concurrent.futures
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -86,14 +87,23 @@ def main():
     
     # New bar check duplicates (if PR #75 merged)
     new_bar_duplicates = [74, 73, 72, 71, 70, 69, 65, 62, 58, 57, 56, 54, 52]
-    for pr_num in new_bar_duplicates:
-        close_pr(pr_num, "Merged via PR #75 - New bar check optimization")
-    
+
     # Early exit duplicates (if PR #76 merged)
     early_exit_duplicates = [65, 56, 54]  # Note: some overlap with new_bar
+
+    # Collect all PRs to close
+    tasks = []
+    for pr_num in new_bar_duplicates:
+        tasks.append((pr_num, "Merged via PR #75 - New bar check optimization"))
+
     for pr_num in early_exit_duplicates:
         if pr_num not in new_bar_duplicates:  # Don't close twice
-            close_pr(pr_num, "Merged via PR #76 - Early exit optimization")
+            tasks.append((pr_num, "Merged via PR #76 - Early exit optimization"))
+
+    # Execute in parallel to mask network latency
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+        futures = {executor.submit(close_pr, pr, msg): pr for pr, msg in tasks}
+        concurrent.futures.wait(futures)
     
     print()
     print("=" * 80)
