@@ -1,7 +1,8 @@
 import os
 import sys
-from flask import Flask, render_template_string
+from flask import Flask, render_template_string, jsonify
 import markdown
+import time
 
 app = Flask(__name__)
 
@@ -34,9 +35,16 @@ def get_cached_markdown(filepath):
         print(f"Error reading/converting {filepath}: {e}")
         return None
 
-@app.route('/')
 @app.route('/health')
 def health_check():
+    """Lightweight health check for load balancers."""
+    return jsonify({
+        "status": "healthy",
+        "timestamp": time.time()
+    })
+
+@app.route('/')
+def dashboard():
     try:
         base_dir = os.path.dirname(os.path.abspath(__file__))
         readme_path = os.path.join(base_dir, '..', 'README.md')
