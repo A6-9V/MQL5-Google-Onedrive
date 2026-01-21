@@ -20,11 +20,12 @@ This repository is integrated with the ZOLO-A6-9V-NUNA- plugin system, providing
 
 ### For Developers
 
-1. **Clone both repositories**:
-   ```bash
-   git clone https://github.com/A6-9V/MQL5-Google-Onedrive.git
-   git clone https://github.com/Mouy-leng/-LengKundee-mql5.github.io.git
-   ```
+1. **Get the required files**:
+   - **ZOLO Bridge Files**: Download from [OneDrive](https://1drv.ms/f/c/8F247B1B46E82304/IgADmTTSH3ENQZHNdCritmVOAXdZxJgYzp-6HimzfbEUc_A)
+   - **Web Interface**:
+     ```bash
+     git clone https://github.com/Mouy-leng/-LengKundee-mql5.github.io.git
+     ```
 
 2. **Configure the integration**:
    - Ensure the EA parameter `WebRequestURL` is set to `https://soloist.ai/a6-9v`
