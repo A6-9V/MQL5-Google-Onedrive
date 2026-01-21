@@ -75,6 +75,10 @@ input bool   UseGeminiFilter       = false; // Enable Gemini AI confirmation
 input string GeminiApiKey          = "";    // Paste your Gemini API Key here
 input string GeminiModel           = "gemini-1.5-pro"; // e.g., gemini-1.5-flash, gemini-1.5-pro, gemini-3.0-flash
 
+input group "ZOLO Integration"
+input bool   EnableWebRequest      = false; // Enable ZOLO bridge signals
+input string ZoloEndpoint          = "https://soloist.ai/a6-9v"; // Endpoint URL
+
 input group "Notifications"
 input bool   PopupAlerts           = true;
 input bool   PushNotifications     = true;
@@ -164,6 +168,39 @@ bool AskGemini(string symbol, string type, double price)
   }
 
   return false;
+}
+
+// --- ZOLO Bridge ---
+void SendSignalToBridge(string message)
+{
+  if(!EnableWebRequest) return;
+
+  string url = ZoloEndpoint;
+  string headers = "Content-Type: application/json";
+
+  // Sanitize message for JSON
+  string safeMsg = message;
+  StringReplace(safeMsg, "\\", "\\\\"); // Escape backslashes first
+  StringReplace(safeMsg, "\"", "\\\""); // Escape quotes
+  StringReplace(safeMsg, "\n", " ");    // Replace newlines with space
+  StringReplace(safeMsg, "\r", "");     // Remove carriage returns
+
+  string body = StringFormat("{\"event\":\"signal\", \"message\":\"%s\"}", safeMsg);
+
+  char data[];
+  int len = StringToCharArray(body, data, 0, WHOLE_ARRAY, CP_UTF8);
+  if (len > 0) ArrayResize(data, len - 1); // Remove null terminator
+
+  char result[];
+  string result_headers;
+
+  // 5 seconds timeout
+  int res = WebRequest("POST", url, headers, 5000, data, result, result_headers);
+
+  if (res != 200)
+  {
+    PrintFormat("ZOLO Request failed. Code: %d. URL: %s", res, url);
+  }
 }
 
 static int GetMTFDir()
@@ -477,6 +514,7 @@ void OnTick()
                             (smcLong||smcShort ? "Y" : "N"),
                             (donLong||donShort ? "Y" : "N"));
   Notify(msg);
+  SendSignalToBridge(msg);
 
   if(!EnableTrading) return;
   if(OnePositionPerSymbol && HasOpenPosition(_Symbol, MagicNumber)) return;
