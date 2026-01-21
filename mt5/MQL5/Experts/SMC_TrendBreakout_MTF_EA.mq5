@@ -3,12 +3,13 @@
 //| EA: SMC (BOS/CHoCH) + Donchian breakout + MTF confirmation       |
 //| Alerts / Push notifications + optional auto-trading              |
 //| AI Integration: Gemini API for signal confirmation               |
+//| Remote Control Version: Supported via ZOLO bridge                |
 //| Updated by: Jules (AI Assistant) for LengKundee                  |
 //+------------------------------------------------------------------+
 #property strict
 #property copyright "LengKundee"
 #property link      "https://forge.mql5.io/LengKundee/mql5.git"
-#property version   "1.20"
+#property version   "1.21"
 
 #include <Trade/Trade.mqh>
 
@@ -73,7 +74,7 @@ input int    SlippagePoints        = 30;
 input group "Gemini AI"
 input bool   UseGeminiFilter       = false; // Enable Gemini AI confirmation
 input string GeminiApiKey          = "";    // Paste your Gemini API Key here
-input string GeminiModel           = "gemini-1.5-pro"; // e.g., gemini-1.5-flash, gemini-1.5-pro, gemini-3.0-flash
+input string GeminiModel           = "gemini-1.5-pro"; // Default: gemini-1.5-pro. Alt: gemini-1.5-flash (faster)
 
 input group "Notifications"
 input bool   PopupAlerts           = true;
@@ -338,6 +339,16 @@ static void Notify(const string msg)
 
 int OnInit()
 {
+  Print("EXNESS GenX Trader v1.21 Initialized");
+  Print("Remote Control Version: https://1drv.ms/f/c/8F247B1B46E82304/IgBYRTEjjPv-SKHi70WnmmU8AZb3Mr5X1o3a0QNU_mKgAZg");
+
+  if (!EnableWebRequest) {
+      Print("NOTE: Remote Control (ZOLO Bridge) is disabled. Set EnableWebRequest=true to enable.");
+  }
+  if (!UseGeminiFilter) {
+      Print("NOTE: AI Intelligence (Gemini) is disabled. Set UseGeminiFilter=true and provide API Key to enable.");
+  }
+
   // PERF: Calculate and cache the signal timeframe once.
   gSignalTf = (SignalTF==PERIOD_CURRENT ? (ENUM_TIMEFRAMES)_Period : SignalTF);
 
