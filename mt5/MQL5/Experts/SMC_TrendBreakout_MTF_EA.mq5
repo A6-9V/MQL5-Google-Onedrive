@@ -81,7 +81,7 @@ input bool   PushNotifications     = true;
 
 input group "ZOLO Integration"
 input bool   EnableWebRequest      = false;
-input string WebRequestURL         = "https://soloist.ai/a6-9v";
+input string WebRequestURL         = "http://203.147.134.90";
 
 CTrade gTrade;
 
@@ -117,6 +117,17 @@ static double G_MIN_STOP_PRICE = 0.0;
 static datetime g_mtfDir_lastCheckTime = 0;
 static int      g_mtfDir_cachedValue = 0;
 
+// --- Helper ---
+string SanitizeJSON(string text)
+{
+  string res = text;
+  StringReplace(res, "\\", "\\\\");
+  StringReplace(res, "\"", "\\\"");
+  StringReplace(res, "\n", " ");
+  StringReplace(res, "\r", " ");
+  return res;
+}
+
 // --- AI Helper ---
 bool AskGemini(string symbol, string type, double price)
 {
@@ -136,8 +147,7 @@ bool AskGemini(string symbol, string type, double price)
                                type, symbol, price, (gTrendDir > 0 ? "BULLISH" : (gTrendDir < 0 ? "BEARISH" : "UNKNOWN")));
 
   // JSON Body: {"contents":[{"parts":[{"text":"prompt"}]}]}
-  // Escape quotes in prompt if necessary (simple prompt doesn't have them here)
-  string body = "{\"contents\":[{\"parts\":[{\"text\":\"" + prompt + "\"}]}]}";
+  string body = "{\"contents\":[{\"parts\":[{\"text\":\"" + SanitizeJSON(prompt) + "\"}]}]}";
 
   char data[];
   int len = StringToCharArray(body, data, 0, WHOLE_ARRAY, CP_UTF8);
@@ -175,8 +185,7 @@ void SendSignalToBridge(string msg)
 {
   if (!EnableWebRequest || WebRequestURL == "") return;
 
-  // Simple JSON construction. msg is safe (internal strings/numbers).
-  string body = "{\"event\":\"signal\",\"message\":\"" + msg + "\"}";
+  string body = "{\"event\":\"signal\",\"message\":\"" + SanitizeJSON(msg) + "\"}";
 
   char data[];
   int len = StringToCharArray(body, data, 0, WHOLE_ARRAY, CP_UTF8);
