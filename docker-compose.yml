@@ -2,7 +2,9 @@ version: '3.8'
 
 services:
   mql5-automation:
-    build: .
+    # Use specific version published 6 months ago (main)
+    image: mouyleng/mql5-trading-automation@sha256:3d8a19989bb281c070cc8b478317f904741a52e9ac18a4c3e9d15965715c9372
+    # build: .
     container_name: mql5-trading-automation
     restart: unless-stopped
     volumes:
