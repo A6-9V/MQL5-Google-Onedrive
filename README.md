@@ -135,10 +135,10 @@ Set both to your Firefox Relay profile API key (`https://relay.firefox.com/accou
   - enable push notifications and set your MetaQuotes ID.
 - For web request integrations (ZOLO-A6-9V-NUNA- plugin):
   - Enable `EnableWebRequest` parameter
-  - Add `https://soloist.ai/a6-9v` to MT5's allowed URLs list:
+  - Add `http://203.147.134.90` to MT5's allowed URLs list:
     - MT5 → **Tools → Options → Expert Advisors**
     - Check "Allow WebRequest for listed URL"
-    - Add the URL: `https://soloist.ai/a6-9v`
+    - Add the URL: `http://203.147.134.90`
 
 ### 🤖 AI Integration (Gemini)
 
@@ -181,7 +181,7 @@ In `SMC_TrendBreakout_MTF_EA`:
 - Developer tip window project: https://chatgpt.com/g/g-p-691e9c0ace5c8191a1b409c09251cc2b-window-for-developer-tip/project
 - Plugin Integration: ZOLO-A6-9V-NUNA-
 - GitHub Pages: https://github.com/Mouy-leng/-LengKundee-mql5.github.io.git
-- Soloist.ai Endpoint: https://soloist.ai/a6-9v
+- Bridge Endpoint: http://203.147.134.90
 
 ### Contact
 

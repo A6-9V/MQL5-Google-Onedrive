@@ -28,7 +28,7 @@ enum ENUM_TP_MODE
 
 input group "Core"
 input bool   EnableTrading         = true; // if false: alerts only
-input long   MagicNumber           = 26012025;
+input long   MagicNumber           = 21012026;
 input bool   OnePositionPerSymbol  = true;
 
 input group "Main timeframe logic"
@@ -81,7 +81,7 @@ input bool   PushNotifications     = true;
 
 input group "ZOLO Integration"
 input bool   EnableWebRequest      = false;
-input string WebRequestURL         = "https://soloist.ai/a6-9v";
+input string WebRequestURL         = "http://203.147.134.90";
 
 CTrade gTrade;
 

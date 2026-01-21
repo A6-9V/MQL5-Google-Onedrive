@@ -11,8 +11,8 @@ This repository is integrated with the ZOLO-A6-9V-NUNA- plugin system, providing
 - **Purpose**: Hosts the web interface and documentation for the trading system
 - **Integration**: Pull, push, and merge commits are synchronized with this repository
 
-### 2. Soloist.ai Endpoint
-- **Endpoint**: https://soloist.ai/a6-9v
+### 2. Bridge Endpoint
+- **Endpoint**: http://203.147.134.90
 - **Purpose**: Provides real-time signal notifications and integration with the ZOLO platform
 - **Usage**: WebRequest calls from the Expert Advisor are sent to this endpoint
 
@@ -27,7 +27,7 @@ This repository is integrated with the ZOLO-A6-9V-NUNA- plugin system, providing
    ```
 
 2. **Configure the integration**:
-   - Ensure the EA parameter `WebRequestURL` is set to `https://soloist.ai/a6-9v`
+   - Ensure the EA parameter `WebRequestURL` is set to `http://203.147.134.90`
    - Enable `EnableWebRequest` in the EA settings when needed
 
 ### For Traders
@@ -36,7 +36,7 @@ This repository is integrated with the ZOLO-A6-9V-NUNA- plugin system, providing
    - Open **Exness MetaTrader 5 Desktop Application** (Web Terminal is not supported)
    - Go to **Tools → Options → Expert Advisors**
    - Check "Allow WebRequest for listed URL"
-   - Add: `https://soloist.ai/a6-9v`
+   - Add: `http://203.147.134.90`
 
 2. **Enable the integration in EA settings**:
    - Attach the EA to a chart
