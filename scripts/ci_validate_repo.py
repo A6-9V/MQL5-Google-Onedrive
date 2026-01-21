@@ -31,25 +31,22 @@ def iter_source_files() -> list[Path]:
     return sorted(files)
 
 
-def check_no_nul_bytes(files: list[Path]) -> None:
+def validate_files(files: list[Path]) -> None:
     for p in files:
+        # Check size first to avoid reading large files
+        sz = p.stat().st_size
+        if sz > 5_000_000:
+            fail(f"Unexpectedly large source file (>5MB): {p.relative_to(REPO_ROOT)} ({sz} bytes)")
+
+        # Check for NUL bytes
         data = p.read_bytes()
         if b"\x00" in data:
             fail(f"NUL byte found in {p.relative_to(REPO_ROOT)}")
 
 
-def check_reasonable_size(files: list[Path]) -> None:
-    # Avoid accidentally committing huge build artifacts.
-    for p in files:
-        sz = p.stat().st_size
-        if sz > 5_000_000:
-            fail(f"Unexpectedly large source file (>5MB): {p.relative_to(REPO_ROOT)} ({sz} bytes)")
-
-
 def main() -> int:
     files = iter_source_files()
-    check_no_nul_bytes(files)
-    check_reasonable_size(files)
+    validate_files(files)
 
     rel = [str(p.relative_to(REPO_ROOT)) for p in files]
     print("OK: found source files:")
@@ -60,4 +57,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
