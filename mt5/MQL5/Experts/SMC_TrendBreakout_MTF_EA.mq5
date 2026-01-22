@@ -30,7 +30,7 @@ enum ENUM_TP_MODE
 
 input group "Core"
 input bool   EnableTrading         = true; // if false: alerts only
-input long   MagicNumber           = 26012025;
+input long   MagicNumber           = 81001;
 input bool   OnePositionPerSymbol  = true;
 
 input group "Main timeframe logic"

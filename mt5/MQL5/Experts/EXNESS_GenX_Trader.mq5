@@ -20,7 +20,7 @@
 //+------------------------------------------------------------------+
 //--- inputs for expert
 input string             Inp_Expert_Title                      ="EXNESS GenX Trader v2.0";
-int                      Expert_MagicNumber                    =27895;
+int                      Expert_MagicNumber                    =81001;
 bool                     Expert_EveryTick                      =false;
 input bool               EnableTrading                         =true; // Enable Trading
 //--- inputs for signal
