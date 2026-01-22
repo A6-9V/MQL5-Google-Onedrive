@@ -8,7 +8,7 @@
 #property strict
 #property copyright "LengKundee"
 #property link      "https://forge.mql5.io/LengKundee/mql5.git"
-#property version   "1.20"
+#property version   "1.21"
 
 #include <Trade/Trade.mqh>
 #include <ZoloBridge.mqh>
@@ -339,15 +339,19 @@ void OnTick()
   if(UseSMC || SLMode == SL_SWING)
   {
     // PERF: Array allocation is deferred to this block to avoid overhead on the lighter path.
-    MqlRates rates[400];
-    ArraySetAsSeries(rates, true);
+    // OPTIMIZATION: Use simple datetime array instead of full MqlRates struct to save memory/bandwidth.
+    datetime times[400];
+    ArraySetAsSeries(times, true);
 
     // This path requires a deep history for fractal/swing analysis.
     int needBars = MathMin(400, Bars(_Symbol, gSignalTf));
     if(needBars < 100) return;
-    if(CopyRates(_Symbol, gSignalTf, 0, needBars, rates) < 100) return;
+    // OPTIMIZATION: CopyTime is faster and uses less memory than CopyRates (8 bytes vs 60 bytes per bar).
+    if(CopyTime(_Symbol, gSignalTf, 0, needBars, times) < 100) return;
     if(sigBar >= needBars-1) return;
-    closeSig = rates[sigBar].close; // Get close from the full rates array.
+
+    // OPTIMIZATION: Use iClose for single price access instead of accessing heavy struct array.
+    closeSig = iClose(_Symbol, gSignalTf, sigBar); // Get close directly.
 
     // Get fractals (for structure break)
     int frNeed = MathMin(300, needBars);
@@ -359,8 +363,8 @@ void OnTick()
 
     for(int i=sigBar+2; i<frNeed; i++)
     {
-      if(lastSwingHighT==0 && upFr[i] != 0.0) { lastSwingHigh = upFr[i]; lastSwingHighT = rates[i].time; }
-      if(lastSwingLowT==0  && dnFr[i] != 0.0) { lastSwingLow  = dnFr[i]; lastSwingLowT  = rates[i].time; }
+      if(lastSwingHighT==0 && upFr[i] != 0.0) { lastSwingHigh = upFr[i]; lastSwingHighT = times[i]; }
+      if(lastSwingLowT==0  && dnFr[i] != 0.0) { lastSwingLow  = dnFr[i]; lastSwingLowT  = times[i]; }
       if(lastSwingHighT!=0 && lastSwingLowT!=0) break;
     }
   }
