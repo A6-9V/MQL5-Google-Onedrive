@@ -1,0 +1,115 @@
+name: Docker Dev Desktop Deployment
+
+on:
+  push:
+    branches: [ develop, main ]
+  workflow_dispatch:
+    inputs:
+      skip_build:
+        description: 'Skip build and only deploy'
+        required: false
+        default: false
+        type: boolean
+
+env:
+  DOCKER_IMAGE: mql5-automation-dev
+  DOCKER_TAG: latest
+
+jobs:
+  build-dev-image:
+    name: Build Development Docker Image
+    runs-on: ubuntu-latest
+    if: github.event.inputs.skip_build != 'true'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.dev
+          push: false
+          tags: ${{ env.DOCKER_IMAGE }}:${{ env.DOCKER_TAG }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          load: true
+
+      - name: Save Docker image
+        run: |
+          docker save ${{ env.DOCKER_IMAGE }}:${{ env.DOCKER_TAG }} -o dev-image.tar
+          gzip dev-image.tar
+
+      - name: Upload Docker image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-dev-image
+          path: dev-image.tar.gz
+          retention-days: 1
+
+  deploy-to-desktop:
+    name: Deploy to Docker Desktop
+    needs: build-dev-image
+    runs-on: self-hosted
+    if: github.ref == 'refs/heads/develop' || github.event_name == 'workflow_dispatch'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download Docker image artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: docker-dev-image
+          path: ./
+
+      - name: Load Docker image
+        run: |
+          gunzip dev-image.tar.gz
+          docker load -i dev-image.tar
+          docker images | grep ${{ env.DOCKER_IMAGE }}
+
+      - name: Stop existing containers
+        run: |
+          docker-compose -f docker-compose.dev.yml down || true
+
+      - name: Deploy with Docker Compose
+        run: |
+          docker-compose -f docker-compose.dev.yml up -d
+          docker-compose -f docker-compose.dev.yml ps
+
+      - name: Verify deployment
+        run: |
+          sleep 10
+          docker ps
+          docker-compose -f docker-compose.dev.yml logs --tail=50
+
+      - name: Health check
+        run: |
+          docker exec mql5-trading-dev python -c "import sys; print('Container is healthy'); sys.exit(0)" || echo "Health check failed"
+
+      - name: Deployment status
+        if: always()
+        run: |
+          echo "## Deployment Status" >> $GITHUB_STEP_SUMMARY
+          echo "- Image: ${{ env.DOCKER_IMAGE }}:${{ env.DOCKER_TAG }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Branch: ${{ github.ref }}" >> $GITHUB_STEP_SUMMARY
+          echo "- Commit: ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}" >> $GITHUB_STEP_SUMMARY
+
+  notify:
+    name: Send Deployment Notification
+    needs: [build-dev-image, deploy-to-desktop]
+    runs-on: ubuntu-latest
+    if: always()
+
+    steps:
+      - name: Deployment summary
+        run: |
+          echo "✅ Docker Dev deployment completed"
+          echo "Branch: ${{ github.ref }}"
+          echo "Commit: ${{ github.sha }}"

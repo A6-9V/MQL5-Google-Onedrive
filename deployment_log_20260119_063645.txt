@@ -1,0 +1,6 @@
+EXNESS REAL ACCOUNT DEPLOYMENT LOG
+===================================
+Date: 2026-01-19 06:36:46
+Account: 411534497
+Server: Exness-MT5Real8
+Account Type: REAL
