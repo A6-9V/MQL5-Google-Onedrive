@@ -95,7 +95,7 @@ setup_python_env() {
         # or warn.
 
         # Check if we are in a virtual environment
-        if [[ "$VIRTUAL_ENV" != "" ]]; then
+        if [[ "${VIRTUAL_ENV:-}" != "" ]]; then
             pip install -r "$REPO_ROOT/requirements.txt"
         else
             log_warn "Not in a virtual environment. Installing to user directory."
@@ -107,7 +107,7 @@ setup_python_env() {
     # Install bot requirements
     if [[ -f "$SCRIPT_DIR/requirements_bot.txt" ]]; then
         log_info "Installing bot requirements..."
-        if [[ "$VIRTUAL_ENV" != "" ]]; then
+        if [[ "${VIRTUAL_ENV:-}" != "" ]]; then
             pip install -r "$SCRIPT_DIR/requirements_bot.txt"
         else
             pip3 install --user -r "$SCRIPT_DIR/requirements_bot.txt" || \
@@ -116,6 +116,28 @@ setup_python_env() {
     fi
 
     log_success "Python dependencies installed."
+}
+
+install_node_and_jules() {
+    log_info "Checking Node.js and Jules CLI..."
+
+    # Check/Install Node.js
+    if ! command -v node &> /dev/null; then
+        log_info "Installing Node.js and npm..."
+        sudo apt-get install -y nodejs npm
+    else
+        log_info "Node.js is already installed: $(node --version)"
+    fi
+
+    # Check/Install Jules
+    if ! command -v jules &> /dev/null; then
+        log_info "Installing Jules CLI..."
+        # Install globally using npm
+        sudo npm install -g @google/jules
+        log_success "Jules CLI installed."
+    else
+        log_info "Jules CLI is already installed."
+    fi
 }
 
 make_executable() {
@@ -154,6 +176,7 @@ main() {
     fi
 
     setup_python_env
+    install_node_and_jules
     make_executable
 
     echo ""
