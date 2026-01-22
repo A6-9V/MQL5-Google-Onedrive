@@ -5,6 +5,9 @@
 #property copyright "Copyright 2024, GenX Solutions"
 #property strict
 
+#ifndef ZOLO_BRIDGE_MQH
+#define ZOLO_BRIDGE_MQH
+
 //+------------------------------------------------------------------+
 //| Helper: Sanitize JSON String                                     |
 //+------------------------------------------------------------------+
@@ -47,3 +50,5 @@ void SendSignalToBridge(string msg, bool enable, string url)
       if(res == -1) Print("Error: ", GetLastError());
    }
 }
+
+#endif // ZOLO_BRIDGE_MQH

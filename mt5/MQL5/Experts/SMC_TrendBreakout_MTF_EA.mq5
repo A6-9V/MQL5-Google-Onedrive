@@ -12,6 +12,7 @@
 
 #include <Trade/Trade.mqh>
 #include <ZoloBridge.mqh>
+#include <AiAssistant.mqh>
 
 enum ENUM_SL_MODE
 {
@@ -76,6 +77,7 @@ input bool   UseGeminiFilter       = false; // Enable Gemini AI confirmation
 input string GeminiApiKey          = "";    // Paste your Gemini API Key here
 input string GeminiModel           = "gemini-1.5-flash"; // e.g., gemini-1.5-flash, gemini-1.5-pro, gemini-3.0-flash
 input string PerplexityUrl         = "https://www.perplexity.ai/finance/EURZ"; // Bridge to Perplexity (Manual/Context)
+input int    RSIPeriod             = 14;    // Period for RSI context in AI prompt
 
 input group "Notifications"
 input bool   PopupAlerts           = true;
@@ -92,6 +94,7 @@ int gAtrHandle      = INVALID_HANDLE;
 int gDonchianHandle = INVALID_HANDLE;
 int gEmaFastHandle  = INVALID_HANDLE;
 int gEmaSlowHandle  = INVALID_HANDLE;
+int gRsiHandle      = INVALID_HANDLE;
 
 datetime gLastSignalBarTime = 0;
 int gTrendDir = 0; // 1 bullish, -1 bearish, 0 unknown (for CHoCH labelling)
@@ -118,59 +121,6 @@ static double G_MIN_STOP_PRICE = 0.0;
 // The lower-TF EMA direction only needs to be checked once per new bar on that TF.
 static datetime g_mtfDir_lastCheckTime = 0;
 static int      g_mtfDir_cachedValue = 0;
-
-// --- AI Helper ---
-bool AskGemini(string symbol, string type, double price)
-{
-  if (GeminiApiKey == "")
-  {
-    Print("Gemini API Key missing. Please set 'GeminiApiKey' in inputs.");
-    return false;
-  }
-
-  string url = "https://generativelanguage.googleapis.com/v1beta/models/" + GeminiModel + ":generateContent?key=" + GeminiApiKey;
-
-  // Construct a simple prompt
-  string prompt = StringFormat("I am a trading bot. I have a %s signal for %s at price %f. "
-                               "Trend Direction: %s. "
-                               "Reference Context: %s "
-                               "Reply strictly with just 'YES' to confirm the trade, or 'NO' to reject it. "
-                               "Do not provide any other text or JSON.",
-                               type, symbol, price, (gTrendDir > 0 ? "BULLISH" : (gTrendDir < 0 ? "BEARISH" : "UNKNOWN")), PerplexityUrl);
-
-  // JSON Body: {"contents":[{"parts":[{"text":"prompt"}]}]}
-  string body = "{\"contents\":[{\"parts\":[{\"text\":\"" + Zolo_SanitizeJSON(prompt) + "\"}]}]}";
-
-  char data[];
-  int len = StringToCharArray(body, data, 0, WHOLE_ARRAY, CP_UTF8);
-  // Remove null terminator
-  if (len > 0) ArrayResize(data, len - 1);
-
-  char result[];
-  string result_headers;
-  string headers = "Content-Type: application/json";
-
-  // 5 seconds timeout
-  int res = WebRequest("POST", url, headers, 5000, data, result, result_headers);
-
-  if (res == 200)
-  {
-    string resp = CharArrayToString(result, 0, WHOLE_ARRAY, CP_UTF8);
-    // Print("Gemini Response: ", resp); // Debug
-
-    // Naive parsing: check if "YES" is present in the text field
-    // Ideally we parse JSON, but searching for "YES" (case insensitive or specific) is robust enough for this simple prompt.
-    // The model might reply "YES" or "YES." or "decision: YES".
-    if (StringFind(resp, "YES") >= 0) return true;
-  }
-  else
-  {
-    PrintFormat("Gemini Request failed. Code: %d. URL: %s", res, url);
-    if(res == -1) Print("Error: ", GetLastError());
-  }
-
-  return false;
-}
 
 static int GetMTFDir()
 {
@@ -323,6 +273,9 @@ int OnInit()
   gEmaFastHandle = iMA(_Symbol, LowerTF, EMAFast, 0, MODE_EMA, PRICE_CLOSE);
   gEmaSlowHandle = iMA(_Symbol, LowerTF, EMASlow, 0, MODE_EMA, PRICE_CLOSE);
 
+  gRsiHandle = iRSI(_Symbol, gSignalTf, RSIPeriod, PRICE_CLOSE);
+  if(gRsiHandle == INVALID_HANDLE) return INIT_FAILED;
+
   gTrade.SetExpertMagicNumber(MagicNumber);
   gTrade.SetDeviationInPoints(SlippagePoints);
 
@@ -356,6 +309,7 @@ void OnDeinit(const int reason)
   if(gDonchianHandle != INVALID_HANDLE) IndicatorRelease(gDonchianHandle);
   if(gEmaFastHandle != INVALID_HANDLE) IndicatorRelease(gEmaFastHandle);
   if(gEmaSlowHandle != INVALID_HANDLE) IndicatorRelease(gEmaSlowHandle);
+  if(gRsiHandle != INVALID_HANDLE) IndicatorRelease(gRsiHandle);
 }
 
 void OnTick()
@@ -503,7 +457,19 @@ void OnTick()
   // --- Gemini AI Filter ---
   if(UseGeminiFilter)
   {
-    bool aiConfirmed = AskGemini(_Symbol, (finalLong ? "BUY" : "SELL"), entry);
+    double rsiVal = 50.0;
+    double atrVal = 0.0;
+
+    // Get RSI
+    double rsiBuff[1];
+    if(CopyBuffer(gRsiHandle, 0, sigBar, 1, rsiBuff) == 1) rsiVal = rsiBuff[0];
+
+    // Get ATR (using existing helper logic or direct copy)
+    atrVal = GetATR(sigBar, sigTime);
+
+    string prompt = Ai_ConstructPrompt(_Symbol, (finalLong ? "BUY" : "SELL"), entry, gTrendDir, rsiVal, atrVal, PerplexityUrl);
+    bool aiConfirmed = Ai_AskGemini(GeminiApiKey, GeminiModel, prompt);
+
     if(!aiConfirmed)
     {
       Print("Gemini AI rejected the trade or request failed.");
