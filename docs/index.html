@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MQL5 Trading Automation Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin-bottom: 30px;
+            text-align: center;
+        }
+
+        .header h1 {
+            color: #333;
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #666;
+            font-size: 1.1em;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+        }
+
+        .card h2 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.5em;
+        }
+
+        .card p {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 24px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+
+        .btn:hover {
+            background: #5568d3;
+        }
+
+        .status {
+            background: white;
+            padding: 25px;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .status-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 15px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .status-item:last-child {
+            border-bottom: none;
+        }
+
+        .status-label {
+            color: #666;
+            font-weight: 600;
+        }
+
+        .status-value {
+            color: #667eea;
+            font-weight: 700;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 600;
+        }
+
+        .badge-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .badge-warning {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .footer {
+            text-align: center;
+            color: white;
+            margin-top: 40px;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🚀 MQL5 Trading Automation</h1>
+            <p>GenX FX Trading System Dashboard</p>
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <h2>📊 Trading Indicators</h2>
+                <p>SMC + Trend Breakout (MTF) indicator with BOS/CHoCH and Donchian breakout signals.</p>
+                <a href="#" class="btn">View Indicators</a>
+            </div>
+
+            <div class="card">
+                <h2>🤖 Expert Advisors</h2>
+                <p>Automated trading EAs with smart risk management and multi-timeframe confirmation.</p>
+                <a href="#" class="btn">Manage EAs</a>
+            </div>
+
+            <div class="card">
+                <h2>☁️ Cloud Deployment</h2>
+                <p>Deploy your trading automation to Fly.io, Render, Railway, or GitHub Pages.</p>
+                <a href="#" class="btn">Deploy Now</a>
+            </div>
+
+            <div class="card">
+                <h2>📱 Telegram Bot</h2>
+                <p>Control deployments and monitor trading via @GenX_FX_bot on Telegram.</p>
+                <a href="https://t.me/GenX_FX_bot" class="btn" target="_blank">Open Bot</a>
+            </div>
+
+            <div class="card">
+                <h2>📈 Exness Terminal</h2>
+                <p>Connect to Exness MT5 terminal for live trading execution.</p>
+                <a href="https://my.exness.global/webtrading/" class="btn" target="_blank">Open Terminal</a>
+            </div>
+
+            <div class="card">
+                <h2>🔧 Settings</h2>
+                <p>Configure risk parameters, notifications, and automation preferences.</p>
+                <a href="#" class="btn">Configure</a>
+            </div>
+
+            <div class="card">
+                <h2>📡 CME Data Services</h2>
+                <p>Access high-quality market data via CME Group API (Requires Subscription).</p>
+                <a href="https://dataservices.cmegroup.com/app/cart?returnUrl=%2Fpages%2FCME-Data-Via-API" class="btn" target="_blank">View Data</a>
+            </div>
+        </div>
+
+        <div class="status">
+            <h2 style="color: #667eea; margin-bottom: 20px;">System Status</h2>
+            <div class="status-item">
+                <span class="status-label">Deployment Status</span>
+                <span class="badge badge-success">Active</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Fly.io App</span>
+                <span class="status-value">mql5-automation</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Telegram Bot</span>
+                <span class="status-value">@GenX_FX_bot</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Last Updated</span>
+                <span class="status-value" id="lastUpdate"></span>
+            </div>
+        </div>
+
+        <div class="footer">
+            <p>© 2026 GenX FX Trading System | Built with ❤️ for Trading Automation</p>
+        </div>
+    </div>
+
+    <script>
+        // Set last update time
+        document.getElementById('lastUpdate').textContent = new Date().toLocaleString();
+
+        // Add interactivity
+        document.querySelectorAll('.card a.btn').forEach(btn => {
+            if (!btn.href || btn.href === '#') {
+                btn.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    alert('Feature coming soon!');
+                });
+            }
+        });
+    </script>
+</body>
+</html>
