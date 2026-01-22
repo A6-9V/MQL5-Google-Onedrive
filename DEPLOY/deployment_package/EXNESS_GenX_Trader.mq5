@@ -14,6 +14,7 @@
 #include <Expert\Signal\SignalRSI.mqh>
 #include <Expert\Trailing\TrailingParabolicSAR.mqh>
 #include <Expert\Money\MoneySizeOptimized.mqh>
+#include <MoneyFixed.mqh>
 #include <ZoloBridge.mqh>
 
 // Include Configuration
@@ -126,7 +127,7 @@ int OnInit(void)
       return(-10);
      }
 //--- Creation of money object
-   CMoneySizeOptimized *money=new CMoneySizeOptimized;
+   CMoneyFixed *money=new CMoneyFixed;
    if(money==NULL)
      {
       //--- failed
