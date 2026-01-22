@@ -1,0 +1,22 @@
+INSTALLATION INSTRUCTIONS
+=========================
+
+1. Copy the files to your MetaTrader 5 Data Folder:
+   - Copy `EXNESS_GenX_Trader.mq5` to `MQL5\Experts\`
+   - Copy `EXNESS_GenX_Config.mqh` to `MQL5\Experts\` (or `MQL5\Include\` if preferred, but the EA looks for it in the same directory by default inclusion rules if quotes are used).
+   - Ensure `ZoloBridge.mqh` is present in `MQL5\Include\`.
+
+2. Compilation:
+   - Open MetaEditor.
+   - Open `EXNESS_GenX_Trader.mq5`.
+   - Click "Compile".
+
+3. Configuration:
+   - The settings are now located in `EXNESS_GenX_Config.mqh`.
+   - Edit this file to change default parameters like Risk Percent, MA Period, etc.
+   - Recompile the EA after changing the config file.
+
+4. Deployment:
+   - Attach the EA to a chart (e.g., EURUSD).
+   - Ensure "Allow WebRequest" is enabled in Tools > Options > Expert Advisors.
+   - Add `http://203.147.134.90` to the allowed WebRequest URLs.
