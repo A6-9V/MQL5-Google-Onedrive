@@ -9,7 +9,8 @@
 
 [CmdletBinding()]
 param(
-    [switch]$Force
+    [switch]$Force,
+    [string]$MT5DataPath = ""
 )
 
 $ErrorActionPreference = "Stop"
@@ -31,8 +32,6 @@ if ($Processes) {
 
     if ($Force -or (Read-Host "Do you want to attempt to stop these processes? (y/n)") -eq 'y') {
         foreach ($p in $Processes) {
-            # Be careful with Python, only kill if it looks like ours (hard to tell without command line parsing which is complex in PS5)
-            # So we'll skip python for safety unless user forced, or just warn.
             if ($p.ProcessName -eq "terminal64") {
                 Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
                 Write-Log "Stopped terminal64 (PID $($p.Id))" "Green"
@@ -44,7 +43,7 @@ if ($Processes) {
     }
 }
 
-# 2. Clean Directories
+# 2. Clean Project Directories
 $DirsToClean = @(
     Join-Path $RepoRoot "dist",
     Join-Path $RepoRoot "logs"
@@ -52,19 +51,55 @@ $DirsToClean = @(
 
 foreach ($Dir in $DirsToClean) {
     if (Test-Path $Dir) {
-        Write-Log "Cleaning $Dir..."
+        Write-Log "Cleaning project directory: $Dir..."
         Remove-Item -Path $Dir -Recurse -Force -ErrorAction SilentlyContinue
         New-Item -ItemType Directory -Path $Dir -Force | Out-Null
         Write-Log "Cleaned $Dir" "Green"
     }
 }
 
-# 3. Clean __pycache__
+# 3. Clean MT5 Data Directory (If provided)
+if ($MT5DataPath -and (Test-Path $MT5DataPath)) {
+    Write-Log "Processing MT5 Data Directory: $MT5DataPath"
+    $MT5LogsDir = Join-Path $MT5DataPath "Logs"
+
+    if (Test-Path $MT5LogsDir) {
+        Write-Log "Cleaning MT5 Logs directory..."
+
+        # Define artifacts that should NOT be in the logs folder (based on user report)
+        $ArtifactsToRemove = @(
+            ".git",
+            ".gitignore",
+            "package.json",
+            "*.md",
+            "*.ps1"
+        )
+
+        foreach ($Pattern in $ArtifactsToRemove) {
+            Get-ChildItem -Path $MT5LogsDir -Filter $Pattern -Recurse -Force -ErrorAction SilentlyContinue | ForEach-Object {
+                Write-Log "Removing artifact: $($_.FullName)" "Yellow"
+                Remove-Item -Path $_.FullName -Recurse -Force
+            }
+        }
+
+        # Clean standard log files if Force is used, otherwise keep them or ask
+        if ($Force -or (Read-Host "Delete all *.log files in MT5 Logs? (y/n)") -eq 'y') {
+            Get-ChildItem -Path $MT5LogsDir -Filter "*.log" -Recurse -Force -ErrorAction SilentlyContinue | Remove-Item -Force
+            Write-Log "Deleted all .log files in MT5 Logs" "Green"
+        }
+    } else {
+        Write-Log "MT5 Logs directory not found at $MT5LogsDir" "Yellow"
+    }
+} elseif ($MT5DataPath) {
+    Write-Log "Provided MT5 Data Path does not exist: $MT5DataPath" "Red"
+}
+
+# 4. Clean __pycache__
 Write-Log "Removing __pycache__ directories..."
 Get-ChildItem -Path $RepoRoot -Filter "__pycache__" -Recurse -Directory -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force
 Write-Log "__pycache__ removed." "Green"
 
-# 4. Verify Setup
+# 5. Verify Setup
 Write-Log "Verifying setup with startup script (Dry Run)..."
 $StartupScript = Join-Path $ScriptDir "startup.ps1"
 if (Test-Path $StartupScript) {

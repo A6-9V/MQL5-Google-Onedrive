@@ -8,7 +8,15 @@ This guide covers the setup and deployment of the MQL5 Trading Automation system
 For the MetaTrader 5 terminal and general orchestration on Windows:
 
 1.  **Reset Environment** (If you need a fresh start):
-    Run the reset script in PowerShell to clean logs and temporary files:
+    Run the reset script in PowerShell to clean logs and temporary files.
+
+    *Optional: Clean specific MT5 Terminal Logs*
+    If your MT5 Logs folder is cluttered (e.g., contains `.git` or random files), pass the path to your Data Folder:
+    ```powershell
+    .\scripts\reset_environment.ps1 -MT5DataPath "C:\Users\USER\AppData\Roaming\MetaQuotes\Terminal\YOUR_ID"
+    ```
+
+    *Standard Reset:*
     ```powershell
     .\scripts\reset_environment.ps1
     ```
