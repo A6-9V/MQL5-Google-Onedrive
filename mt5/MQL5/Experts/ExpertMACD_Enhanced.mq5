@@ -1,46 +1,41 @@
 //+------------------------------------------------------------------+
-//|                                       EXNESS_GenX_Trader.mq5     |
+//|                                        ExpertMACD_Enhanced.mq5   |
 //|                             Copyright 2000-2025, MetaQuotes Ltd. |
 //|                                             https://www.mql5.com |
 //+------------------------------------------------------------------+
 #property copyright "Copyright 2000-2025, MetaQuotes Ltd."
 #property link      "https://forge.mql5.io/LengKundee/mql5.git"
-#property version   "2.01"
+#property version   "1.00"
 //+------------------------------------------------------------------+
 //| Include                                                          |
 //+------------------------------------------------------------------+
 #include <Expert\Expert.mqh>
-#include <Expert\Signal\SignalMA.mqh>
-#include <Expert\Signal\SignalRSI.mqh>
-#include <Expert\Trailing\TrailingParabolicSAR.mqh>
+#include <Expert\Signal\SignalMACD.mqh>
+#include <Expert\Trailing\TrailingFixedPips.mqh>
 #include <Expert\Money\MoneySizeOptimized.mqh>
 #include <ZoloBridge.mqh>
 //+------------------------------------------------------------------+
 //| Inputs                                                           |
 //+------------------------------------------------------------------+
 //--- inputs for expert
-input string             Inp_Expert_Title                      ="EXNESS GenX Trader v2.0";
-int                      Expert_MagicNumber                    =27895;
+input string             Inp_Expert_Title                      ="ExpertMACD Enhanced";
+int                      Expert_MagicNumber                    =27897;
 bool                     Expert_EveryTick                      =false;
-input bool               EnableTrading                         =true; // Enable Trading
 //--- inputs for signal
-input int                Inp_Signal_MA_Period                  =30;          // MA Period
-input int                Inp_Signal_MA_Shift                   =0;           // MA Shift
-input ENUM_MA_METHOD     Inp_Signal_MA_Method                  =MODE_EMA;    // MA Method
-input ENUM_APPLIED_PRICE Inp_Signal_MA_Applied                 =PRICE_CLOSE; // MA Applied Price
-//--- inputs for RSI filter
-input int                Inp_Signal_RSI_Period                 =14;          // RSI Period
-input double             Inp_Signal_RSI_Weight                 =0.5;         // RSI Weight (0.0 to 1.0)
+input int                Inp_Signal_MACD_PeriodFast            =12;          // MACD Fast Period
+input int                Inp_Signal_MACD_PeriodSlow            =26;          // MACD Slow Period
+input int                Inp_Signal_MACD_PeriodSignal          =9;           // MACD Signal Period
+input ENUM_APPLIED_PRICE Inp_Signal_MACD_Applied               =PRICE_CLOSE; // MACD Applied Price
 //--- inputs for trailing
-input double             Inp_Trailing_ParabolicSAR_Step        =0.02;        // PSAR Step
-input double             Inp_Trailing_ParabolicSAR_Maximum     =0.2;         // PSAR Maximum
+input int                Inp_Trailing_FixedPips_StopLevel      =50;          // Stop Level (points)
+input int                Inp_Trailing_FixedPips_ProfitLevel    =50;          // Profit Level (points)
 //--- inputs for money
 input double             Inp_Money_SizeOptimized_DecreaseFactor=3.0;         // Money Decrease Factor
-input double             Inp_Money_SizeOptimized_Percent       =1.0;         // Risk Percent
+input double             Inp_Money_SizeOptimized_Percent       =3.0;         // Money Percent
 //--- inputs for ZOLO Integration
 input group              "ZOLO Integration"
 input bool               EnableWebRequest                      =true;
-input string             WebRequestURL                         = "https://genx-fx.com/api/signal";
+input string             WebRequestURL                         = "https://genx-fx.com/api/signal"; // ZOLO Bridge URL (Secure)
 
 //+------------------------------------------------------------------+
 //| Global expert object                                             |
@@ -61,7 +56,7 @@ int OnInit(void)
       return(-1);
      }
 //--- Creation of signal object
-   CSignalMA *signal=new CSignalMA;
+   CSignalMACD *signal=new CSignalMACD;
    if(signal==NULL)
      {
       //--- failed
@@ -78,10 +73,10 @@ int OnInit(void)
       return(-3);
      }
 //--- Set signal parameters
-   signal->PeriodMA(Inp_Signal_MA_Period);
-   signal->Shift(Inp_Signal_MA_Shift);
-   signal->Method(Inp_Signal_MA_Method);
-   signal->Applied(Inp_Signal_MA_Applied);
+   signal->PeriodFast(Inp_Signal_MACD_PeriodFast);
+   signal->PeriodSlow(Inp_Signal_MACD_PeriodSlow);
+   signal->PeriodSignal(Inp_Signal_MACD_PeriodSignal);
+   signal->Applied(Inp_Signal_MACD_Applied);
 //--- Check signal parameters
    if(!signal->ValidationSettings())
      {
@@ -90,44 +85,14 @@ int OnInit(void)
       ExtExpert.Deinit();
       return(-4);
      }
-//--- Creation of RSI filter
-   CSignalRSI *filter=new CSignalRSI;
-   if(filter==NULL)
-     {
-      //--- failed
-      printf(__FUNCTION__+": error creating RSI filter");
-      ExtExpert.Deinit();
-      return(-5);
-     }
-//--- Add filter to signal
-   if(!signal->AddFilter(filter))
-     {
-      //--- failed
-      printf(__FUNCTION__+": error adding RSI filter");
-      ExtExpert.Deinit();
-      return(-6);
-     }
-//--- Set filter parameters
-   filter->PeriodRSI(Inp_Signal_RSI_Period);
-   filter->Weight(Inp_Signal_RSI_Weight);
-   // Note: Applied price for RSI is usually Close, defaulted in CSignalRSI
-//--- Check filter parameters
-   if(!filter->ValidationSettings())
-     {
-      //--- failed
-      printf(__FUNCTION__+": error RSI filter parameters");
-      ExtExpert.Deinit();
-      return(-7);
-     }
-
 //--- Creation of trailing object
-   CTrailingPSAR *trailing=new CTrailingPSAR;
+   CTrailingFixedPips *trailing=new CTrailingFixedPips;
    if(trailing==NULL)
      {
       //--- failed
       printf(__FUNCTION__+": error creating trailing");
       ExtExpert.Deinit();
-      return(-8);
+      return(-5);
      }
 //--- Add trailing to expert (will be deleted automatically))
    if(!ExtExpert.InitTrailing(trailing))
@@ -135,18 +100,18 @@ int OnInit(void)
       //--- failed
       printf(__FUNCTION__+": error initializing trailing");
       ExtExpert.Deinit();
-      return(-9);
+      return(-6);
      }
 //--- Set trailing parameters
-   trailing->Step(Inp_Trailing_ParabolicSAR_Step);
-   trailing->Maximum(Inp_Trailing_ParabolicSAR_Maximum);
+   trailing->StopLevel(Inp_Trailing_FixedPips_StopLevel);
+   trailing->ProfitLevel(Inp_Trailing_FixedPips_ProfitLevel);
 //--- Check trailing parameters
    if(!trailing->ValidationSettings())
      {
       //--- failed
       printf(__FUNCTION__+": error trailing parameters");
       ExtExpert.Deinit();
-      return(-10);
+      return(-7);
      }
 //--- Creation of money object
    CMoneySizeOptimized *money=new CMoneySizeOptimized;
@@ -155,7 +120,7 @@ int OnInit(void)
       //--- failed
       printf(__FUNCTION__+": error creating money");
       ExtExpert.Deinit();
-      return(-11);
+      return(-8);
      }
 //--- Add money to expert (will be deleted automatically))
    if(!ExtExpert.InitMoney(money))
@@ -163,7 +128,7 @@ int OnInit(void)
       //--- failed
       printf(__FUNCTION__+": error initializing money");
       ExtExpert.Deinit();
-      return(-12);
+      return(-9);
      }
 //--- Set money parameters
    money->DecreaseFactor(Inp_Money_SizeOptimized_DecreaseFactor);
@@ -174,7 +139,7 @@ int OnInit(void)
       //--- failed
       printf(__FUNCTION__+": error money parameters");
       ExtExpert.Deinit();
-      return(-13);
+      return(-10);
      }
 //--- Tuning of all necessary indicators
    if(!ExtExpert.InitIndicators())
@@ -182,19 +147,11 @@ int OnInit(void)
       //--- failed
       printf(__FUNCTION__+": error initializing indicators");
       ExtExpert.Deinit();
-      return(-14);
+      return(-11);
      }
 
-   // --- User requested logging
-   Print("═══════════════════════════════════════════════════");
-   Print("     EXNESS GenX Trader v2.0 Initialized");
-   Print("     Symbol: ", Symbol(), " (or your symbol)");
-   Print("     Strategy: MA(10/", Inp_Signal_MA_Period, ") + RSI(", Inp_Signal_RSI_Period, ")");
-   Print("     Risk: ", Inp_Money_SizeOptimized_Percent, "% per trade");
-   Print("     Trading: ", (EnableTrading ? "ENABLED" : "DISABLED"));
-   Print("═══════════════════════════════════════════════════");
-
-   // Start Heartbeat Timer (Every 1 hour = 3600 seconds)
+   // Send initial heartbeat
+   SendSignalToBridge("ExpertMACD Enhanced Initialized on " + Symbol(), EnableWebRequest, WebRequestURL);
    EventSetTimer(3600);
 
 //--- succeed
@@ -213,10 +170,7 @@ void OnDeinit(const int reason)
 //+------------------------------------------------------------------+
 void OnTick(void)
   {
-   if(EnableTrading)
-     {
-      ExtExpert.OnTick();
-     }
+   ExtExpert.OnTick();
   }
 //+------------------------------------------------------------------+
 //| Function-event handler "trade"                                   |
@@ -232,12 +186,8 @@ void OnTimer(void)
   {
    ExtExpert.OnTimer();
 
-   // --- Heartbeat Logic ---
-   // Construct the heartbeat message
    string timeStr = TimeToString(TimeCurrent(), TIME_DATE|TIME_SECONDS);
-   string msg = StringFormat("And bridge https://chat.whatsapp.com/J3io2JyrkBe0uCbB9WBHJE?mode=hqrc to schedule research to help analy uptime real data %s", timeStr);
-
-   Print(msg);
+   string msg = "ExpertMACD Enhanced Heartbeat: " + timeStr;
    SendSignalToBridge(msg, EnableWebRequest, WebRequestURL);
   }
 //+------------------------------------------------------------------+

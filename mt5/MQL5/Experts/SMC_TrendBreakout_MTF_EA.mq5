@@ -11,6 +11,7 @@
 #property version   "1.20"
 
 #include <Trade/Trade.mqh>
+#include <ZoloBridge.mqh>
 
 enum ENUM_SL_MODE
 {
@@ -82,7 +83,7 @@ input bool   PushNotifications     = true;
 
 input group "ZOLO Integration"
 input bool   EnableWebRequest      = false;
-input string WebRequestURL         = "http://203.147.134.90";
+input string WebRequestURL         = "https://genx-fx.com/api/signal";
 
 CTrade gTrade;
 
@@ -118,17 +119,6 @@ static double G_MIN_STOP_PRICE = 0.0;
 static datetime g_mtfDir_lastCheckTime = 0;
 static int      g_mtfDir_cachedValue = 0;
 
-// --- Helper ---
-string SanitizeJSON(string text)
-{
-  string res = text;
-  StringReplace(res, "\\", "\\\\");
-  StringReplace(res, "\"", "\\\"");
-  StringReplace(res, "\n", " ");
-  StringReplace(res, "\r", " ");
-  return res;
-}
-
 // --- AI Helper ---
 bool AskGemini(string symbol, string type, double price)
 {
@@ -149,7 +139,7 @@ bool AskGemini(string symbol, string type, double price)
                                type, symbol, price, (gTrendDir > 0 ? "BULLISH" : (gTrendDir < 0 ? "BEARISH" : "UNKNOWN")), PerplexityUrl);
 
   // JSON Body: {"contents":[{"parts":[{"text":"prompt"}]}]}
-  string body = "{\"contents\":[{\"parts\":[{\"text\":\"" + SanitizeJSON(prompt) + "\"}]}]}";
+  string body = "{\"contents\":[{\"parts\":[{\"text\":\"" + Zolo_SanitizeJSON(prompt) + "\"}]}]}";
 
   char data[];
   int len = StringToCharArray(body, data, 0, WHOLE_ARRAY, CP_UTF8);
@@ -180,30 +170,6 @@ bool AskGemini(string symbol, string type, double price)
   }
 
   return false;
-}
-
-// --- ZOLO Bridge ---
-void SendSignalToBridge(string msg)
-{
-  if (!EnableWebRequest || WebRequestURL == "") return;
-
-  string body = "{\"event\":\"signal\",\"message\":\"" + SanitizeJSON(msg) + "\"}";
-
-  char data[];
-  int len = StringToCharArray(body, data, 0, WHOLE_ARRAY, CP_UTF8);
-  if (len > 0) ArrayResize(data, len - 1); // Remove null terminator
-
-  char result[];
-  string result_headers;
-  string headers = "Content-Type: application/json";
-
-  int res = WebRequest("POST", WebRequestURL, headers, 5000, data, result, result_headers);
-
-  if (res != 200)
-  {
-    PrintFormat("ZOLO WebRequest failed. Code: %d. URL: %s", res, WebRequestURL);
-    if(res == -1) Print("Error: ", GetLastError());
-  }
 }
 
 static int GetMTFDir()
@@ -518,7 +484,7 @@ void OnTick()
                             (donLong||donShort ? "Y" : "N"));
   Notify(msg);
 
-  if(EnableWebRequest) SendSignalToBridge(msg);
+  if(EnableWebRequest) SendSignalToBridge(msg, EnableWebRequest, WebRequestURL);
 
   if(!EnableTrading) return;
   if(OnePositionPerSymbol && HasOpenPosition(_Symbol, MagicNumber)) return;
