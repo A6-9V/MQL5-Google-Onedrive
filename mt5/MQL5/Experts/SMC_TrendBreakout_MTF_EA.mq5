@@ -84,8 +84,8 @@ input bool   PopupAlerts           = true;
 input bool   PushNotifications     = true;
 
 input group "ZOLO Integration"
-input bool   EnableWebRequest      = false;
-input string WebRequestURL         = "https://genx-fx.com/api/signal";
+input bool   EnableWebRequest      = true;
+input string WebRequestURL         = "http://203.147.134.90";
 
 CTrade gTrade;
 
