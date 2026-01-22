@@ -1,0 +1,133 @@
+.
+├── .dockerignore
+├── .editorconfig
+├── .env.example
+├── .github
+│   ├── CODEOWNERS
+│   ├── ISSUE_TEMPLATE
+│   │   ├── bug_report.md
+│   │   ├── bug_report.yml
+│   │   ├── config.yml
+│   │   ├── custom.md
+│   │   └── feature_request.yml
+│   ├── pull_request_template.md
+│   └── workflows
+│       ├── ci.yml
+│       ├── deploy-cloud.yml
+│       ├── deploy-dashboard.yml
+│       ├── enable-automerge.yml
+│       ├── github-pages-sync.yml
+│       └── onedrive-sync.yml
+├── .gitignore
+├── .jules
+│   └── bolt.md
+├── .nojekyll
+├── AGENTS.md
+├── AUTOMATION_FEATURES.md
+├── Dockerfile
+├── LICENSE
+├── QUICK_REFERENCE.md
+├── README.md
+├── REPO_STRUCTURE.txt
+├── SECRETS_TEMPLATE.md
+├── VERIFICATION.md
+├── app.yaml
+├── config
+│   └── startup_config.json
+├── dashboard
+│   ├── Dockerfile
+│   ├── fly.toml
+│   ├── index.html
+│   └── render.yaml
+├── docker-compose.yml
+├── docs
+│   ├── .nojekyll
+│   ├── Cloud_Deployment_Guide.md
+│   ├── Cursor_CLI_setup.md
+│   ├── Docker_CLI_setup.md
+│   ├── Exness_Deployment_Guide.md
+│   ├── ExpertMAPSAR_Tuning_Guide.md
+│   ├── Firebase_CLI_setup.md
+│   ├── GitHub_CLI_setup.md
+│   ├── GitHub_Sync_Status.md
+│   ├── INDEX.md
+│   ├── Jules_CLI_setup.md
+│   ├── Jules_Execution_Guide.md
+│   ├── Mouy-leng_Request_Guide.md
+│   ├── PR_Action_Summary.md
+│   ├── PR_Consolidation_Complete.md
+│   ├── PR_Consolidation_Plan.md
+│   ├── PR_Consolidation_Results.md
+│   ├── PR_Final_Summary.md
+│   ├── Pull_Request_Review_Report.md
+│   ├── Quick_Start_Automation.md
+│   ├── Repository_Quality_Analysis.md
+│   ├── SETUP_AND_DEPLOY.md
+│   ├── Secrets_Management.md
+│   ├── Startup_Automation_Guide.md
+│   ├── USER_NOTES.md
+│   ├── WSL_AND_VPS_DEPLOYMENT.md
+│   ├── Windows_Task_Scheduler_Setup.md
+│   ├── Working_Tree_Review_Report.md
+│   ├── ZOLO_Plugin_Integration.md
+│   └── index.html
+├── fly.toml
+├── index.html
+├── logs
+│   └── README.md
+├── mt5
+│   └── MQL5
+│       ├── Experts
+│       │   ├── EXNESS_GenX_Trader.mq5
+│       │   ├── ExpertMACD_Enhanced.mq5
+│       │   ├── ExpertMAMA_Enhanced.mq5
+│       │   ├── ExpertMAPSARSizeOptimized.mq5
+│       │   ├── ExpertMAPSAR_Enhanced.mq5
+│       │   ├── ExpertMAPSAR_Filtered.mq5
+│       │   ├── ExpertMAPSAR_Improved.mq5
+│       │   ├── ExpertMAPSAR_RiskBased.mq5
+│       │   └── SMC_TrendBreakout_MTF_EA.mq5
+│       ├── Include
+│       │   ├── AiAssistant.mqh
+│       │   ├── ManagePositions.mqh
+│       │   └── ZoloBridge.mqh
+│       └── Indicators
+│           └── SMC_TrendBreakout_MTF.mq5
+├── railway.json
+├── render.yaml
+├── requirements.txt
+└── scripts
+    ├── README.md
+    ├── TELEGRAM_BOT_SETUP.md
+    ├── analyze_pr_optimizations.py
+    ├── ci_validate_repo.py
+    ├── deploy_cloud.py
+    ├── deploy_dashboard.ps1
+    ├── deploy_docker_hub.sh
+    ├── deploy_exness.ps1
+    ├── deploy_mt5.sh
+    ├── example_custom_script.py
+    ├── fix_profiles.py
+    ├── jules_execute.py
+    ├── load_vault.ps1
+    ├── load_vault.py
+    ├── merge_best_prs.py
+    ├── package_mt5.sh
+    ├── pin_prs_issue.md
+    ├── requirements_bot.txt
+    ├── reset_environment.ps1
+    ├── review_pull_requests.py
+    ├── review_working_trees.py
+    ├── set_github_secrets.sh
+    ├── setup_ubuntu.sh
+    ├── start_bot.ps1
+    ├── startup.bat
+    ├── startup.ps1
+    ├── startup.sh
+    ├── startup_orchestrator.py
+    ├── sync_github_pages.py
+    ├── telegram_deploy_bot.py
+    ├── test_automation.py
+    ├── test_web_dashboard.py
+    ├── update_vps.sh
+    └── web_dashboard.py

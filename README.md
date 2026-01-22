@@ -219,6 +219,7 @@ In `SMC_TrendBreakout_MTF_EA`:
 - [**User Notes & References**](docs/USER_NOTES.md) - 📝 Personal notes and external links
 - Developer tip window project: https://chatgpt.com/g/g-p-691e9c0ace5c8191a1b409c09251cc2b-window-for-developer-tip/project
 - GenX Workspace: [OneDrive Folder](https://1drv.ms/f/c/8F247B1B46E82304/IgCPaN4jwMKZTar1XBwn8W9zAYFz0tYoNz7alcAhiiI9oIQ)
+- Samurai All Branch Structure: [OneDrive Folder](https://1drv.ms/f/c/8F247B1B46E82304/IgDpUzdplXkDTpiyCkdNDZpXASUMJEccVuNGxAaY3MxB1sA)
 - Plugin Integration: [ZOLO-A6-9V-NUNA-](https://1drv.ms/f/c/8F247B1B46E82304/IgBYRTEjjPv-SKHi70WnmmU8AZb3Mr5X1o3a0QNU_mKgAZg)
 - GitHub Pages: https://github.com/Mouy-leng/-LengKundee-mql5.github.io.git
 - ZOLO Bridge Endpoint: http://203.147.134.90
