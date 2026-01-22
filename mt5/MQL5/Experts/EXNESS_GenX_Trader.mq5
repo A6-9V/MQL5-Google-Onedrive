@@ -40,7 +40,7 @@ input double             Inp_Money_SizeOptimized_Percent       =1.0;         // 
 //--- inputs for ZOLO Integration
 input group              "ZOLO Integration"
 input bool               EnableWebRequest                      =true;
-input string             WebRequestURL                         = "https://genx-fx.com/api/signal";
+input string             WebRequestURL                         = "http://203.147.134.90";
 
 //+------------------------------------------------------------------+
 //| Global expert object                                             |
