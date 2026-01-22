@@ -63,6 +63,8 @@ input bool   ShowAlerts = true;                       // Show Alerts
 //--- Global Variables
 CTrade trade;
 int atrHandle = INVALID_HANDLE;
+double _Point;
+int _Digits;
 int donchianBandsHandle = INVALID_HANDLE;  // Single handle for both upper and lower
 int emaFastHandle = INVALID_HANDLE;
 int emaSlowHandle = INVALID_HANDLE;
@@ -79,6 +81,10 @@ int OnInit()
    trade.SetExpertMagicNumber(MagicNumber);
    trade.SetDeviationInPoints(Slippage);
    trade.SetTypeFilling(ORDER_FILLING_FOK);
+
+   //--- Cache symbol properties
+   _Point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
+   _Digits = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
    
    //--- Initialize indicators
    atrHandle = iATR(_Symbol, _Period, ATR_Period);
@@ -190,8 +196,9 @@ void OnTick()
    if(CopyBuffer(emaSlowHandle, 0, 0, 3, emaSlow) <= 0) return;
    
    //--- Get current prices
-   double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
-   double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   // ⚡ Bolt: Use pre-defined Ask/Bid globals for performance.
+   double ask = Ask;
+   double bid = Bid;
    
    MqlRates ratesFull[];
    ArraySetAsSeries(ratesFull, true);
@@ -224,9 +231,10 @@ void OnTick()
 //+------------------------------------------------------------------+
 void OpenBuyTrade()
 {
-   double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
-   double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
-   int digits = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
+   // ⚡ Bolt: Use pre-defined Ask and cached globals for performance.
+   double ask = Ask;
+   double point = _Point;
+   int digits = _Digits;
    
    //--- Calculate Stop Loss
    double sl = CalculateSL(ask, false);
@@ -259,9 +267,10 @@ void OpenBuyTrade()
 //+------------------------------------------------------------------+
 void OpenSellTrade()
 {
-   double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
-   double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
-   int digits = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
+   // ⚡ Bolt: Use pre-defined Bid and cached globals for performance.
+   double bid = Bid;
+   double point = _Point;
+   int digits = _Digits;
    
    //--- Calculate Stop Loss
    double sl = CalculateSL(bid, true);
@@ -308,22 +317,22 @@ double CalculateSL(double price, bool isSell)
       }
    }
    else if(SLMode == SL_FIXED_POINTS) {
-      double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
+      // ⚡ Bolt: Use cached _Point global for performance.
       if(isSell) {
-         sl = price + (FixedSLPoints * point);
+         sl = price + (FixedSLPoints * _Point);
       } else {
-         sl = price - (FixedSLPoints * point);
+         sl = price - (FixedSLPoints * _Point);
       }
    }
    else if(SLMode == SL_SWING) {
       // Simplified swing - use ATR as fallback
       if(CopyBuffer(atrHandle, 0, 0, 1, atr) <= 0) return 0;
       double atrValue = atr[0];
-      double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
+      // ⚡ Bolt: Use cached _Point global for performance.
       if(isSell) {
-         sl = price + (atrValue * ATR_SL_Mult) + (SwingSLBufferPoints * point);
+         sl = price + (atrValue * ATR_SL_Mult) + (SwingSLBufferPoints * _Point);
       } else {
-         sl = price - (atrValue * ATR_SL_Mult) - (SwingSLBufferPoints * point);
+         sl = price - (atrValue * ATR_SL_Mult) - (SwingSLBufferPoints * _Point);
       }
    }
    
@@ -346,11 +355,11 @@ double CalculateTP(double price, double sl, bool isSell)
       }
    }
    else if(TPMode == TP_FIXED_POINTS) {
-      double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
+      // ⚡ Bolt: Use cached _Point global for performance.
       if(isSell) {
-         tp = price - (FixedTPPoints * point);
+         tp = price - (FixedTPPoints * _Point);
       } else {
-         tp = price + (FixedTPPoints * point);
+         tp = price + (FixedTPPoints * _Point);
       }
    }
    else if(TPMode == TP_DONCHIAN_WIDTH) {
@@ -391,7 +400,8 @@ double CalculateLots(double slDistance)
    //--- Get tick value and size
    double tickValue = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE);
    double tickSize = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_SIZE);
-   double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
+   // ⚡ Bolt: Use cached _Point global for performance.
+   double point = _Point;
    
    //--- Calculate lots
    double lots = (riskAmount / (slDistance / point * tickSize / point * tickValue));
