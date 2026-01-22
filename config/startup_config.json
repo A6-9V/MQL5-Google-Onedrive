@@ -21,6 +21,15 @@
       "platform_specific": null
     },
     {
+      "name": "Market Research Scheduler",
+      "executable": "python",
+      "args": ["scripts/schedule_research.py"],
+      "working_dir": null,
+      "wait_seconds": 5,
+      "required": false,
+      "platform_specific": null
+    },
+    {
       "name": "MT5 Terminal (Exness)",
       "executable": "C:\\Program Files\\MetaTrader 5 EXNESS\\terminal64.exe",
       "args": ["/portable"],
