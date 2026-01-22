@@ -525,9 +525,11 @@ void OnTick()
 
   // PERF: G_POINT is now guaranteed to be valid from OnInit.
   double point = G_POINT;
-  // PERF: Use pre-defined Ask/Bid globals in OnTick to avoid function call overhead.
-  double ask = Ask;
-  double bid = Bid;
+  // PERF: Use SymbolInfoTick to get both Ask and Bid efficiently.
+  MqlTick tick;
+  if(!SymbolInfoTick(_Symbol, tick)) return;
+  double ask = tick.ask;
+  double bid = tick.bid;
 
   double entry = (finalLong ? ask : bid);
   double sl = 0.0, tp = 0.0;
