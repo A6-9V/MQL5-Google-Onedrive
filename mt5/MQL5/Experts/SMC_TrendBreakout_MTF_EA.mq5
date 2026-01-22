@@ -72,10 +72,20 @@ input double DonchianTP_Mult       = 1.0;  // TP_DONCHIAN_WIDTH
 
 input int    SlippagePoints        = 30;
 
-input group "Gemini AI"
-input bool   UseGeminiFilter       = false; // Enable Gemini AI confirmation
-input string GeminiApiKey          = "";    // Paste your Gemini API Key here
-input string GeminiModel           = "gemini-1.5-flash"; // e.g., gemini-1.5-flash, gemini-1.5-pro, gemini-3.0-flash
+input group "AI Filter"
+input bool   UseGeminiFilter       = false; // Enable AI confirmation (formerly UseGeminiFilter)
+input ENUM_AI_PROVIDER AiProvider  = PROVIDER_GEMINI; // Select AI Provider
+
+input group "Gemini Settings"
+input string GeminiApiKey          = ""; // Paste your Gemini API Key here
+input string GeminiModel           = "gemini-1.5-flash"; // e.g., gemini-1.5-flash
+
+input group "Jules Settings"
+input string JulesApiKey           = ""; // Paste your Jules API Key here
+input string JulesApiUrl           = ""; // Enter Jules API URL (e.g. https://api.jules.ai/v1/completion)
+input string JulesModel            = "jules-v1"; // Jules Model ID
+
+input group "AI Context"
 input string PerplexityUrl         = "https://www.perplexity.ai/finance/EURZ"; // Bridge to Perplexity (Manual/Context)
 input int    RSIPeriod             = 14;    // Period for RSI context in AI prompt
 
@@ -458,7 +468,7 @@ void OnTick()
   double entry = (finalLong ? ask : bid);
   double sl = 0.0, tp = 0.0;
 
-  // --- Gemini AI Filter ---
+  // --- AI Filter ---
   if(UseGeminiFilter)
   {
     double rsiVal = 50.0;
@@ -472,14 +482,23 @@ void OnTick()
     atrVal = GetATR(sigBar, sigTime);
 
     string prompt = Ai_ConstructPrompt(_Symbol, (finalLong ? "BUY" : "SELL"), entry, gTrendDir, rsiVal, atrVal, PerplexityUrl);
-    bool aiConfirmed = Ai_AskGemini(GeminiApiKey, GeminiModel, prompt);
+    bool aiConfirmed = false;
+
+    if (AiProvider == PROVIDER_GEMINI)
+    {
+       aiConfirmed = Ai_AskGemini(GeminiApiKey, GeminiModel, prompt);
+    }
+    else if (AiProvider == PROVIDER_JULES)
+    {
+       aiConfirmed = Ai_AskJules(JulesApiKey, JulesModel, prompt, JulesApiUrl);
+    }
 
     if(!aiConfirmed)
     {
-      Print("Gemini AI rejected the trade or request failed.");
+      Print("AI Filter (" + EnumToString(AiProvider) + ") rejected the trade or request failed.");
       return;
     }
-    Print("Gemini AI confirmed the trade.");
+    Print("AI Filter (" + EnumToString(AiProvider) + ") confirmed the trade.");
   }
 
   // --- Build SL
