@@ -111,16 +111,24 @@ check_prerequisites() {
 
 # Start Python orchestrator
 start_python_orchestrator() {
+    local monitor_val="$1"
     log_info "Starting Python orchestrator..."
     
     local orchestrator_script="$SCRIPT_DIR/startup_orchestrator.py"
+    local cmd="python3 \"$orchestrator_script\""
     
+    if [[ -n "$monitor_val" ]]; then
+        cmd="$cmd --monitor $monitor_val"
+        log_info "Monitor mode enabled: $monitor_val seconds (0=infinite)"
+    fi
+
     if [[ ! -f "$orchestrator_script" ]]; then
         log_warn "Orchestrator script not found, skipping"
         return 0
     fi
     
-    if python3 "$orchestrator_script" >> "$LOG_FILE" 2>&1; then
+    # Evaluate the command properly
+    if eval "$cmd" >> "$LOG_FILE" 2>&1; then
         log_success "Python orchestrator completed successfully"
         return 0
     else
@@ -259,7 +267,7 @@ setup_cron_job() {
 
 # Print summary
 print_summary() {
-    local -n results=$1
+    local -n results_ref=$1
     
     echo "" | tee -a "$LOG_FILE"
     echo "============================================================" | tee -a "$LOG_FILE"
@@ -267,8 +275,8 @@ print_summary() {
     echo "============================================================" | tee -a "$LOG_FILE"
     echo "" | tee -a "$LOG_FILE"
     
-    for key in "${!results[@]}"; do
-        if [[ "${results[$key]}" == "0" ]]; then
+    for key in "${!results_ref[@]}"; do
+        if [[ "${results_ref[$key]}" == "0" ]]; then
             echo -e "  ${GREEN}✓${NC} $key" | tee -a "$LOG_FILE"
         else
             echo -e "  ${RED}✗${NC} $key" | tee -a "$LOG_FILE"
@@ -285,6 +293,7 @@ print_summary() {
 # Main execution
 main() {
     local setup_mode=""
+    local monitor_mode=""
     
     # Parse arguments
     while [[ $# -gt 0 ]]; do
@@ -297,13 +306,23 @@ main() {
                 setup_mode="cron"
                 shift
                 ;;
+            --monitor)
+                if [[ -n "${2:-}" ]] && [[ "$2" =~ ^[0-9]+$ ]]; then
+                    monitor_mode="$2"
+                    shift 2
+                else
+                    monitor_mode="0"  # Default to infinite if no arg provided or invalid
+                    shift
+                fi
+                ;;
             --help)
                 echo "Usage: $0 [OPTIONS]"
                 echo ""
                 echo "Options:"
-                echo "  --setup-systemd    Install systemd service for auto-startup"
-                echo "  --setup-cron       Install cron job for auto-startup"
-                echo "  --help             Show this help message"
+                echo "  --setup-systemd       Install systemd service for auto-startup"
+                echo "  --setup-cron          Install cron job for auto-startup"
+                echo "  --monitor [SECONDS]   Monitor processes (default: 0 = infinite)"
+                echo "  --help                Show this help message"
                 echo ""
                 exit 0
                 ;;
@@ -346,7 +365,7 @@ main() {
     echo "" | tee -a "$LOG_FILE"
     
     # Step 2: Start Python orchestrator
-    if start_python_orchestrator; then
+    if start_python_orchestrator "$monitor_mode"; then
         results["Python Orchestrator"]=0
     else
         results["Python Orchestrator"]=1
