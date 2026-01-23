@@ -1,7 +1,7 @@
 # Market Research Report
 
-Generated: 2026-01-22 19:35:40
+Generated: 2026-01-23 19:44:19
 
-## Analysis
+## Analysis Failed
 
-Gemini analysis skipped (API Key missing).
+No AI providers were available or both failed.

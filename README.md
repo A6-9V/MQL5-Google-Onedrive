@@ -178,20 +178,45 @@ bash scripts/set_github_secrets.sh vault
     - Check "Allow WebRequest for listed URL"
     - Add the URL: `http://203.147.134.90`
 
-### 🤖 AI Integration (Gemini)
+### 🤖 AI Integration (Gemini & Jules)
 
-The EA now supports **Google Gemini AI** to confirm trades before entry.
+The EA supports **Google Gemini** and **Jules AI** to confirm trades before entry.
 
 **Setup:**
-1.  **Get an API Key**: Go to [Google AI Studio](https://aistudio.google.com/) and create a free API key.
+1.  **Get an API Key**:
+    *   Gemini: [Google AI Studio](https://aistudio.google.com/)
+    *   Jules: Your Jules API Dashboard
 2.  **Configure MT5**:
     *   Go to **Tools → Options → Expert Advisors**.
     *   Check **"Allow WebRequest for listed URL"**.
-    *   Add the URL: `https://generativelanguage.googleapis.com`
+    *   Add the URLs:
+        *   `https://generativelanguage.googleapis.com` (for Gemini)
+        *   Your Jules API URL (e.g., `https://api.jules.ai` or similar)
 3.  **Configure the EA**:
-    *   Set `UseGeminiFilter` to `true`.
-    *   Paste your API Key into `GeminiApiKey`.
-    *   (Optional) Change `GeminiModel` if needed (default: `gemini-1.5-flash`).
+    *   Set `UseGeminiFilter` to `true` (Enable AI).
+    *   Select `AiProvider`: `PROVIDER_GEMINI` or `PROVIDER_JULES`.
+    *   Paste your API Key into `GeminiApiKey` or `JulesApiKey`.
+
+### 🧠 AI Market Research & Upgrade Automation (New!)
+
+Automate market analysis and code upgrades using Gemini and Jules.
+
+**Setup:**
+1.  Run the setup script:
+    ```bash
+    ./scripts/setup_research.sh
+    ```
+2.  Add your API keys to the `.env` file generated:
+    ```
+    GEMINI_API_KEY=...
+    JULES_API_KEY=...
+    JULES_API_URL=...
+    ```
+
+**Features:**
+- **Market Research**: Fetches real market data (via `yfinance`) and generates a report (`docs/market_research_report.md`).
+- **Code Upgrades**: Suggests EA improvements based on the research (`docs/upgrade_suggestions.md`).
+- **Scheduling**: Runs automatically every 4 hours via `scripts/schedule_research.py`.
 
 ### Auto SL/TP + risk management (EA)
 

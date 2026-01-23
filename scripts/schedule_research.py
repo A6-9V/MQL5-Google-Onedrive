@@ -10,6 +10,7 @@ import subprocess
 import logging
 import sys
 from pathlib import Path
+from dotenv import load_dotenv
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -39,6 +40,9 @@ def job():
     logger.info("Scheduled task completed successfully.")
 
 def main():
+    # Load env vars
+    load_dotenv()
+
     logger.info("Starting Schedule Research Service...")
 
     # Run immediately on start
