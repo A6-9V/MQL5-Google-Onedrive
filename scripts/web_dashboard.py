@@ -9,16 +9,27 @@ app = Flask(__name__)
 # Cache storage: filepath -> (mtime, html_content)
 _content_cache = {}
 
+# Constants for paths to avoid re-calculating on every request
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+README_PATH = os.path.join(BASE_DIR, '..', 'README.md')
+VERIFICATION_PATH = os.path.join(BASE_DIR, '..', 'VERIFICATION.md')
+
 def get_cached_markdown(filepath):
     """
     Returns the markdown content of a file converted to HTML, using a cache
     that invalidates based on file modification time.
+
+    Optimization: Uses os.stat() to get mtime and check existence in one syscall.
     """
-    if not os.path.exists(filepath):
+    try:
+        # Optimization: os.stat gets existence and mtime in one call
+        # removing the need for separate os.path.exists() check
+        stat_result = os.stat(filepath)
+    except OSError:
         return None
 
     try:
-        mtime = os.path.getmtime(filepath)
+        mtime = stat_result.st_mtime
         if filepath in _content_cache:
             cached_mtime, cached_html = _content_cache[filepath]
             if cached_mtime == mtime:
@@ -46,12 +57,9 @@ def health_check():
 @app.route('/')
 def dashboard():
     try:
-        base_dir = os.path.dirname(os.path.abspath(__file__))
-        readme_path = os.path.join(base_dir, '..', 'README.md')
-        verification_path = os.path.join(base_dir, '..', 'VERIFICATION.md')
-
-        html_readme = get_cached_markdown(readme_path) or "<p>README.md not found.</p>"
-        html_verification = get_cached_markdown(verification_path) or "<p>VERIFICATION.md not found.</p>"
+        # Use pre-calculated paths
+        html_readme = get_cached_markdown(README_PATH) or "<p>README.md not found.</p>"
+        html_verification = get_cached_markdown(VERIFICATION_PATH) or "<p>VERIFICATION.md not found.</p>"
 
         return render_template_string("""
         <!DOCTYPE html>
