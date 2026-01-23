@@ -150,15 +150,15 @@ void OnTick()
    }
    
    //--- Check for new bar
+   // ⚡ Bolt Optimization: Consolidate CopyRates calls.
    MqlRates rates[];
    ArraySetAsSeries(rates, true);
-   if(CopyRates(_Symbol, _Period, 0, 1, rates) <= 0) return;
-   datetime currentBarTime = rates[0].time;
-   bool isNewBar = (currentBarTime != lastBarTime);
+   if(CopyRates(_Symbol, _Period, 0, 3, rates) <= 0) return;
+   bool isNewBar = (rates[0].time != lastBarTime);
    
    if(!isNewBar) return; // Only check on new bar
    
-   lastBarTime = currentBarTime;
+   lastBarTime = rates[0].time;
    
    //--- Check if position already open
    if(PositionSelect(_Symbol)) {
@@ -190,17 +190,14 @@ void OnTick()
    if(CopyBuffer(emaSlowHandle, 0, 0, 3, emaSlow) <= 0) return;
    
    //--- Get current prices
-   double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
-   double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
-   
-   MqlRates ratesFull[];
-   ArraySetAsSeries(ratesFull, true);
-   if(CopyRates(_Symbol, _Period, 0, 3, ratesFull) <= 0) return;
+   // ⚡ Bolt Optimization: Use pre-defined Ask/Bid for performance.
+   double ask = Ask;
+   double bid = Bid;
    
    double close[3];
-   close[0] = ratesFull[0].close;
-   close[1] = ratesFull[1].close;
-   close[2] = ratesFull[2].close;
+   close[0] = rates[0].close;
+   close[1] = rates[1].close;
+   close[2] = rates[2].close;
    
    //--- Lower TF Confirmation: Check EMA direction
    bool bullishConfirmation = (emaFast[0] > emaSlow[0] && emaFast[1] > emaSlow[1]);
