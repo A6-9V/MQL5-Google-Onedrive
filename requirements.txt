@@ -1,16 +1,23 @@
-# Python Requirements for MQL5 Trading Automation
-# Install with: pip install -r requirements.txt
+# Core Python dependencies for MQL5 Trading Automation
+# Development and production requirements
 
-# Core
+# Telegram Bot
+python-telegram-bot>=20.0
+
+# HTTP Server (if needed)
 flask>=3.0.0
-markdown>=3.5.0
+gunicorn>=21.2.0
 
-# Optional: For enhanced features (uncomment if needed)
-requests>=2.28.0        # For HTTP requests and API calls
+# Utilities
+requests>=2.31.0
+pyyaml>=6.0
+
+# Optional: For enhanced features
+markdown>=3.5.0
 schedule>=1.1.0         # For advanced scheduling
 google-generativeai>=0.3.0 # For Gemini AI integration
-python-dotenv>=0.20.0   # For environment variable management
+python-dotenv>=1.0.0    # For environment variable management
+yfinance>=0.2.0         # For fetching market data
 # pytz>=2022.1            # For timezone handling
 # colorama>=0.4.5         # For colored terminal output (Windows)
 # psutil>=5.9.0           # For advanced process management
-yfinance>=0.2.0         # For fetching market data

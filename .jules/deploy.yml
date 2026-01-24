@@ -1,0 +1,79 @@
+name: MQL5 Automation - Dev to Cloud Deployment
+
+on:
+  push:
+    branches: [ main, develop ]
+  workflow_dispatch:
+
+jobs:
+  build-dev:
+    name: Build Development Docker Image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build development image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Dockerfile.dev
+          push: false
+          tags: mql5-automation:dev
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Save image
+        run: docker save mql5-automation:dev -o dev-image.tar
+
+  build-cloud:
+    name: Build Production Docker Image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build production image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: ./Dockerfile.cloud
+          push: false
+          tags: mql5-automation:cloud
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Save image
+        run: docker save mql5-automation:cloud -o cloud-image.tar
+
+  deploy-dev:
+    name: Deploy to Development Cloud
+    needs: build-dev
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/develop'
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Deploy to Dev Environment
+        run: |
+          echo "Deploying development build to cloud..."
+          # Add your deployment commands here
+          # Example: docker-compose -f docker-compose.dev.yml up -d
+
+  deploy-cloud:
+    name: Deploy to Production Cloud
+    needs: build-cloud
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Deploy to Production
+        run: |
+          echo "Deploying production build to cloud..."
+          # Add your deployment commands here
+          # Example: flyctl deploy
