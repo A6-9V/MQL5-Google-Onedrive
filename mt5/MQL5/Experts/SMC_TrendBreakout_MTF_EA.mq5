@@ -190,9 +190,10 @@ void OnTick()
    if(CopyBuffer(emaSlowHandle, 0, 0, 3, emaSlow) <= 0) return;
    
    //--- Get current prices
-   double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
-   double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
-   
+   const double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+   const double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   if (ask == 0 || bid == 0) return; // Exit if prices are not available
+
    MqlRates ratesFull[];
    ArraySetAsSeries(ratesFull, true);
    if(CopyRates(_Symbol, _Period, 0, 3, ratesFull) <= 0) return;
@@ -212,19 +213,19 @@ void OnTick()
    
    //--- Execute trades
    if(buySignal) {
-      OpenBuyTrade();
+      OpenBuyTrade(ask);
    }
    else if(sellSignal) {
-      OpenSellTrade();
+      OpenSellTrade(bid);
    }
 }
 
 //+------------------------------------------------------------------+
 //| Open Buy Trade                                                     |
 //+------------------------------------------------------------------+
-void OpenBuyTrade()
+void OpenBuyTrade(const double ask)
 {
-   double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
+   // ask price is now passed as an argument
    double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
    int digits = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
    
@@ -257,9 +258,9 @@ void OpenBuyTrade()
 //+------------------------------------------------------------------+
 //| Open Sell Trade                                                    |
 //+------------------------------------------------------------------+
-void OpenSellTrade()
+void OpenSellTrade(const double bid)
 {
-   double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
+   // bid price is now passed as an argument
    double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
    int digits = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
    
