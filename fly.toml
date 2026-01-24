@@ -1,5 +1,5 @@
 app = "mql5-automation"
-primary_region = "iad"
+primary_region = "sin"
 
 [build]
 
