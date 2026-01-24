@@ -70,6 +70,16 @@ int emaSlowHandle = INVALID_HANDLE;
 datetime lastBarTime = 0;
 bool positionOpen = false;
 
+//--- Cached Symbol Properties
+double _point;
+int    _digits;
+double _symbol_trade_tick_value;
+double _symbol_trade_tick_size;
+double _symbol_volume_min;
+double _symbol_volume_max;
+double _symbol_volume_step;
+double _symbol_margin_initial;
+
 //+------------------------------------------------------------------+
 //| Expert initialization function                                     |
 //+------------------------------------------------------------------+
@@ -80,6 +90,16 @@ int OnInit()
    trade.SetDeviationInPoints(Slippage);
    trade.SetTypeFilling(ORDER_FILLING_FOK);
    
+   //--- Cache symbol properties for performance
+   _point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
+   _digits = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
+   _symbol_trade_tick_value = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE);
+   _symbol_trade_tick_size = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_SIZE);
+   _symbol_volume_min = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN);
+   _symbol_volume_max = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MAX);
+   _symbol_volume_step = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_STEP);
+   _symbol_margin_initial = SymbolInfoDouble(_Symbol, SYMBOL_MARGIN_INITIAL);
+
    //--- Initialize indicators
    atrHandle = iATR(_Symbol, _Period, ATR_Period);
    if(atrHandle == INVALID_HANDLE) {
@@ -212,22 +232,18 @@ void OnTick()
    
    //--- Execute trades
    if(buySignal) {
-      OpenBuyTrade();
+      OpenBuyTrade(ask, bid);
    }
    else if(sellSignal) {
-      OpenSellTrade();
+      OpenSellTrade(ask, bid);
    }
 }
 
 //+------------------------------------------------------------------+
 //| Open Buy Trade                                                     |
 //+------------------------------------------------------------------+
-void OpenBuyTrade()
+void OpenBuyTrade(double ask, double bid)
 {
-   double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
-   double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
-   int digits = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
-   
    //--- Calculate Stop Loss
    double sl = CalculateSL(ask, false);
    if(sl <= 0) return;
@@ -237,8 +253,8 @@ void OpenBuyTrade()
    if(tp <= 0) return;
    
    //--- Normalize prices
-   sl = NormalizeDouble(sl, digits);
-   tp = NormalizeDouble(tp, digits);
+   sl = NormalizeDouble(sl, _digits);
+   tp = NormalizeDouble(tp, _digits);
    
    //--- Calculate lot size
    double lots = CalculateLots(ask - sl);
@@ -257,12 +273,8 @@ void OpenBuyTrade()
 //+------------------------------------------------------------------+
 //| Open Sell Trade                                                    |
 //+------------------------------------------------------------------+
-void OpenSellTrade()
+void OpenSellTrade(double ask, double bid)
 {
-   double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
-   double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
-   int digits = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
-   
    //--- Calculate Stop Loss
    double sl = CalculateSL(bid, true);
    if(sl <= 0) return;
@@ -272,8 +284,8 @@ void OpenSellTrade()
    if(tp <= 0) return;
    
    //--- Normalize prices
-   sl = NormalizeDouble(sl, digits);
-   tp = NormalizeDouble(tp, digits);
+   sl = NormalizeDouble(sl, _digits);
+   tp = NormalizeDouble(tp, _digits);
    
    //--- Calculate lot size
    double lots = CalculateLots(sl - bid);
@@ -308,22 +320,20 @@ double CalculateSL(double price, bool isSell)
       }
    }
    else if(SLMode == SL_FIXED_POINTS) {
-      double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
       if(isSell) {
-         sl = price + (FixedSLPoints * point);
+         sl = price + (FixedSLPoints * _point);
       } else {
-         sl = price - (FixedSLPoints * point);
+         sl = price - (FixedSLPoints * _point);
       }
    }
    else if(SLMode == SL_SWING) {
       // Simplified swing - use ATR as fallback
       if(CopyBuffer(atrHandle, 0, 0, 1, atr) <= 0) return 0;
       double atrValue = atr[0];
-      double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
       if(isSell) {
-         sl = price + (atrValue * ATR_SL_Mult) + (SwingSLBufferPoints * point);
+         sl = price + (atrValue * ATR_SL_Mult) + (SwingSLBufferPoints * _point);
       } else {
-         sl = price - (atrValue * ATR_SL_Mult) - (SwingSLBufferPoints * point);
+         sl = price - (atrValue * ATR_SL_Mult) - (SwingSLBufferPoints * _point);
       }
    }
    
@@ -346,11 +356,10 @@ double CalculateTP(double price, double sl, bool isSell)
       }
    }
    else if(TPMode == TP_FIXED_POINTS) {
-      double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
       if(isSell) {
-         tp = price - (FixedTPPoints * point);
+         tp = price - (FixedTPPoints * _point);
       } else {
-         tp = price + (FixedTPPoints * point);
+         tp = price + (FixedTPPoints * _point);
       }
    }
    else if(TPMode == TP_DONCHIAN_WIDTH) {
@@ -388,21 +397,12 @@ double CalculateLots(double slDistance)
    //--- Calculate risk amount
    double riskAmount = accountBalance * (RiskPercent / 100.0);
    
-   //--- Get tick value and size
-   double tickValue = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE);
-   double tickSize = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_SIZE);
-   double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
-   
    //--- Calculate lots
-   double lots = (riskAmount / (slDistance / point * tickSize / point * tickValue));
+   double lots = (riskAmount / (slDistance / _point * _symbol_trade_tick_size / _point * _symbol_trade_tick_value));
    
    //--- Normalize lot size
-   double minLot = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MIN);
-   double maxLot = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MAX);
-   double lotStep = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_STEP);
-   
-   lots = MathFloor(lots / lotStep) * lotStep;
-   lots = MathMax(minLot, MathMin(lots, maxLot));
+   lots = MathFloor(lots / _symbol_volume_step) * _symbol_volume_step;
+   lots = MathMax(_symbol_volume_min, MathMin(lots, _symbol_volume_max));
    
    //--- Apply user limits
    lots = MathMax(MinLots, MathMin(lots, MaxLots));
@@ -410,11 +410,11 @@ double CalculateLots(double slDistance)
    //--- Check margin if needed
    if(RiskClampToFreeMargin) {
       double freeMargin = AccountInfoDouble(ACCOUNT_MARGIN_FREE);
-      double marginRequired = SymbolInfoDouble(_Symbol, SYMBOL_MARGIN_INITIAL) * lots;
+      double marginRequired = _symbol_margin_initial * lots;
       if(marginRequired > freeMargin) {
-         lots = (freeMargin / SymbolInfoDouble(_Symbol, SYMBOL_MARGIN_INITIAL));
-         lots = MathFloor(lots / lotStep) * lotStep;
-         lots = MathMax(minLot, MathMin(lots, MaxLots));
+         lots = (freeMargin / _symbol_margin_initial);
+         lots = MathFloor(lots / _symbol_volume_step) * _symbol_volume_step;
+         lots = MathMax(_symbol_volume_min, MathMin(lots, _symbol_volume_max));
       }
    }
    
