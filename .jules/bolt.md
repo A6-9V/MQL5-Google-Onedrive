@@ -14,3 +14,7 @@ This journal is for CRITICAL, non-routine performance learnings ONLY.
 ## 2026-01-23 - Python File System Checks
 **Learning:** Checking for file existence (`os.path.exists`) before getting metadata (`os.path.getmtime`) introduces a redundant syscall. `os.stat()` provides both pieces of information in a single syscall and uses the EAFP (Easier to Ask for Forgiveness than Permission) pattern, which is more Pythonic and slightly faster, especially in high-frequency loops or handlers.
 **Action:** Use `os.stat()` when both existence and metadata are needed, wrapping it in a `try...except OSError` block.
+
+## 2026-01-24 - Sequential API Calls in Scripts
+**Learning:** The automation scripts (e.g., `market_research.py`) execute independent API calls (Gemini, Jules) sequentially, unnecessarily accumulating latency.
+**Action:** Use `concurrent.futures.ThreadPoolExecutor` to parallelize independent network-bound tasks in Python automation scripts to significantly reduce execution time.
