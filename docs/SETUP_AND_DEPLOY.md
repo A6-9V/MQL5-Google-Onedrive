@@ -27,9 +27,9 @@ Since the environment is Linux-based, MQL5 compilation must be done on a Windows
 4.  **Compile** `Experts\EXNESS_GenX_Trader.mq5` and `Experts\SMC_TrendBreakout_MTF_EA.mq5`.
 5.  Ensure `Include\ZoloBridge.mqh` and `Include\AiAssistant.mqh` are available.
 
-## 3. Redeploy VPS
+## 3. Redeploy VPS / Cloud
 
-To update the VPS with the latest dashboard and automation scripts:
+To update the VPS or Cloud environment with the latest dashboard and automation scripts:
 
 ### Option A: Via Docker Hub (Requires Credentials)
 If you have Docker Hub credentials configured:
@@ -43,6 +43,13 @@ SSH into your VPS and run:
 ./scripts/update_vps.sh
 ```
 This will pull the latest `mouyleng/mql5-trading-automation:latest` image and restart the services.
+
+### Option C: Deploy to Google Cloud
+To deploy to Google Cloud Platform (Cloud Run or App Engine):
+```bash
+./scripts/deploy_gcp.sh
+```
+This script handles authentication (if needed) and deployment to the configured project (`gen-lang-client-0535796538`). It supports both Cloud Run and App Engine Flex.
 
 ## 4. Verification
 

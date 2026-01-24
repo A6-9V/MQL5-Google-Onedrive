@@ -1,0 +1,13 @@
+.git
+.github
+.vscode
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.DS_Store
+venv
+env
+logs/
+dist/
+*.zip
