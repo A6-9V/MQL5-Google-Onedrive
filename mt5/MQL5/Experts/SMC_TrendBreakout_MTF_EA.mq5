@@ -210,21 +210,21 @@ void OnTick()
    bool buySignal = (close[1] > upperBand[1] && close[0] > close[1] && bullishConfirmation);
    bool sellSignal = (close[1] < lowerBand[1] && close[0] < close[1] && bearishConfirmation);
    
+   //--- BOLT Optimization: Pass ask/bid to trade functions to avoid redundant SymbolInfoDouble() calls in a hot path.
    //--- Execute trades
    if(buySignal) {
-      OpenBuyTrade();
+      OpenBuyTrade(ask);
    }
    else if(sellSignal) {
-      OpenSellTrade();
+      OpenSellTrade(bid);
    }
 }
 
 //+------------------------------------------------------------------+
 //| Open Buy Trade                                                     |
 //+------------------------------------------------------------------+
-void OpenBuyTrade()
+void OpenBuyTrade(double ask)
 {
-   double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
    double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
    int digits = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
    
@@ -257,9 +257,8 @@ void OpenBuyTrade()
 //+------------------------------------------------------------------+
 //| Open Sell Trade                                                    |
 //+------------------------------------------------------------------+
-void OpenSellTrade()
+void OpenSellTrade(double bid)
 {
-   double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
    double point = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
    int digits = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
    
