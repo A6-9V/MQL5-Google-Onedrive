@@ -9,6 +9,7 @@ import time
 import subprocess
 import logging
 import sys
+import os
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -42,6 +43,9 @@ def job():
 def main():
     # Load env vars
     load_dotenv()
+
+    if not os.environ.get("GEMINI_API_KEY") or not os.environ.get("JULES_API_KEY"):
+        logger.warning("Missing API keys in environment. Please check .env file.")
 
     logger.info("Starting Schedule Research Service...")
 
