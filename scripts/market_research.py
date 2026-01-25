@@ -10,6 +10,8 @@ import json
 import logging
 import requests
 import concurrent.futures
+# TODO: google.generativeai is deprecated, migrate to google.genai in future
+# import google.genai as genai
 import google.generativeai as genai
 from datetime import datetime
 from pathlib import Path

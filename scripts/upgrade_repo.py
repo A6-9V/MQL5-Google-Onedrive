@@ -7,6 +7,8 @@ Reads market research and suggests code upgrades using Gemini and Jules.
 import os
 import logging
 import requests
+# TODO: google.generativeai is deprecated, migrate to google.genai in future
+# import google.genai as genai
 import google.generativeai as genai
 from pathlib import Path
 from datetime import datetime
@@ -84,6 +86,13 @@ def main():
     with open(report_path, 'r') as f:
         research_content = f.read()
 
+    # Read NotebookLM context if available
+    notebook_context = ""
+    notebook_path = DOCS_DIR / "NOTEBOOK_LM_CONTEXT.txt"
+    if notebook_path.exists():
+        with open(notebook_path, 'r') as f:
+            notebook_context = f.read()
+
     # Get EA code context
     ea_path = REPO_ROOT / "mt5/MQL5/Experts/SMC_TrendBreakout_MTF_EA.mq5"
     ea_code = ""
@@ -92,10 +101,13 @@ def main():
             ea_code = f.read()[:5000]
 
     prompt = f"""
-    Based on the following market research, suggest 3 specific code upgrades or parameter adjustments for the trading bot.
+    Based on the following market research and optional NotebookLM context, suggest 3 specific code upgrades or parameter adjustments for the trading bot.
 
     Market Research:
     {research_content}
+
+    NotebookLM Context:
+    {notebook_context}
 
     Current EA Code Snippet (Top 5000 chars):
     {ea_code}
