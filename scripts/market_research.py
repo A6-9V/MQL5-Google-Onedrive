@@ -9,6 +9,7 @@ import sys
 import json
 import logging
 import requests
+import concurrent.futures
 import google.generativeai as genai
 from datetime import datetime
 from pathlib import Path
@@ -187,8 +188,13 @@ def main():
     with open(DATA_DIR / "market_snapshot.json", 'w') as f:
         json.dump(data, f, indent=2)
 
-    gemini_report = analyze_with_gemini(data)
-    jules_report = analyze_with_jules(data)
+    # Parallelize AI analysis calls
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        future_gemini = executor.submit(analyze_with_gemini, data)
+        future_jules = executor.submit(analyze_with_jules, data)
+
+        gemini_report = future_gemini.result()
+        jules_report = future_jules.result()
 
     report_path = DOCS_DIR / "market_research_report.md"
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
