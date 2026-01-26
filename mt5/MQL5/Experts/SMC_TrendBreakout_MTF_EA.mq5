@@ -170,15 +170,15 @@ void OnTick()
       return;
    }
    
-   //--- Check for new bar
+   //--- ⚡ Bolt: Consolidate CopyRates calls for performance.
+   //--- Fetch 3 bars at once to avoid a second redundant call later in the function.
    MqlRates rates[];
    ArraySetAsSeries(rates, true);
-   if(CopyRates(_Symbol, _Period, 0, 1, rates) <= 0) return;
+   if(CopyRates(_Symbol, _Period, 0, 3, rates) <= 0) return; // Fetch 3 bars
+   
+   //--- New bar check
    datetime currentBarTime = rates[0].time;
-   bool isNewBar = (currentBarTime != lastBarTime);
-   
-   if(!isNewBar) return; // Only check on new bar
-   
+   if(currentBarTime == lastBarTime) return; // Exit if not a new bar
    lastBarTime = currentBarTime;
    
    //--- Check if position already open
@@ -214,14 +214,10 @@ void OnTick()
    double ask = SymbolInfoDouble(_Symbol, SYMBOL_ASK);
    double bid = SymbolInfoDouble(_Symbol, SYMBOL_BID);
    
-   MqlRates ratesFull[];
-   ArraySetAsSeries(ratesFull, true);
-   if(CopyRates(_Symbol, _Period, 0, 3, ratesFull) <= 0) return;
-   
    double close[3];
-   close[0] = ratesFull[0].close;
-   close[1] = ratesFull[1].close;
-   close[2] = ratesFull[2].close;
+   close[0] = rates[0].close;
+   close[1] = rates[1].close;
+   close[2] = rates[2].close;
    
    //--- Lower TF Confirmation: Check EMA direction
    bool bullishConfirmation = (emaFast[0] > emaSlow[0] && emaFast[1] > emaSlow[1]);
