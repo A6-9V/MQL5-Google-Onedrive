@@ -20,6 +20,7 @@ from dotenv import load_dotenv
 # Try to import yfinance
 try:
     import yfinance as yf
+    import pandas as pd
     YFINANCE_AVAILABLE = True
 except ImportError:
     YFINANCE_AVAILABLE = False
@@ -46,32 +47,56 @@ def get_market_data():
             symbols = ["EURUSD=X", "GBPUSD=X", "GC=F", "BTC-USD"]
             market_data = {"timestamp": datetime.now().isoformat(), "symbols": {}}
 
-            for sym in symbols:
-                try:
-                    ticker = yf.Ticker(sym)
-                    # Fetch last 14 days to calculate simple RSI or just pass history
-                    hist = ticker.history(period="14d", interval="1d")
+            # ⚡ Bolt Optimization: Batch fetch all symbols to reduce HTTP requests
+            try:
+                # group_by='ticker' ensures consistent structure (MultiIndex if >1 symbol)
+                tickers_data = yf.download(symbols, period="14d", interval="1d", group_by='ticker', progress=False)
+            except Exception as e:
+                logger.error(f"Bulk download failed: {e}")
+                tickers_data = None
 
-                    if not hist.empty:
-                        current_price = hist['Close'].iloc[-1]
-                        prev_price = hist['Close'].iloc[-2] if len(hist) > 1 else current_price
+            if tickers_data is not None:
+                for sym in symbols:
+                    try:
+                        hist = None
+                        # Extract data for specific symbol
+                        if isinstance(tickers_data.columns, pd.MultiIndex):
+                            if sym in tickers_data.columns.levels[0]:
+                                hist = tickers_data[sym]
+                        else:
+                            # Fallback if structure is not MultiIndex (unlikely with group_by='ticker')
+                            hist = tickers_data
 
-                        # Simple Trend (Price vs 5-day SMA)
-                        sma_5 = hist['Close'].tail(5).mean()
-                        trend = "UP" if current_price > sma_5 else "DOWN"
+                        if hist is not None and not hist.empty:
+                            # Clean up data
+                            if 'Close' in hist.columns:
+                                hist = hist.dropna(subset=['Close'])
+                            else:
+                                continue
 
-                        # Volatility (High - Low)
-                        daily_range = hist['High'].iloc[-1] - hist['Low'].iloc[-1]
-                        volatility = "HIGH" if daily_range > (current_price * 0.01) else "LOW" # Arbitrary threshold
+                            if hist.empty:
+                                continue
 
-                        market_data["symbols"][sym] = {
-                            "price": round(current_price, 4),
-                            "trend": trend,
-                            "volatility": volatility,
-                            "history_last_5_closes": [round(x, 4) for x in hist['Close'].tail(5).tolist()]
-                        }
-                except Exception as e:
-                    logger.warning(f"Failed to fetch {sym}: {e}")
+                            current_price = hist['Close'].iloc[-1]
+                            # Check if we have enough data
+                            prev_price = hist['Close'].iloc[-2] if len(hist) > 1 else current_price
+
+                            # Simple Trend (Price vs 5-day SMA)
+                            sma_5 = hist['Close'].tail(5).mean()
+                            trend = "UP" if current_price > sma_5 else "DOWN"
+
+                            # Volatility (High - Low)
+                            daily_range = hist['High'].iloc[-1] - hist['Low'].iloc[-1]
+                            volatility = "HIGH" if daily_range > (current_price * 0.01) else "LOW" # Arbitrary threshold
+
+                            market_data["symbols"][sym] = {
+                                "price": round(current_price, 4),
+                                "trend": trend,
+                                "volatility": volatility,
+                                "history_last_5_closes": [round(x, 4) for x in hist['Close'].tail(5).tolist()]
+                            }
+                    except Exception as e:
+                        logger.warning(f"Failed to process {sym}: {e}")
 
             if market_data["symbols"]:
                 data = market_data
