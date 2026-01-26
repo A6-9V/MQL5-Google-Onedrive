@@ -367,8 +367,13 @@ double CalculateTP(double price, double sl, bool isSell)
       // iBands buffers: 1=upper, 2=lower
       if(CopyBuffer(donchianBandsHandle, 1, 0, 1, upperBand) <= 0 ||
          CopyBuffer(donchianBandsHandle, 2, 0, 1, lowerBand) <= 0) {
+         // --- ⚡ Bolt: Removed recursive call. Replaced with direct fallback logic for performance and stability.
          // Fallback to RR
-         return CalculateTP(price, sl, isSell);
+         if(isSell) {
+            return price - (slDistance * RR);
+         } else {
+            return price + (slDistance * RR);
+         }
       }
       double donchianWidth = (upperBand[0] - lowerBand[0]) * DonchianTP_Mult;
       if(isSell) {
