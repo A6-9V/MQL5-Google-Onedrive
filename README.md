@@ -81,6 +81,8 @@ Quick start:
 
 📚 **Documentation**:
 - [**Full Documentation Index**](docs/INDEX.md) - 👈 Start here for all guides
+- [**Setup & Deployment (Comprehensive)**](docs/SETUP_AND_DEPLOY.md) - 🛠️ Start here for manual setup & GCP
+- [WSL & VPS Guide](docs/WSL_AND_VPS_DEPLOYMENT.md) - Windows/Linux setup guide
 - [Quick Reference Guide](QUICK_REFERENCE.md) - Command cheat sheet
 - [Verification Report](VERIFICATION.md) - System status and test results
 - [Startup Automation Guide](docs/Startup_Automation_Guide.md) - Complete guide
@@ -197,6 +199,10 @@ The EA supports **Google Gemini** and **Jules AI** to confirm trades before entr
     *   Select `AiProvider`: `PROVIDER_GEMINI` or `PROVIDER_JULES`.
     *   Paste your API Key into `GeminiApiKey` or `JulesApiKey`.
 
+    **Shared/Default Keys:**
+    *   **Gemini**: `[INSERT_GEMINI_API_KEY]`
+    *   **Jules**: `[INSERT_JULES_API_KEY]`
+
 ### 🧠 AI Market Research & Upgrade Automation (New!)
 
 Automate market analysis and code upgrades using Gemini and Jules.
@@ -242,8 +248,11 @@ In `SMC_TrendBreakout_MTF_EA`:
 ### Project links
 
 - [**User Notes & References**](docs/USER_NOTES.md) - 📝 Personal notes and external links
+- **OneDrive Vault Password**: `[ACCESS_CODE_REQUIRED]` (Access Code)
+- **NotebookLM Context**: [NotebookLM](https://notebooklm.google.com/notebook/0e4dfc9b-d57d-4cfc-812d-905d37d67402)
+- **Cursor Connect**: [Join Session](https://prod.liveshare.vsengsaas.visualstudio.com/join?9C5AED55D7D6624FE2E1B50AD9F14D1339A5)
 - Developer tip window project: https://chatgpt.com/g/g-p-691e9c0ace5c8191a1b409c09251cc2b-window-for-developer-tip/project
-- GenX Workspace: [OneDrive Folder](https://1drv.ms/f/c/8F247B1B46E82304/IgCPaN4jwMKZTar1XBwn8W9zAYFz0tYoNz7alcAhiiI9oIQ)
+- GenX Workspace (VSCode): [OneDrive Folder](https://1drv.ms/f/c/8F247B1B46E82304/IgCPaN4jwMKZTar1XBwn8W9zAYFz0tYoNz7alcAhiiI9oIQ)
 - Samurai All Branch Structure: [OneDrive Folder](https://1drv.ms/f/c/8F247B1B46E82304/IgDpUzdplXkDTpiyCkdNDZpXASUMJEccVuNGxAaY3MxB1sA)
 - Plugin Integration: [ZOLO-A6-9V-NUNA-](https://1drv.ms/f/c/8F247B1B46E82304/IgBYRTEjjPv-SKHi70WnmmU8AZb3Mr5X1o3a0QNU_mKgAZg)
 - GitHub Pages: https://github.com/Mouy-leng/-LengKundee-mql5.github.io.git
