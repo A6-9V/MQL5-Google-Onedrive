@@ -67,7 +67,7 @@ def ask_gemini(prompt):
 
     try:
         genai.configure(api_key=api_key)
-        model_name = os.environ.get("GEMINI_MODEL", 'gemini-2.0-flash')
+        model_name = os.environ.get("GEMINI_MODEL", 'gemini-flash-latest')
         model = genai.GenerativeModel(model_name)
         response = model.generate_content(prompt)
         return response.text

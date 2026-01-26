@@ -103,7 +103,7 @@ def analyze_with_gemini(data):
     try:
         genai.configure(api_key=api_key)
         # Fallback models if one isn't available
-        model_name = os.environ.get("GEMINI_MODEL", 'gemini-2.0-flash')
+        model_name = os.environ.get("GEMINI_MODEL", 'gemini-flash-latest')
         model = genai.GenerativeModel(model_name)
 
         prompt = f"""
