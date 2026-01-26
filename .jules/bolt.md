@@ -14,3 +14,7 @@ This journal is for CRITICAL, non-routine performance learnings ONLY.
 ## 2026-01-23 - Python File System Checks
 **Learning:** Checking for file existence (`os.path.exists`) before getting metadata (`os.path.getmtime`) introduces a redundant syscall. `os.stat()` provides both pieces of information in a single syscall and uses the EAFP (Easier to Ask for Forgiveness than Permission) pattern, which is more Pythonic and slightly faster, especially in high-frequency loops or handlers.
 **Action:** Use `os.stat()` when both existence and metadata are needed, wrapping it in a `try...except OSError` block.
+
+## 2026-01-26 - yfinance Bulk Download
+**Learning:** `yfinance` Ticker.history in a loop is significantly slower than `yf.download` with a list of tickers due to sequential HTTP requests. `yf.download` with `group_by='ticker'` provides a consistent MultiIndex structure even for single tickers, simplifying bulk processing.
+**Action:** Always prefer `yf.download(tickers)` over iterating `yf.Ticker(t)` when fetching data for multiple symbols.
