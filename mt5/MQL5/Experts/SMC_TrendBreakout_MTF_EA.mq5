@@ -227,27 +227,27 @@ void OnTick()
    bool buySignal = (close[1] > upperBand[1] && close[0] > close[1] && bullishConfirmation);
    bool sellSignal = (close[1] < lowerBand[1] && close[0] < close[1] && bearishConfirmation);
    
-   //--- BOLT Optimization: Pass ask/bid to trade functions to avoid redundant SymbolInfoDouble() calls in a hot path.
+   //--- BOLT Optimization: Pass indicator values to trade functions to avoid redundant CopyBuffer() calls in a hot path.
    //--- Execute trades
    if(buySignal) {
-      OpenBuyTrade(ask);
+      OpenBuyTrade(ask, atr[0], upperBand[0], lowerBand[0]);
    }
    else if(sellSignal) {
-      OpenSellTrade(bid);
+      OpenSellTrade(bid, atr[0], upperBand[0], lowerBand[0]);
    }
 }
 
 //+------------------------------------------------------------------+
 //| Open Buy Trade                                                     |
 //+------------------------------------------------------------------+
-void OpenBuyTrade(double ask)
+void OpenBuyTrade(double ask, double atrValue, double upperBandValue, double lowerBandValue)
 {
    //--- Calculate Stop Loss
-   double sl = CalculateSL(ask, false);
+   double sl = CalculateSL(ask, false, atrValue);
    if(sl <= 0) return;
    
    //--- Calculate Take Profit
-   double tp = CalculateTP(ask, sl, false);
+   double tp = CalculateTP(ask, sl, false, upperBandValue, lowerBandValue);
    if(tp <= 0) return;
    
    //--- Normalize prices
@@ -271,14 +271,14 @@ void OpenBuyTrade(double ask)
 //+------------------------------------------------------------------+
 //| Open Sell Trade                                                    |
 //+------------------------------------------------------------------+
-void OpenSellTrade(double bid)
+void OpenSellTrade(double bid, double atrValue, double upperBandValue, double lowerBandValue)
 {
    //--- Calculate Stop Loss
-   double sl = CalculateSL(bid, true);
+   double sl = CalculateSL(bid, true, atrValue);
    if(sl <= 0) return;
    
    //--- Calculate Take Profit
-   double tp = CalculateTP(bid, sl, true);
+   double tp = CalculateTP(bid, sl, true, upperBandValue, lowerBandValue);
    if(tp <= 0) return;
    
    //--- Normalize prices
@@ -302,15 +302,12 @@ void OpenSellTrade(double bid)
 //+------------------------------------------------------------------+
 //| Calculate Stop Loss                                                 |
 //+------------------------------------------------------------------+
-double CalculateSL(double price, bool isSell)
+double CalculateSL(double price, bool isSell, double atrValue)
 {
    double sl = 0;
-   double atr[];
-   ArraySetAsSeries(atr, true);
    
    if(SLMode == SL_ATR) {
-      if(CopyBuffer(atrHandle, 0, 0, 1, atr) <= 0) return 0;
-      double atrValue = atr[0];
+      if(atrValue <= 0) return 0;
       if(isSell) {
          sl = price + (atrValue * ATR_SL_Mult);
       } else {
@@ -326,8 +323,7 @@ double CalculateSL(double price, bool isSell)
    }
    else if(SLMode == SL_SWING) {
       // Simplified swing - use ATR as fallback
-      if(CopyBuffer(atrHandle, 0, 0, 1, atr) <= 0) return 0;
-      double atrValue = atr[0];
+      if(atrValue <= 0) return 0;
       if(isSell) {
          sl = price + (atrValue * ATR_SL_Mult) + (SwingSLBufferPoints * g_point);
       } else {
@@ -341,7 +337,7 @@ double CalculateSL(double price, bool isSell)
 //+------------------------------------------------------------------+
 //| Calculate Take Profit                                               |
 //+------------------------------------------------------------------+
-double CalculateTP(double price, double sl, bool isSell)
+double CalculateTP(double price, double sl, bool isSell, double upperBandValue, double lowerBandValue)
 {
    double tp = 0;
    double slDistance = MathAbs(price - sl);
@@ -361,20 +357,21 @@ double CalculateTP(double price, double sl, bool isSell)
       }
    }
    else if(TPMode == TP_DONCHIAN_WIDTH) {
-      double upperBand[], lowerBand[];
-      ArraySetAsSeries(upperBand, true);
-      ArraySetAsSeries(lowerBand, true);
-      // iBands buffers: 1=upper, 2=lower
-      if(CopyBuffer(donchianBandsHandle, 1, 0, 1, upperBand) <= 0 ||
-         CopyBuffer(donchianBandsHandle, 2, 0, 1, lowerBand) <= 0) {
-         // Fallback to RR
-         return CalculateTP(price, sl, isSell);
+      //--- If Donchian values are invalid, fallback to RR
+      if(upperBandValue <= 0 || lowerBandValue <= 0) {
+         if(isSell) {
+            tp = price - (slDistance * RR);
+         } else {
+            tp = price + (slDistance * RR);
+         }
       }
-      double donchianWidth = (upperBand[0] - lowerBand[0]) * DonchianTP_Mult;
-      if(isSell) {
-         tp = price - donchianWidth;
-      } else {
-         tp = price + donchianWidth;
+      else {
+         double donchianWidth = (upperBandValue - lowerBandValue) * DonchianTP_Mult;
+         if(isSell) {
+            tp = price - donchianWidth;
+         } else {
+            tp = price + donchianWidth;
+         }
       }
    }
    
