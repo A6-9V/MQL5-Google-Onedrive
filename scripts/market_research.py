@@ -5,7 +5,6 @@ Connects to Gemini and Jules to analyze market data and generate research report
 """
 
 import os
-import sys
 import json
 import logging
 import requests
@@ -79,8 +78,6 @@ def get_market_data():
 
                             current_price = hist['Close'].iloc[-1]
                             # Check if we have enough data
-                            prev_price = hist['Close'].iloc[-2] if len(hist) > 1 else current_price
-
                             # Simple Trend (Price vs 5-day SMA)
                             sma_5 = hist['Close'].tail(5).mean()
                             trend = "UP" if current_price > sma_5 else "DOWN"
