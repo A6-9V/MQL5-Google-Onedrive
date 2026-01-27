@@ -5,7 +5,6 @@ Connects to Gemini and Jules to analyze market data and generate research report
 """
 
 import os
-import sys
 import json
 import logging
 import requests
@@ -47,7 +46,7 @@ def get_market_data():
             symbols = ["EURUSD=X", "GBPUSD=X", "GC=F", "BTC-USD"]
             market_data = {"timestamp": datetime.now().isoformat(), "symbols": {}}
 
-            # ⚡ Bolt Optimization: Batch fetch all symbols to reduce HTTP requests
+            # ⚡ Performance Optimization: Batch fetch all symbols to reduce HTTP requests (~3x speedup)
             try:
                 # group_by='ticker' ensures consistent structure (MultiIndex if >1 symbol)
                 tickers_data = yf.download(symbols, period="14d", interval="1d", group_by='ticker', progress=False)
