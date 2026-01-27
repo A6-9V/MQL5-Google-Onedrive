@@ -43,26 +43,6 @@ def get_prs_via_gh_cli():
     return None
 
 
-def get_prs_via_git():
-    """Get PR information via git branches."""
-    # Get all branches that might be PR branches
-    result = run_command(["git", "branch", "-r", "--no-merged", "main"])
-    branches = []
-    if result and result.returncode == 0:
-        branches = [b.strip() for b in result.stdout.strip().split("\n") 
-                    if b.strip() and "origin/main" not in b and "HEAD" not in b]
-    
-    # Get merged branches that might have been PRs
-    result_merged = run_command(["git", "branch", "-r", "--merged", "main"])
-    merged_branches = []
-    if result_merged and result_merged.returncode == 0:
-        merged_branches = [b.strip() for b in result_merged.stdout.strip().split("\n") 
-                          if b.strip() and "origin/main" not in b and "HEAD" not in b]
-    
-    return {
-        "open": branches,
-        "merged": merged_branches
-    }
 
 
 def analyze_branch_name(branch_name):
@@ -100,30 +80,66 @@ def analyze_branch_name(branch_name):
     return info
 
 
-def get_branch_info(branch_name):
-    """Get detailed information about a branch."""
-    branch = branch_name.replace("origin/", "")
+def get_branches_info_git():
+    """
+    Get all remote branches and their status (ahead/behind main) using a single git command.
+    Returns a dictionary with 'open' and 'merged' lists of branch info dicts.
+    """
+    # Format: refname|committerdate|ahead-behind:origin/main
+    # Note: ahead-behind requires git 2.41+.
     
-    # Get commit count
-    result = run_command(["git", "log", "--oneline", f"main..{branch_name}"])
-    commit_count = 0
-    commits = []
+    cmd = [
+        "git", "for-each-ref",
+        "--format=%(refname:short)|%(committerdate:iso)|%(ahead-behind:origin/main)",
+        "refs/remotes/origin"
+    ]
+    
+    result = run_command(cmd)
+
+    open_branches = []
+    merged_branches = []
+    
     if result and result.returncode == 0:
-        commits = [c.strip() for c in result.stdout.strip().split("\n") if c.strip()]
-        commit_count = len(commits)
-    
-    # Get last commit date
-    result = run_command(["git", "log", "-1", "--format=%ci", branch_name])
-    last_commit = None
-    if result and result.returncode == 0 and result.stdout.strip():
-        last_commit = result.stdout.strip()
-    
+        lines = result.stdout.strip().split("\n")
+        for line in lines:
+            if not line.strip(): continue
+            parts = line.split("|")
+            if len(parts) < 3: continue
+
+            branch_name = parts[0]
+            last_commit_date = parts[1]
+            ahead_behind = parts[2] # "ahead behind"
+
+            # Skip main itself and HEAD
+            if "origin/main" in branch_name or "HEAD" in branch_name:
+                continue
+
+            try:
+                ahead, behind = map(int, ahead_behind.split())
+            except ValueError:
+                # Fallback if format parsing fails
+                ahead, behind = 0, 0
+
+            info = analyze_branch_name(branch_name)
+
+            branch_data = {
+                "branch": branch_name.replace("origin/", ""), # Short name
+                "full_name": branch_name,
+                "commit_count": ahead,
+                "last_commit_date": last_commit_date,
+                "description": info["description"],
+                "category": info["category"]
+            }
+
+            # If ahead == 0, it means all commits in branch are already in main (merged)
+            if ahead == 0:
+                merged_branches.append(branch_data)
+            else:
+                open_branches.append(branch_data)
+
     return {
-        "branch": branch,
-        "full_name": branch_name,
-        "commit_count": commit_count,
-        "commits": commits[:5],  # First 5 commits
-        "last_commit_date": last_commit
+        "open": open_branches,
+        "merged": merged_branches
     }
 
 
@@ -180,14 +196,14 @@ def main():
                 print(f"  PR #{pr.get('number', 'N/A')}: {pr.get('title', 'No title')}")
     
     else:
-        # Fallback to git branch analysis
+        # Fallback to git branch analysis (Optimized for Git 2.41+)
         print("GitHub CLI not available, analyzing branches...")
         print()
         
-        branch_info = get_prs_via_git()
+        branch_data = get_branches_info_git()
         
-        open_branches = branch_info["open"]
-        merged_branches = branch_info["merged"]
+        open_branches = branch_data["open"]
+        merged_branches = branch_data["merged"]
         
         print(f"Open branches (potential PRs): {len(open_branches)}")
         print(f"Merged branches (completed PRs): {len(merged_branches)}")
@@ -195,26 +211,24 @@ def main():
         
         # Categorize open branches
         categories = defaultdict(list)
-        for branch in open_branches:
-            info = analyze_branch_name(branch)
-            categories[info["category"]].append((branch, info))
+        for b_data in open_branches:
+            categories[b_data["category"]].append(b_data)
         
         print("=" * 80)
         print("OPEN BRANCHES (Potential Pull Requests)")
         print("=" * 80)
         print()
         
-        for category, branches in sorted(categories.items()):
-            print(f"{category.upper()}: {len(branches)} branches")
-            for branch, info in branches[:10]:  # Show first 10
-                branch_details = get_branch_info(branch)
-                print(f"  - {info['description']}")
-                print(f"    Branch: {branch_details['branch']}")
-                print(f"    Commits: {branch_details['commit_count']}")
-                if branch_details['last_commit_date']:
-                    print(f"    Last commit: {branch_details['last_commit_date']}")
-            if len(branches) > 10:
-                print(f"    ... and {len(branches) - 10} more")
+        for category, b_list in sorted(categories.items()):
+            print(f"{category.upper()}: {len(b_list)} branches")
+            for b_data in b_list[:10]:  # Show first 10
+                print(f"  - {b_data['description']}")
+                print(f"    Branch: {b_data['branch']}")
+                print(f"    Commits: {b_data['commit_count']}")
+                if b_data['last_commit_date']:
+                    print(f"    Last commit: {b_data['last_commit_date']}")
+            if len(b_list) > 10:
+                print(f"    ... and {len(b_list) - 10} more")
             print()
         
         print("=" * 80)
@@ -222,9 +236,11 @@ def main():
         print("=" * 80)
         print(f"\nTotal merged: {len(merged_branches)}")
         print("\nRecent merged branches:")
-        for branch in merged_branches[:20]:
-            info = analyze_branch_name(branch)
-            print(f"  - {info['description']}")
+        # Sort merged branches by date (descending)
+        merged_branches.sort(key=lambda x: x['last_commit_date'], reverse=True)
+
+        for b_data in merged_branches[:20]:
+            print(f"  - {b_data['description']}")
     
     print("\n" + "=" * 80)
     print("REVIEW COMPLETE")
