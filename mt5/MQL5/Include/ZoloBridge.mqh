@@ -24,13 +24,31 @@ string Zolo_SanitizeJSON(string text)
 }
 
 //+------------------------------------------------------------------+
+//| Helper: Encryption Stub                                          |
+//| TODO: Implement encryption from Replit                           |
+//| URL: https://replit.com/join/rtvyfhtnow-keamouyleng369           |
+//+------------------------------------------------------------------+
+string Zolo_Encrypt(string text)
+{
+   // Placeholder: Return text as-is until encryption is implemented
+   // When implemented, this should return Base64 encoded ciphertext.
+   // See Replit link for implementation details.
+   return text;
+}
+
+//+------------------------------------------------------------------+
 //| ZOLO Bridge Function                                             |
 //+------------------------------------------------------------------+
 void SendSignalToBridge(string msg, bool enable, string url)
 {
    if (!enable || url == "") return;
 
-   string sanitized_msg = Zolo_SanitizeJSON(msg);
+   // Encrypt the message (currently a pass-through)
+   string encrypted_msg = Zolo_Encrypt(msg);
+
+   // Sanitize for JSON inclusion
+   string sanitized_msg = Zolo_SanitizeJSON(encrypted_msg);
+
    string body = "{\"event\":\"signal\",\"message\":\"" + sanitized_msg + "\"}";
 
    char data[];
