@@ -73,13 +73,17 @@ class StartupOrchestrator:
             self.logger.warning(f"Config file not found: {self.config_file}")
             self.logger.info("Using default configuration")
             self.components = self.get_default_components()
+            self.config_data = None
         else:
             with open(self.config_file, 'r') as f:
-                config_data = json.load(f)
+                self.config_data = json.load(f)
                 self.components = [
-                    ComponentConfig(**comp) for comp in config_data.get('components', [])
+                    ComponentConfig(**comp) for comp in self.config_data.get('components', [])
                 ]
             self.logger.info(f"Loaded configuration from {self.config_file}")
+            max_retries = self.config_data.get('settings', {}).get('max_startup_retries', 1)
+            if max_retries > 1:
+                self.logger.info(f"Retry enabled: up to {max_retries} retries for failed components")
 
     def get_default_components(self) -> list[ComponentConfig]:
         """Return default component configuration."""
@@ -140,6 +144,37 @@ class StartupOrchestrator:
         else:
             return False
 
+    def find_mt5_executable(self, preferred_path: str) -> Optional[str]:
+        """Find MT5 executable, trying preferred path first, then fallback paths."""
+        # Check preferred path first
+        if Path(preferred_path).exists():
+            self.logger.info(f"Found MT5 at preferred path: {preferred_path}")
+            return preferred_path
+        
+        self.logger.info(f"Preferred MT5 path not found: {preferred_path}")
+        self.logger.info("Trying fallback paths...")
+        
+        # Fallback paths (check all possible MT5 installations)
+        fallback_paths = [
+            "C:\\Program Files\\MetaTrader 5 EXNESS\\terminal64.exe",
+            "C:\\Program Files\\Exness Terminal\\terminal64.exe",
+            "C:\\Program Files\\MetaTrader 5\\terminal64.exe",
+            os.path.expandvars("%APPDATA%\\MetaQuotes\\Terminal\\terminal64.exe"),
+            "C:\\Program Files (x86)\\Exness Terminal\\terminal64.exe",
+            "C:\\Program Files (x86)\\MetaTrader 5\\terminal64.exe"
+        ]
+        
+        # Remove preferred path from fallback list to avoid duplicate check
+        fallback_paths = [p for p in fallback_paths if p != preferred_path]
+        
+        for path in fallback_paths:
+            if Path(path).exists():
+                self.logger.info(f"Using fallback MT5 path: {path}")
+                return path
+        
+        self.logger.error("No MT5 Terminal found in any of the checked paths")
+        return None
+
     def start_component(self, component: ComponentConfig) -> bool:
         """Start a single component."""
         if not self.is_component_compatible(component):
@@ -153,7 +188,20 @@ class StartupOrchestrator:
             return True
 
         try:
-            cmd = [component.executable] + component.args
+            # For MT5 Terminal, check if executable exists, try fallback paths if not
+            executable = component.executable
+            if "terminal64.exe" in executable or "MT5" in component.name or "Exness" in component.name:
+                found_path = self.find_mt5_executable(executable)
+                if not found_path:
+                    self.logger.error(f"MT5 Terminal not found. Tried: {executable}")
+                    if component.required:
+                        return False
+                    else:
+                        self.logger.warning(f"Skipping optional component: {component.name}")
+                        return True
+                executable = found_path
+            
+            cmd = [executable] + component.args
             working_dir = component.working_dir or str(REPO_ROOT)
             
             process = subprocess.Popen(
@@ -192,7 +240,7 @@ class StartupOrchestrator:
             return not component.required
 
     def start_all(self) -> bool:
-        """Start all configured components."""
+        """Start all configured components with retry logic."""
         if not self.check_system_requirements():
             return False
 
@@ -200,12 +248,35 @@ class StartupOrchestrator:
         self.logger.info("Starting all components...")
         self.logger.info("=" * 60)
         
+        # Load retry settings from config
+        max_retries = 1  # Default to 1 attempt (no retry)
+        if hasattr(self, 'config_data') and self.config_data:
+            max_retries = self.config_data.get('settings', {}).get('max_startup_retries', 1)
+        
         success = True
         for component in self.components:
-            if not self.start_component(component):
-                self.logger.error(f"Failed to start required component: {component.name}")
-                success = False
-                break
+            retry_count = 0
+            component_success = False
+            
+            while retry_count <= max_retries:
+                if retry_count > 0:
+                    self.logger.info(f"Retry attempt {retry_count}/{max_retries} for {component.name}...")
+                    time.sleep(2)  # Brief delay before retry
+                
+                component_success = self.start_component(component)
+                
+                if component_success:
+                    break
+                
+                retry_count += 1
+            
+            if not component_success:
+                if component.required:
+                    self.logger.error(f"Failed to start required component: {component.name} after {retry_count} attempt(s)")
+                    success = False
+                    break
+                else:
+                    self.logger.warning(f"Optional component {component.name} failed but continuing...")
         
         if success:
             self.logger.info("=" * 60)
@@ -338,6 +409,9 @@ def main() -> int:
         if args.monitor is not None:
             monitor_duration = None if args.monitor == 0 else args.monitor
             orchestrator.monitor_processes(duration=monitor_duration)
+        else:
+            # If no monitor specified, keep processes running (don't stop them)
+            orchestrator.logger.info("Processes started. Use --monitor to monitor or let them run independently.")
         
         return 0
         
@@ -348,8 +422,12 @@ def main() -> int:
         orchestrator.logger.error(f"Unexpected error: {e}", exc_info=True)
         return 1
     finally:
-        if not args.monitor:
-            orchestrator.stop_all()
+        # Only stop processes if monitor was NOT used (monitor keeps them alive)
+        # When monitor is used (even 0 for infinite), don't stop processes
+        if args.monitor is None:
+            # Only stop if explicitly not monitoring - but for auto-start, we want to keep running
+            # So we'll skip stopping when run from scheduled task
+            pass  # Don't stop processes - let them run independently
 
 
 if __name__ == "__main__":

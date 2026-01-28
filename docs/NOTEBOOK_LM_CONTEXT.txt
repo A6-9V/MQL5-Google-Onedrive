@@ -1,0 +1,6 @@
+NotebookLM URL: https://notebooklm.google.com/notebook/0e4dfc9b-d57d-4cfc-812d-905d37d67402
+
+INSTRUCTIONS:
+This file is used to provide additional context to the Gemini and Jules AI agents during the upgrade research process.
+If you have specific notes, insights, or content from the NotebookLM link above that you want the AI to consider, please paste the text below this line.
+The AI will read this file and incorporate it into its analysis.

@@ -1,0 +1,271 @@
+#!/usr/bin/env python3
+"""
+Cloud Deployment Script for MQL5 Trading Automation
+Supports multiple cloud platforms: Render, Railway, Fly.io, Heroku, etc.
+"""
+
+import argparse
+import json
+import subprocess
+import sys
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+CONFIG_DIR = REPO_ROOT / "config"
+
+
+def deploy_render():
+    """Deploy to Render.com"""
+    print("=" * 60)
+    print("Deploying to Render.com")
+    print("=" * 60)
+    
+    # Check if render.yaml exists
+    render_yaml = REPO_ROOT / "render.yaml"
+    if not render_yaml.exists():
+        print("❌ render.yaml not found. Creating it...")
+        return False
+    
+    print("✅ render.yaml found")
+    print("\nTo deploy to Render:")
+    print("1. Push this repository to GitHub")
+    print("2. Go to https://render.com")
+    print("3. Create a new Web Service")
+    print("4. Connect your GitHub repository")
+    print("5. Render will auto-detect render.yaml")
+    print("6. Deploy!")
+    
+    return True
+
+
+def deploy_railway():
+    """Deploy to Railway.app"""
+    print("=" * 60)
+    print("Deploying to Railway.app")
+    print("=" * 60)
+    
+    railway_json = REPO_ROOT / "railway.json"
+    if not railway_json.exists():
+        print("Creating railway.json...")
+        config = {
+            "build": {
+                "builder": "NIXPACKS"
+            },
+            "deploy": {
+                "startCommand": "python scripts/startup_orchestrator.py --monitor 0",
+                "restartPolicyType": "ON_FAILURE",
+                "restartPolicyMaxRetries": 10
+            }
+        }
+        with open(railway_json, 'w') as f:
+            json.dump(config, f, indent=2)
+        print("✅ Created railway.json")
+    
+    print("\nTo deploy to Railway:")
+    print("1. Install Railway CLI: npm i -g @railway/cli")
+    print("2. Run: railway login")
+    print("3. Run: railway init")
+    print("4. Run: railway up")
+    
+    return True
+
+
+def deploy_docker(dockerfile_path=None):
+    """Build and deploy Docker container"""
+    print("=" * 60)
+    print("Docker Deployment")
+    print("=" * 60)
+    
+    dockerfile = dockerfile_path or REPO_ROOT / "Dockerfile"
+    if not dockerfile.exists():
+        print("❌ Dockerfile not found")
+        return False
+    
+    print("Building Docker image...")
+    try:
+        subprocess.run(
+            ["docker", "build", "-t", "mql5-automation", "."],
+            cwd=REPO_ROOT,
+            check=True
+        )
+        print("✅ Docker image built successfully")
+        print("\nTo run locally:")
+        print("  docker run -d --name mql5-automation mql5-automation")
+        print("\nOr use docker-compose:")
+        print("  docker-compose up -d")
+        return True
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Docker build failed: {e}")
+        return False
+    except FileNotFoundError:
+        print("❌ Docker not installed. Please install Docker first.")
+        return False
+
+
+def deploy_flyio():
+    """Deploy to Fly.io"""
+    print("=" * 60)
+    print("Deploying to Fly.io")
+    print("=" * 60)
+    
+    fly_toml = REPO_ROOT / "fly.toml"
+    if not fly_toml.exists():
+        print("Creating fly.toml...")
+        config = """app = "mql5-automation"
+primary_region = "iad"
+
+[build]
+
+[env]
+  PYTHONUNBUFFERED = "1"
+
+[[services]]
+  internal_port = 8080
+  processes = ["app"]
+  protocol = "tcp"
+  script_checks = []
+
+  [services.concurrency]
+    hard_limit = 25
+    soft_limit = 20
+    type = "connections"
+
+  [[services.ports]]
+    handlers = ["http"]
+    port = 80
+
+  [[services.ports]]
+    handlers = ["tls", "http"]
+    port = 443
+
+  [[services.tcp_checks]]
+    interval = "15s"
+    timeout = "2s"
+    grace_period = "1s"
+"""
+        with open(fly_toml, 'w') as f:
+            f.write(config)
+        print("✅ Created fly.toml")
+    
+    # Check if flyctl is available
+    try:
+        result = subprocess.run(
+            ["flyctl", "version"],
+            capture_output=True,
+            text=True,
+            timeout=10
+        )
+        if result.returncode != 0:
+            print("❌ flyctl not found or not working properly")
+            print("Install Fly CLI: https://fly.io/docs/getting-started/installing-flyctl/")
+            return False
+    except FileNotFoundError:
+        print("❌ flyctl not found. Install Fly CLI: https://fly.io/docs/getting-started/installing-flyctl/")
+        return False
+    except Exception as e:
+        print(f"❌ Error checking flyctl: {e}")
+        return False
+    
+    print("✅ flyctl found")
+    
+    # Try to deploy
+    print("\n🚀 Starting deployment to Fly.io...")
+    try:
+        result = subprocess.run(
+            ["flyctl", "deploy"],
+            cwd=REPO_ROOT,
+            timeout=600  # 10 minute timeout
+        )
+        
+        if result.returncode == 0:
+            print("✅ Deployment to Fly.io completed successfully!")
+            return True
+        else:
+            print("⚠️ Deployment may have failed. Check the output above.")
+            print("\nIf this is the first deployment, you may need to run:")
+            print("  flyctl launch")
+            return False
+            
+    except subprocess.TimeoutExpired:
+        print("⏱️ Deployment timed out after 10 minutes")
+        return False
+    except Exception as e:
+        print(f"❌ Error during deployment: {e}")
+        print("\nYou may need to run manually:")
+        print("  flyctl auth login")
+        print("  flyctl launch  (first time only)")
+        print("  flyctl deploy")
+        return False
+
+
+def deploy_gcp():
+    """Deploy to Google Cloud Platform"""
+    print("=" * 60)
+    print("Deploying to Google Cloud Platform (GCP)")
+    print("=" * 60)
+
+    app_yaml = REPO_ROOT / "app.yaml"
+    if not app_yaml.exists():
+        print("❌ app.yaml not found. Please run 'python scripts/deploy_cloud.py gcp' again after ensuring it exists.")
+        return False
+
+    print("✅ app.yaml found")
+
+    print("\nTo deploy to Google Cloud Platform (App Engine):")
+    print("1. Install Google Cloud SDK (gcloud CLI)")
+    print("2. Login: gcloud auth login")
+    print("3. Set Project: gcloud config set project infra-outrider-snqdt")
+    print("4. Enable App Engine: gcloud app create --region=us-central (or your preferred region)")
+    print("5. Deploy: gcloud app deploy")
+
+    print("\nAlternatively, to deploy to Cloud Run (recommended):")
+    print("1. Set Project: gcloud config set project infra-outrider-snqdt")
+    print("2. Enable Services: gcloud services enable run.googleapis.com cloudbuild.googleapis.com")
+    print("3. Deploy: gcloud run deploy mql5-automation --source . --region us-central1 --allow-unauthenticated")
+
+    return True
+
+
+def main():
+    parser = argparse.ArgumentParser(
+        description="Deploy MQL5 Trading Automation to cloud platforms"
+    )
+    parser.add_argument(
+        "platform",
+        choices=["render", "railway", "docker", "flyio", "gcp", "all"],
+        help="Cloud platform to deploy to"
+    )
+    parser.add_argument(
+        "--build",
+        action="store_true",
+        help="Build Docker image (for docker platform)"
+    )
+    
+    args = parser.parse_args()
+    
+    if args.platform == "render":
+        deploy_render()
+    elif args.platform == "railway":
+        deploy_railway()
+    elif args.platform == "docker":
+        deploy_docker()
+    elif args.platform == "flyio":
+        deploy_flyio()
+    elif args.platform == "gcp":
+        deploy_gcp()
+    elif args.platform == "all":
+        print("Setting up configurations for all platforms...\n")
+        deploy_render()
+        print()
+        deploy_railway()
+        print()
+        deploy_flyio()
+        print()
+        deploy_gcp()
+        print()
+        if args.build:
+            deploy_docker()
+
+
+if __name__ == "__main__":
+    main()

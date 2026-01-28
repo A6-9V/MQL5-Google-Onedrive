@@ -125,6 +125,8 @@ free -h  # Memory
 
 ## 📦 Package & Deploy
 
+> **⚠️ Note:** Deployed indicators/EAs require **MT5 Desktop**. Exness Web Terminal is not supported.
+
 ```bash
 # Package MT5 files
 ./scripts/package_mt5.sh

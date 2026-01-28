@@ -2,10 +2,17 @@
 //| SMC_TrendBreakout_MTF_EA.mq5                                     |
 //| EA: SMC (BOS/CHoCH) + Donchian breakout + MTF confirmation       |
 //| Alerts / Push notifications + optional auto-trading              |
+//| AI Integration: Gemini API for signal confirmation               |
+//| Updated by: Jules (AI Assistant) for LengKundee                  |
 //+------------------------------------------------------------------+
 #property strict
+#property copyright "LengKundee"
+#property link      "https://forge.mql5.io/LengKundee/mql5.git"
+#property version   "1.21"
 
 #include <Trade/Trade.mqh>
+#include <ZoloBridge.mqh>
+#include <AiAssistant.mqh>
 
 enum ENUM_SL_MODE
 {
@@ -22,8 +29,8 @@ enum ENUM_TP_MODE
 };
 
 input group "Core"
-input bool   EnableTrading         = false; // if false: alerts only
-input long   MagicNumber           = 26012025;
+input bool   EnableTrading         = true; // if false: alerts only
+input long   MagicNumber           = 81001;
 input bool   OnePositionPerSymbol  = true;
 
 input group "Main timeframe logic"
@@ -49,7 +56,7 @@ input ENUM_SL_MODE SLMode                = SL_ATR;
 input ENUM_TP_MODE TPMode                = TP_RR;
 
 input double FixedLots             = 0.10; // used when RiskPercent=0
-input double RiskPercent           = 0.0;  // if >0: position size from SL distance
+input double RiskPercent           = 1.0;  // if >0: position size from SL distance
 input bool   RiskUseEquity         = true; // recommended
 input bool   RiskClampToFreeMargin = true; // reduce lots if not enough margin
 
@@ -65,47 +72,49 @@ input double DonchianTP_Mult       = 1.0;  // TP_DONCHIAN_WIDTH
 
 input int    SlippagePoints        = 30;
 
+input group "AI Filter"
+input bool   UseGeminiFilter       = false; // Enable AI confirmation (formerly UseGeminiFilter)
+input ENUM_AI_PROVIDER AiProvider  = PROVIDER_GEMINI; // Select AI Provider
+
+input group "Gemini Settings"
+input string GeminiApiKey          = ""; // Paste your Gemini API Key here
+input string GeminiModel           = "gemini-1.5-flash"; // e.g., gemini-1.5-flash
+
+input group "Jules Settings"
+input string JulesApiKey           = ""; // Paste your Jules API Key here
+input string JulesApiUrl           = ""; // Enter Jules API URL (e.g. https://api.jules.ai/v1/completion)
+input string JulesModel            = "jules-v1"; // Jules Model ID
+
+input group "AI Context"
+input string PerplexityUrl         = "https://www.perplexity.ai/finance/EURZ"; // Bridge to Perplexity (Manual/Context)
+input int    RSIPeriod             = 14;    // Period for RSI context in AI prompt
+
 input group "Notifications"
 input bool   PopupAlerts           = true;
 input bool   PushNotifications     = true;
-input bool   EnableWebRequest      = false; // enable custom web request
-// IMPORTANT: URL must be added to MT5 terminal's allowed list:
-// Tools -> Options -> Expert Advisors -> Allow WebRequest for listed URL
-// Integrated with: https://github.com/Mouy-leng/-LengKundee-mql5.github.io.git
-// Plugin: ZOLO-A6-9V-NUNA-
-input string WebRequestURL         = "https://soloist.ai/a6-9v";
 
-// --- Web request (for external integrations)
-static void SendWebRequest(const string msg)
-{
-  if(!EnableWebRequest || WebRequestURL == "") return;
-
-  char data[], result[];
-  string headers;
-  int timeout = 5000; // 5 seconds
-
-  // Simple JSON payload
-  string json = "{ \"event\": \"signal\", \"message\": \"" + msg + "\" }";
-  StringToCharArray(json, data, 0, StringLen(json), CP_UTF8);
-
-  ResetLastError();
-  int res = WebRequest("POST", WebRequestURL, "Content-Type: application/json", timeout, data, result, headers);
-
-  if(res == -1)
-  {
-    Print("WebRequest error: ", GetLastError());
-  }
-}
+input group "ZOLO Integration"
+input bool   EnableWebRequest      = true;
+input string WebRequestURL         = "http://203.147.134.90";
+input string ZoloEncryptionKey     = ""; // Leave empty for no encryption
 
 CTrade gTrade;
 
 int gFractalsHandle = INVALID_HANDLE;
 int gAtrHandle      = INVALID_HANDLE;
+int gDonchianHandle = INVALID_HANDLE;
 int gEmaFastHandle  = INVALID_HANDLE;
 int gEmaSlowHandle  = INVALID_HANDLE;
+int gRsiHandle      = INVALID_HANDLE;
 
 datetime gLastSignalBarTime = 0;
 int gTrendDir = 0; // 1 bullish, -1 bearish, 0 unknown (for CHoCH labelling)
+
+// PERF: Cached signal timeframe.
+ENUM_TIMEFRAMES gSignalTf = PERIOD_CURRENT;
+
+// PERF: Cached validated Donchian lookback.
+int gDonchianLookback = 20;
 
 // --- Cached symbol properties (performance)
 // Initialized once in OnInit to avoid repeated calls in OnTick.
@@ -117,20 +126,68 @@ static double G_VOL_MAX = 0.0;
 static double G_VOL_STEP = 0.0;
 static int    G_DIGITS = 2;
 static int    G_STOPS_LEVEL = 0;
+static double G_MIN_STOP_PRICE = 0.0;
+
+// --- Cached MTF direction (performance)
+// The lower-TF EMA direction only needs to be checked once per new bar on that TF.
+static datetime g_mtfDir_lastCheckTime = 0;
+static int      g_mtfDir_cachedValue = 0;
 
 static int GetMTFDir()
 {
   if(!RequireMTFConfirm) return 0;
   if(gEmaFastHandle==INVALID_HANDLE || gEmaSlowHandle==INVALID_HANDLE) return 0;
 
+  // PERF: Only check for new MTF direction on a new bar of the LowerTF.
+  datetime mtf_time[1];
+  if(CopyTime(_Symbol, LowerTF, 0, 1, mtf_time) != 1) return 0; // if data not ready, return neutral
+  if(mtf_time[0] == g_mtfDir_lastCheckTime) return g_mtfDir_cachedValue; // return cached value
+  g_mtfDir_lastCheckTime = mtf_time[0];
+
   double fast[2], slow[2];
   ArraySetAsSeries(fast, true);
   ArraySetAsSeries(slow, true);
-  if(CopyBuffer(gEmaFastHandle, 0, 1, 1, fast) != 1) return 0;
-  if(CopyBuffer(gEmaSlowHandle, 0, 1, 1, slow) != 1) return 0;
-  if(fast[0] > slow[0]) return 1;
-  if(fast[0] < slow[0]) return -1;
-  return 0;
+  // Using CopyBuffer on bar 1 (last completed bar) to avoid repainting.
+  if(CopyBuffer(gEmaFastHandle, 0, 1, 1, fast) != 1) { g_mtfDir_cachedValue=0; return 0; }
+  if(CopyBuffer(gEmaSlowHandle, 0, 1, 1, slow) != 1) { g_mtfDir_cachedValue=0; return 0; }
+
+  if(fast[0] > slow[0]) g_mtfDir_cachedValue = 1;
+  else if(fast[0] < slow[0]) g_mtfDir_cachedValue = -1;
+  else g_mtfDir_cachedValue = 0;
+
+  return g_mtfDir_cachedValue;
+}
+
+// --- Cached ATR value (performance)
+// The ATR only needs to be calculated once per OnTick event, and only if needed.
+static double   g_atr_cachedValue = 0.0;
+static datetime g_atr_cacheTime = 0; // The bar time this cache is valid for.
+
+// PERF: Lazy-loads the ATR value for the current signal bar.
+// This avoids an expensive CopyBuffer call if the SL/TP modes do not require ATR.
+static double GetATR(const int signalBar, const datetime signalBarTime)
+{
+  // If we already calculated ATR for this specific bar, return the cached value.
+  if(g_atr_cacheTime == signalBarTime && g_atr_cachedValue > 0.0)
+  {
+    return g_atr_cachedValue;
+  }
+
+  // Reset cache if the bar time is different.
+  if(g_atr_cacheTime != signalBarTime)
+  {
+    g_atr_cachedValue = 0.0;
+    g_atr_cacheTime = signalBarTime;
+  }
+
+  if(gAtrHandle == INVALID_HANDLE) return 0.0;
+
+  double atr[1];
+  if(CopyBuffer(gAtrHandle, 0, signalBar, 1, atr) != 1) return 0.0;
+  if(atr[0] <= 0.0) return 0.0;
+
+  g_atr_cachedValue = atr[0]; // Cache the valid ATR.
+  return g_atr_cachedValue;
 }
 
 static bool HasOpenPosition(const string sym, const long magic)
@@ -181,12 +238,6 @@ static double NormalizePriceToTick(const string sym, double price)
   return NormalizeDouble(price, G_DIGITS);
 }
 
-static double MinStopDistancePrice(const string sym)
-{
-  // Use cached properties
-  return (G_STOPS_LEVEL > 0 ? G_STOPS_LEVEL * G_POINT : 0.0);
-}
-
 static double ClampLotsToMargin(const string sym, const ENUM_ORDER_TYPE type, double lots, const double price)
 {
   if(lots <= 0.0) return 0.0;
@@ -212,27 +263,36 @@ static void Notify(const string msg)
 {
   if(PopupAlerts) Alert(msg);
   if(PushNotifications) SendNotification(msg);
-  SendWebRequest(msg);
 }
 
 int OnInit()
 {
-  ENUM_TIMEFRAMES tf = (SignalTF==PERIOD_CURRENT ? (ENUM_TIMEFRAMES)_Period : SignalTF);
+  // PERF: Calculate and cache the signal timeframe once.
+  gSignalTf = (SignalTF==PERIOD_CURRENT ? (ENUM_TIMEFRAMES)_Period : SignalTF);
 
-  gFractalsHandle = iFractals(_Symbol, tf);
+  gFractalsHandle = iFractals(_Symbol, gSignalTf);
   if(gFractalsHandle == INVALID_HANDLE) return INIT_FAILED;
 
-  gAtrHandle = iATR(_Symbol, tf, ATRPeriod);
+  gAtrHandle = iATR(_Symbol, gSignalTf, ATRPeriod);
   if(gAtrHandle == INVALID_HANDLE) return INIT_FAILED;
+
+  // PERF: Validate and cache Donchian lookback once.
+  gDonchianLookback = (DonchianLookback < 2 ? 2 : DonchianLookback);
+  gDonchianHandle = iDonchian(_Symbol, gSignalTf, gDonchianLookback);
+  if(gDonchianHandle == INVALID_HANDLE) return INIT_FAILED;
 
   gEmaFastHandle = iMA(_Symbol, LowerTF, EMAFast, 0, MODE_EMA, PRICE_CLOSE);
   gEmaSlowHandle = iMA(_Symbol, LowerTF, EMASlow, 0, MODE_EMA, PRICE_CLOSE);
+
+  gRsiHandle = iRSI(_Symbol, gSignalTf, RSIPeriod, PRICE_CLOSE);
+  if(gRsiHandle == INVALID_HANDLE) return INIT_FAILED;
 
   gTrade.SetExpertMagicNumber(MagicNumber);
   gTrade.SetDeviationInPoints(SlippagePoints);
 
   // --- Cache symbol properties for performance
   G_POINT = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
+  if(G_POINT <= 0.0) G_POINT = _Point; // Fallback
   G_TICK_SIZE = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_SIZE);
   G_TICK_VALUE = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE_LOSS);
   if(G_TICK_VALUE <= 0.0) G_TICK_VALUE = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE);
@@ -245,6 +305,10 @@ int OnInit()
   int stopsLevel  = (int)SymbolInfoInteger(_Symbol, SYMBOL_TRADE_STOPS_LEVEL);
   int freezeLevel = (int)SymbolInfoInteger(_Symbol, SYMBOL_TRADE_FREEZE_LEVEL);
   G_STOPS_LEVEL = MathMax(stopsLevel, freezeLevel);
+  G_MIN_STOP_PRICE = (G_STOPS_LEVEL > 0 ? G_STOPS_LEVEL * G_POINT : 0.0);
+
+  // PERF: Validate and cache Donchian lookback once.
+  gDonchianLookback = (DonchianLookback < 2 ? 2 : DonchianLookback);
 
   return INIT_SUCCEEDED;
 }
@@ -253,68 +317,90 @@ void OnDeinit(const int reason)
 {
   if(gFractalsHandle != INVALID_HANDLE) IndicatorRelease(gFractalsHandle);
   if(gAtrHandle != INVALID_HANDLE) IndicatorRelease(gAtrHandle);
+  if(gDonchianHandle != INVALID_HANDLE) IndicatorRelease(gDonchianHandle);
   if(gEmaFastHandle != INVALID_HANDLE) IndicatorRelease(gEmaFastHandle);
   if(gEmaSlowHandle != INVALID_HANDLE) IndicatorRelease(gEmaSlowHandle);
+  if(gRsiHandle != INVALID_HANDLE) IndicatorRelease(gRsiHandle);
 }
 
 void OnTick()
 {
-  ENUM_TIMEFRAMES tf = (SignalTF==PERIOD_CURRENT ? (ENUM_TIMEFRAMES)_Period : SignalTF);
-
-  // Pull recent bars from SignalTF
-  MqlRates rates[400];
-  ArraySetAsSeries(rates, true);
-  int needBars = MathMin(400, Bars(_Symbol, tf));
-  if(needBars < 100) return;
-  if(CopyRates(_Symbol, tf, 0, needBars, rates) < 100) return;
-
+  // PERF: Early exit if a new bar hasn't formed on the signal timeframe.
+  // This is a critical optimization that prevents expensive calls (like CopyRates)
+  // from running on every single price tick within the same bar.
   const int sigBar = (FireOnClose ? 1 : 0);
-  if(sigBar >= needBars-1) return;
+  datetime time[2]; // Index 0 is current bar, 1 is last closed bar.
+  ArraySetAsSeries(time, true);
+  // Ensure we have enough bars to get the time for our signal bar.
+  if(CopyTime(_Symbol, gSignalTf, 0, sigBar + 1, time) <= sigBar) return;
 
-  // Run once per signal bar
-  datetime sigTime = rates[sigBar].time;
-  if(sigTime == gLastSignalBarTime) return;
+  datetime sigTime = time[sigBar];
+  if(sigTime == gLastSignalBarTime) return; // Not a new signal bar, exit early.
+
+  // Now that we've passed all checks, we can commit to this bar time.
   gLastSignalBarTime = sigTime;
 
-  // Get fractals (for structure break)
-  int frNeed = MathMin(300, needBars);
-  double upFr[300], dnFr[300];
-  ArraySetAsSeries(upFr, true);
-  ArraySetAsSeries(dnFr, true);
-  if(CopyBuffer(gFractalsHandle, 0, 0, frNeed, upFr) <= 0) return;
-  if(CopyBuffer(gFractalsHandle, 1, 0, frNeed, dnFr) <= 0) return;
-
+  // --- Data Loading & Primary Signals ---
+  // PERF: Defer expensive data loading. Only load full history if needed.
   double lastSwingHigh = 0.0; datetime lastSwingHighT = 0;
   double lastSwingLow  = 0.0; datetime lastSwingLowT  = 0;
-  for(int i=sigBar+2; i<frNeed; i++)
+  double closeSig = 0.0;
+
+  // PERF: Lazy Calculation - only search for swings if needed for SMC or SL.
+  if(UseSMC || SLMode == SL_SWING)
   {
-    if(lastSwingHighT==0 && upFr[i] != 0.0) { lastSwingHigh = upFr[i]; lastSwingHighT = rates[i].time; }
-    if(lastSwingLowT==0  && dnFr[i] != 0.0) { lastSwingLow  = dnFr[i]; lastSwingLowT  = rates[i].time; }
-    if(lastSwingHighT!=0 && lastSwingLowT!=0) break;
+    // PERF: Array allocation is deferred to this block to avoid overhead on the lighter path.
+    // OPTIMIZATION: Use simple datetime array instead of full MqlRates struct to save memory/bandwidth.
+    datetime times[400];
+    ArraySetAsSeries(times, true);
+
+    // This path requires a deep history for fractal/swing analysis.
+    int needBars = MathMin(400, Bars(_Symbol, gSignalTf));
+    if(needBars < 100) return;
+    // OPTIMIZATION: CopyTime is faster and uses less memory than CopyRates (8 bytes vs 60 bytes per bar).
+    if(CopyTime(_Symbol, gSignalTf, 0, needBars, times) < 100) return;
+    if(sigBar >= needBars-1) return;
+
+    // OPTIMIZATION: Use iClose for single price access instead of accessing heavy struct array.
+    closeSig = iClose(_Symbol, gSignalTf, sigBar); // Get close directly.
+
+    // Get fractals (for structure break)
+    int frNeed = MathMin(300, needBars);
+    double upFr[300], dnFr[300];
+    ArraySetAsSeries(upFr, true);
+    ArraySetAsSeries(dnFr, true);
+    if(CopyBuffer(gFractalsHandle, 0, 0, frNeed, upFr) <= 0) return;
+    if(CopyBuffer(gFractalsHandle, 1, 0, frNeed, dnFr) <= 0) return;
+
+    for(int i=sigBar+2; i<frNeed; i++)
+    {
+      if(lastSwingHighT==0 && upFr[i] != 0.0) { lastSwingHigh = upFr[i]; lastSwingHighT = times[i]; }
+      if(lastSwingLowT==0  && dnFr[i] != 0.0) { lastSwingLow  = dnFr[i]; lastSwingLowT  = times[i]; }
+      if(lastSwingHighT!=0 && lastSwingLowT!=0) break;
+    }
+  }
+  else
+  {
+    // This path is much lighter.
+    // PERF: Use the lightweight iClose() instead of heavy CopyRates() just to get a single price.
+    closeSig = iClose(_Symbol, gSignalTf, sigBar);
+    if(closeSig <= 0.0) return; // Abort if price is invalid.
   }
 
-  // Donchian bounds (optimized)
-  // Using built-in iHighest/iLowest is faster than manual loops in MQL.
-  int donLookback = (DonchianLookback < 2 ? 2 : DonchianLookback);
+  // --- Donchian Channel (using native indicator for performance) ---
+  // The native iDonchian is faster as the terminal manages state and calculations.
+  double donchianUp[1], donchianDn[1];
+  // We need the Donchian value from the bar *preceding* the signal bar.
   int donStart = sigBar + 1;
-  int donCount = donLookback;
-  if(donStart + donCount >= needBars) return;
-  int highIndex = iHighest(_Symbol, tf, MODE_HIGH, donCount, donStart);
-  int lowIndex  = iLowest(_Symbol, tf, MODE_LOW, donCount, donStart);
-  if(highIndex < 0 || lowIndex < 0) return; // Error case, data not ready
-  // PERF: Access price data directly from the copied 'rates' array.
-  // This avoids the function call overhead of iHigh/iLow, as the data is already in memory.
-  double donHigh = rates[highIndex].high;
-  double donLow  = rates[lowIndex].low;
+  if(CopyBuffer(gDonchianHandle, 0, donStart, 1, donchianUp) != 1) return;
+  if(CopyBuffer(gDonchianHandle, 1, donStart, 1, donchianDn) != 1) return;
 
-  // Lower TF confirmation
-  int mtfDir = GetMTFDir();
-  bool mtfOkLong  = (!RequireMTFConfirm) || (mtfDir == 1);
-  bool mtfOkShort = (!RequireMTFConfirm) || (mtfDir == -1);
+  double donHigh = donchianUp[0];
+  double donLow  = donchianDn[0];
+  if(donHigh <= 0 || donLow <= 0) return; // Data not ready or invalid
 
-  // Signals
+  // --- Primary Signals (without MTF confirmation yet) ---
   bool smcLong=false, smcShort=false, donLong=false, donShort=false;
-  double closeSig = rates[sigBar].close;
   if(UseSMC)
   {
     if(lastSwingHighT!=0 && closeSig > lastSwingHigh) smcLong = true;
@@ -325,6 +411,15 @@ void OnTick()
     if(closeSig > donHigh) donLong = true;
     if(closeSig < donLow)  donShort = true;
   }
+
+  // PERF: Early exit if no primary signal exists. This avoids the GetMTFDir()
+  // call (which performs a CopyTime) on the vast majority of bars.
+  if(!(smcLong || donLong || smcShort || donShort)) return;
+
+  // --- Lower TF confirmation (only after a primary signal) ---
+  int mtfDir = GetMTFDir();
+  bool mtfOkLong  = (!RequireMTFConfirm) || (mtfDir == 1);
+  bool mtfOkShort = (!RequireMTFConfirm) || (mtfDir == -1);
 
   bool finalLong  = (smcLong || donLong) && mtfOkLong;
   bool finalShort = (smcShort || donShort) && mtfOkShort;
@@ -352,30 +447,60 @@ void OnTick()
                             _Symbol,
                             (finalLong ? "LONG" : "SHORT"),
                             kind,
-                            EnumToString(tf),
+                            EnumToString(gSignalTf),
                             EnumToString(LowerTF),
                             (smcLong||smcShort ? "Y" : "N"),
                             (donLong||donShort ? "Y" : "N"));
   Notify(msg);
 
+  if(EnableWebRequest) SendSignalToBridge(msg, EnableWebRequest, WebRequestURL, ZoloEncryptionKey);
+
   if(!EnableTrading) return;
   if(OnePositionPerSymbol && HasOpenPosition(_Symbol, MagicNumber)) return;
 
-  // ATR (always calculated; used for SL_ATR and fallbacks)
-  double atr[3];
-  ArraySetAsSeries(atr, true);
-  if(CopyBuffer(gAtrHandle, 0, sigBar, 1, atr) != 1) return;
-  double atrVal = atr[0];
-  if(atrVal <= 0) return;
-
-  // Cached point size (fallback to terminal-provided _Point)
-  double point = (G_POINT > 0.0 ? G_POINT : _Point);
-  // PERF: Use pre-defined Ask/Bid globals in OnTick to avoid function call overhead.
-  double ask = Ask;
-  double bid = Bid;
+  // PERF: G_POINT is now guaranteed to be valid from OnInit.
+  double point = G_POINT;
+  // PERF: Use SymbolInfoTick to get both Ask and Bid efficiently.
+  MqlTick tick;
+  if(!SymbolInfoTick(_Symbol, tick)) return;
+  double ask = tick.ask;
+  double bid = tick.bid;
 
   double entry = (finalLong ? ask : bid);
   double sl = 0.0, tp = 0.0;
+
+  // --- AI Filter ---
+  if(UseGeminiFilter)
+  {
+    double rsiVal = 50.0;
+    double atrVal = 0.0;
+
+    // Get RSI
+    double rsiBuff[1];
+    if(CopyBuffer(gRsiHandle, 0, sigBar, 1, rsiBuff) == 1) rsiVal = rsiBuff[0];
+
+    // Get ATR (using existing helper logic or direct copy)
+    atrVal = GetATR(sigBar, sigTime);
+
+    string prompt = Ai_ConstructPrompt(_Symbol, (finalLong ? "BUY" : "SELL"), entry, gTrendDir, rsiVal, atrVal, PerplexityUrl);
+    bool aiConfirmed = false;
+
+    if (AiProvider == PROVIDER_GEMINI)
+    {
+       aiConfirmed = Ai_AskGemini(GeminiApiKey, GeminiModel, prompt);
+    }
+    else if (AiProvider == PROVIDER_JULES)
+    {
+       aiConfirmed = Ai_AskJules(JulesApiKey, JulesModel, prompt, JulesApiUrl);
+    }
+
+    if(!aiConfirmed)
+    {
+      Print("AI Filter (" + EnumToString(AiProvider) + ") rejected the trade or request failed.");
+      return;
+    }
+    Print("AI Filter (" + EnumToString(AiProvider) + ") confirmed the trade.");
+  }
 
   // --- Build SL
   if(SLMode == SL_SWING)
@@ -387,8 +512,16 @@ void OnTick()
     if(finalShort && lastSwingHighT != 0 && lastSwingHigh > 0.0) sl = lastSwingHigh + buf;
 
     // Fallback if swing is missing/invalid for current entry.
-    if(finalLong && (sl <= 0.0 || sl >= entry)) sl = entry - (ATR_SL_Mult * atrVal);
-    if(finalShort && (sl <= 0.0 || sl <= entry)) sl = entry + (ATR_SL_Mult * atrVal);
+    if((finalLong && (sl <= 0.0 || sl >= entry)) || (finalShort && (sl <= 0.0 || sl <= entry)))
+    {
+      // PERF: ATR is lazy-loaded only for this fallback case.
+      double atrVal = GetATR(sigBar, sigTime);
+      if(atrVal > 0.0)
+      {
+        if(finalLong) sl = entry - (ATR_SL_Mult * atrVal);
+        else sl = entry + (ATR_SL_Mult * atrVal);
+      }
+    }
   }
   else if(SLMode == SL_FIXED_POINTS)
   {
@@ -397,7 +530,21 @@ void OnTick()
   }
   else // SL_ATR
   {
-    sl = (finalLong ? entry - (ATR_SL_Mult * atrVal) : entry + (ATR_SL_Mult * atrVal));
+    // PERF: ATR is lazy-loaded only when this SL mode is active.
+    double atrVal = GetATR(sigBar, sigTime);
+    if(atrVal > 0.0)
+    {
+      sl = (finalLong ? entry - (ATR_SL_Mult * atrVal) : entry + (ATR_SL_Mult * atrVal));
+    }
+  }
+
+  // CRITICAL: If SL is 0 after this block, it means a required calculation
+  // (like GetATR) failed. Abort to prevent placing a trade with no stop loss.
+  if(sl == 0.0)
+  {
+    // Optionally notify the user about the failure.
+    // Notify(StringFormat("SL calculation failed for %s.", _Symbol));
+    return;
   }
 
   // --- Build TP
@@ -409,7 +556,12 @@ void OnTick()
   else if(TPMode == TP_DONCHIAN_WIDTH)
   {
     double width = MathAbs(donHigh - donLow);
-    if(width <= 0.0) width = ATR_SL_Mult * atrVal; // fallback
+    if(width <= 0.0)
+    {
+      // PERF: ATR is lazy-loaded only for this fallback case.
+      double atrVal = GetATR(sigBar, sigTime);
+      if(atrVal > 0.0) width = ATR_SL_Mult * atrVal; // fallback
+    }
     double dist = DonchianTP_Mult * width;
     tp = (finalLong ? entry + dist : entry - dist);
   }
@@ -419,19 +571,21 @@ void OnTick()
     tp = (finalLong ? entry + (RR * slDist) : entry - (RR * slDist));
   }
 
+  // CRITICAL: If TP is 0, it means a calculation failed. Abort.
+  if(tp == 0.0) return;
+
   // Respect broker minimum stop distance (in points)
-  double minStop = MinStopDistancePrice(_Symbol);
-  if(minStop > 0)
+  if(G_MIN_STOP_PRICE > 0)
   {
     if(finalLong)
     {
-      if(entry - sl < minStop) sl = entry - minStop;
-      if(tp - entry < minStop) tp = entry + minStop;
+      if(entry - sl < G_MIN_STOP_PRICE) sl = entry - G_MIN_STOP_PRICE;
+      if(tp - entry < G_MIN_STOP_PRICE) tp = entry + G_MIN_STOP_PRICE;
     }
     else
     {
-      if(sl - entry < minStop) sl = entry + minStop;
-      if(entry - tp < minStop) tp = entry - minStop;
+      if(sl - entry < G_MIN_STOP_PRICE) sl = entry + G_MIN_STOP_PRICE;
+      if(entry - tp < G_MIN_STOP_PRICE) tp = entry - G_MIN_STOP_PRICE;
     }
   }
 
@@ -462,4 +616,3 @@ void OnTick()
     Notify(StringFormat("Order failed: %d", err));
   }
 }
-

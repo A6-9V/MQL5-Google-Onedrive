@@ -1,0 +1,69 @@
+name: Deploy to Cloud
+
+on:
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: 'Cloud platform to deploy to'
+        required: true
+        type: choice
+        options:
+          - render
+          - railway
+          - flyio
+          - docker
+  push:
+    branches:
+      - main
+    paths:
+      - 'scripts/**'
+      - 'config/**'
+      - 'Dockerfile'
+      - 'docker-compose.yml'
+      - '.github/workflows/deploy-cloud.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validate deployment files
+        run: |
+          echo "Validating deployment configurations..."
+          test -f Dockerfile && echo "✅ Dockerfile found"
+          test -f docker-compose.yml && echo "✅ docker-compose.yml found"
+          test -f render.yaml && echo "✅ render.yaml found"
+          test -f railway.json && echo "✅ railway.json found"
+          test -f fly.toml && echo "✅ fly.toml found"
+          python scripts/deploy_cloud.py all
+
+      - name: Build Docker image
+        if: github.event.inputs.platform == 'docker' || github.event_name == 'push'
+        run: |
+          docker build -t mql5-automation:latest .
+          docker tag mql5-automation:latest mql5-automation:${{ github.sha }}
+
+      - name: Summary
+        run: |
+          echo "## Deployment Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Cloud deployment configurations validated" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Available Platforms:" >> $GITHUB_STEP_SUMMARY
+          echo "- Render.com (render.yaml)" >> $GITHUB_STEP_SUMMARY
+          echo "- Railway.app (railway.json)" >> $GITHUB_STEP_SUMMARY
+          echo "- Fly.io (fly.toml)" >> $GITHUB_STEP_SUMMARY
+          echo "- Docker (Dockerfile)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "See [Cloud Deployment Guide](docs/Cloud_Deployment_Guide.md) for instructions." >> $GITHUB_STEP_SUMMARY

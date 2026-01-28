@@ -11,8 +11,8 @@ This repository is integrated with the ZOLO-A6-9V-NUNA- plugin system, providing
 - **Purpose**: Hosts the web interface and documentation for the trading system
 - **Integration**: Pull, push, and merge commits are synchronized with this repository
 
-### 2. Soloist.ai Endpoint
-- **Endpoint**: https://soloist.ai/a6-9v
+### 2. ZOLO Bridge Endpoint
+- **Endpoint**: http://203.147.134.90
 - **Purpose**: Provides real-time signal notifications and integration with the ZOLO platform
 - **Usage**: WebRequest calls from the Expert Advisor are sent to this endpoint
 
@@ -20,23 +20,24 @@ This repository is integrated with the ZOLO-A6-9V-NUNA- plugin system, providing
 
 ### For Developers
 
-1. **Clone both repositories**:
-   ```bash
-   git clone https://github.com/A6-9V/MQL5-Google-Onedrive.git
-   git clone https://github.com/Mouy-leng/-LengKundee-mql5.github.io.git
-   ```
+1. **Get the required files**:
+   - **ZOLO Bridge Files**: Download from [OneDrive](https://1drv.ms/f/c/8F247B1B46E82304/IgBYRTEjjPv-SKHi70WnmmU8AZb3Mr5X1o3a0QNU_mKgAZg)
+   - **Web Interface**:
+     ```bash
+     git clone https://github.com/Mouy-leng/-LengKundee-mql5.github.io.git
+     ```
 
 2. **Configure the integration**:
-   - Ensure the EA parameter `WebRequestURL` is set to `https://soloist.ai/a6-9v`
+   - Ensure the EA parameter `WebRequestURL` is set to `http://203.147.134.90`
    - Enable `EnableWebRequest` in the EA settings when needed
 
 ### For Traders
 
 1. **Add the URL to MT5's allowed list**:
-   - Open MetaTrader 5
+   - Open **Exness MetaTrader 5 Desktop Application** (Web Terminal is not supported)
    - Go to **Tools → Options → Expert Advisors**
    - Check "Allow WebRequest for listed URL"
-   - Add: `https://soloist.ai/a6-9v`
+   - Add: `http://203.147.134.90`
 
 2. **Enable the integration in EA settings**:
    - Attach the EA to a chart

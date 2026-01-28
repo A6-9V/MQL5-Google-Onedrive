@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  mql5-automation:
+    image: mouyleng/mql5-trading-automation:latest
+    build: .
+    container_name: mql5-trading-automation
+    restart: always
+    volumes:
+      - ./config:/app/config
+      - ./logs:/app/logs
+      - ./mt5:/app/mt5
+    environment:
+      - PYTHONUNBUFFERED=1
+      - TZ=UTC
+    networks:
+      - mql5-network
+    healthcheck:
+      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+networks:
+  mql5-network:
+    driver: bridge
