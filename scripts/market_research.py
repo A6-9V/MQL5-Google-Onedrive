@@ -11,18 +11,9 @@ import requests
 import concurrent.futures
 # TODO: google.generativeai is deprecated, migrate to google.genai in future
 # import google.genai as genai
-import google.generativeai as genai
 from datetime import datetime
 from pathlib import Path
 from dotenv import load_dotenv
-
-# Try to import yfinance
-try:
-    import yfinance as yf
-    import pandas as pd
-    YFINANCE_AVAILABLE = True
-except ImportError:
-    YFINANCE_AVAILABLE = False
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -40,7 +31,16 @@ def get_market_data():
     Fetch market data using yfinance if available, otherwise use simulation.
     """
     data = None
-    if YFINANCE_AVAILABLE:
+
+    # ⚡ Optimization: Lazy import heavy dependencies
+    try:
+        import yfinance as yf
+        import pandas as pd
+        yfinance_available = True
+    except ImportError:
+        yfinance_available = False
+
+    if yfinance_available:
         try:
             logger.info("Fetching real market data via yfinance...")
             symbols = ["EURUSD=X", "GBPUSD=X", "GC=F", "BTC-USD"]
@@ -125,6 +125,9 @@ def analyze_with_gemini(data):
         return None
 
     try:
+        # ⚡ Optimization: Lazy import google.generativeai
+        import google.generativeai as genai
+
         genai.configure(api_key=api_key)
         # Fallback models if one isn't available
         model_name = os.environ.get("GEMINI_MODEL", 'gemini-2.0-flash')
