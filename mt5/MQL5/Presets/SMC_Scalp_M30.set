@@ -1,0 +1,17 @@
+EnableTrading=true
+SignalTF=30
+UseSMC=true
+UseDonchianBreakout=true
+DonchianLookback=20
+SLMode=0
+ATR_SL_Mult=1.5
+TPMode=0
+RR=2.0
+UseBreakEven=true
+BE_Trigger_Pips=20.0
+BE_Plus_Pips=5.0
+UseTrailing=true
+Trail_Start_Pips=20.0
+Trail_Step_Pips=10.0
+AiProvider=0
+UseGeminiFilter=false

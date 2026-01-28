@@ -13,6 +13,7 @@
 #include <Trade/Trade.mqh>
 #include <ZoloBridge.mqh>
 #include <AiAssistant.mqh>
+#include <ManagePositions.mqh>
 
 enum ENUM_SL_MODE
 {
@@ -72,6 +73,14 @@ input double DonchianTP_Mult       = 1.0;  // TP_DONCHIAN_WIDTH
 
 input int    SlippagePoints        = 30;
 
+input group "Scalping / Management"
+input bool   UseBreakEven          = true;
+input double BE_Trigger_Pips       = 10.0;
+input double BE_Plus_Pips          = 2.0;
+input bool   UseTrailing           = true;
+input double Trail_Start_Pips      = 15.0;
+input double Trail_Step_Pips       = 5.0;
+
 input group "AI Filter"
 input bool   UseGeminiFilter       = false; // Enable AI confirmation (formerly UseGeminiFilter)
 input ENUM_AI_PROVIDER AiProvider  = PROVIDER_GEMINI; // Select AI Provider
@@ -99,6 +108,7 @@ input string WebRequestURL         = "http://203.147.134.90";
 input string ZoloEncryptionKey     = ""; // Leave empty for no encryption
 
 CTrade gTrade;
+CPositionManager gPosManager;
 
 int gFractalsHandle = INVALID_HANDLE;
 int gAtrHandle      = INVALID_HANDLE;
@@ -288,6 +298,8 @@ int OnInit()
   gTrade.SetExpertMagicNumber(MagicNumber);
   gTrade.SetDeviationInPoints(SlippagePoints);
 
+  gPosManager.Init(&gTrade);
+
   // --- Cache symbol properties for performance
   G_POINT = SymbolInfoDouble(_Symbol, SYMBOL_POINT);
   if(G_POINT <= 0.0) G_POINT = _Point; // Fallback
@@ -319,6 +331,12 @@ void OnDeinit(const int reason)
 
 void OnTick()
 {
+  // Manage open positions (Trailing Stop / Break Even) every tick
+  if(EnableTrading)
+  {
+     gPosManager.Manage(MagicNumber, _Symbol, UseBreakEven, BE_Trigger_Pips, BE_Plus_Pips, UseTrailing, Trail_Start_Pips, Trail_Step_Pips);
+  }
+
   // PERF: Early exit if a new bar hasn't formed on the signal timeframe.
   // This is a critical optimization that prevents expensive calls (like CopyRates)
   // from running on every single price tick within the same bar.
@@ -606,4 +624,10 @@ void OnTick()
     int err = GetLastError();
     Notify(StringFormat("Order failed: %d", err));
   }
+}
+
+void OnTimer()
+{
+   // Optional: Position management can be done in OnTimer or OnTick.
+   // Doing it in OnTick is fine if ticks are frequent, which they are in scalping.
 }
