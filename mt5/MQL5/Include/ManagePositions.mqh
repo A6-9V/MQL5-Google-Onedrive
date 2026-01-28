@@ -9,121 +9,122 @@
 #include <Trade\SymbolInfo.mqh>
 #include <Trade\Trade.mqh>
 
-// Objects required by ManagePositions
-// These should ideally be passed to the function or class members,
-// but based on the snippet provided, they are expected to be global.
-CPositionInfo posInfo;
-CSymbolInfo   symInfo;
-CTrade        trade;
-
-// Configuration variables (External inputs expected from EA)
-// You should define these in your EA inputs and remove 'extern' here if included there,
-// or use this file as a base.
-extern int       CFG_Magic_Number     = 0;
-extern bool      CFG_Use_BreakEven    = false;
-extern double    CFG_BE_Trigger_Pips  = 0;
-extern double    CFG_BE_Plus_Pips     = 0;
-extern bool      CFG_Use_Trailing     = false;
-extern double    CFG_Trail_Start_Pips = 0;
-extern double    CFG_Trail_Step_Pips  = 0;
-extern bool      CFG_Enable_Logging   = true;
-
-//+------------------------------------------------------------------+
-//| Manage existing positions (trailing, break-even)                  |
-//+------------------------------------------------------------------+
-void ManagePositions()
+class CPositionManager
 {
-   // Ensure Symbol Info is initialized for current symbol
-   if(symInfo.Name(_Symbol))
-      symInfo.RefreshRates();
-   else
-      return;
+private:
+   CPositionInfo  m_posInfo;
+   CSymbolInfo    m_symInfo;
+   CTrade*        m_trade; // Pointer to external CTrade
 
-   for(int i = PositionsTotal() - 1; i >= 0; i--)
+public:
+   void Init(CTrade* tradeObj)
    {
-      if(!posInfo.SelectByIndex(i))
-         continue;
+      m_trade = tradeObj;
+   }
 
-      //--- Only manage our positions
-      if(posInfo.Magic() != CFG_Magic_Number)
-         continue;
+   void Manage(long magic, string symbol,
+               bool useBE, double beTriggerPips, double bePlusPips,
+               bool useTrail, double trailStartPips, double trailStepPips)
+   {
+      if(m_trade == NULL) return;
+      if(!m_symInfo.Name(symbol)) return;
+      if(!m_symInfo.RefreshRates()) return;
 
-      //--- Only manage positions on current symbol
-      if(posInfo.Symbol() != _Symbol)
-         continue;
+      double point = m_symInfo.Point();
+      int digits = m_symInfo.Digits();
 
-      double openPrice = posInfo.PriceOpen();
-      double currentSL = posInfo.StopLoss();
-      double currentTP = posInfo.TakeProfit();
-      double point = symInfo.Point();
-      ulong ticket = posInfo.Ticket();
+      // Calculate point value for pips (assuming standard 1 pip = 10 points)
+      // For JPY pairs or others, usually it's consistent if we use Point * 10 for "Pip"
+      // But let's use the standard "10 points = 1 pip" convention.
+      double pipSize = point * 10.0;
 
-      //--- Calculate profit in pips
-      double profitPips = 0;
-      double newSL = currentSL;
-
-      if(posInfo.PositionType() == POSITION_TYPE_BUY)
+      for(int i = PositionsTotal() - 1; i >= 0; i--)
       {
-         double bid = symInfo.Bid();
-         profitPips = (bid - openPrice) / point / 10;
+         if(!m_posInfo.SelectByIndex(i)) continue;
+         if(m_posInfo.Magic() != magic) continue;
+         if(m_posInfo.Symbol() != symbol) continue;
 
-         //--- Break-even
-         if(CFG_Use_BreakEven && profitPips >= CFG_BE_Trigger_Pips)
+         double openPrice = m_posInfo.PriceOpen();
+         double currentSL = m_posInfo.StopLoss();
+         double currentTP = m_posInfo.TakeProfit();
+         ulong ticket = m_posInfo.Ticket();
+
+         double newSL = currentSL;
+         double profitPips = 0.0;
+
+         if(m_posInfo.PositionType() == POSITION_TYPE_BUY)
          {
-            double beLevel = openPrice + (CFG_BE_Plus_Pips * point * 10);
-            if(currentSL < beLevel)
+            double bid = m_symInfo.Bid();
+            profitPips = (bid - openPrice) / pipSize;
+
+            // Break Even
+            if(useBE && profitPips >= beTriggerPips)
             {
-               newSL = beLevel;
+               double beLevel = openPrice + (bePlusPips * pipSize);
+               // Move SL to BE if current SL is below BE
+               if(currentSL < beLevel || currentSL == 0)
+                  newSL = beLevel;
+            }
+
+            // Trailing
+            if(useTrail && profitPips >= trailStartPips)
+            {
+               double trailLevel = bid - (trailStepPips * pipSize);
+               // Move SL up if trail level is higher than current SL
+               if(trailLevel > newSL || newSL == 0)
+                  newSL = trailLevel;
+            }
+         }
+         else if(m_posInfo.PositionType() == POSITION_TYPE_SELL)
+         {
+            double ask = m_symInfo.Ask();
+            profitPips = (openPrice - ask) / pipSize;
+
+            // Break Even
+            if(useBE && profitPips >= beTriggerPips)
+            {
+               double beLevel = openPrice - (bePlusPips * pipSize);
+               // Move SL to BE if current SL is above BE
+               if(currentSL > beLevel || currentSL == 0)
+                  newSL = beLevel;
+            }
+
+            // Trailing
+            if(useTrail && profitPips >= trailStartPips)
+            {
+               double trailLevel = ask + (trailStepPips * pipSize);
+               // Move SL down if trail level is lower than current SL
+               if(trailLevel < newSL || newSL == 0)
+                  newSL = trailLevel;
             }
          }
 
-         //--- Trailing stop
-         if(CFG_Use_Trailing && profitPips >= CFG_Trail_Start_Pips)
+         if(MathAbs(newSL - currentSL) > point)
          {
-            double trailLevel = bid - (CFG_Trail_Step_Pips * point * 10);
-            if(trailLevel > newSL)
+            // Normalize
+            newSL = NormalizeDouble(newSL, digits);
+
+            // Check stops level
+            double stopLevel = (double)SymbolInfoInteger(symbol, SYMBOL_TRADE_STOPS_LEVEL) * point;
+            bool valid = true;
+
+            if(m_posInfo.PositionType() == POSITION_TYPE_BUY)
             {
-               newSL = trailLevel;
+               if(m_symInfo.Bid() - newSL < stopLevel) valid = false;
             }
-         }
-      }
-      else if(posInfo.PositionType() == POSITION_TYPE_SELL)
-      {
-         double ask = symInfo.Ask();
-         profitPips = (openPrice - ask) / point / 10;
-
-         //--- Break-even
-         if(CFG_Use_BreakEven && profitPips >= CFG_BE_Trigger_Pips)
-         {
-            double beLevel = openPrice - (CFG_BE_Plus_Pips * point * 10);
-            // FIXED: Added missing || operator
-            if(currentSL > beLevel || currentSL == 0)
+            else
             {
-               newSL = beLevel;
+               if(newSL - m_symInfo.Ask() < stopLevel) valid = false;
             }
-         }
 
-         //--- Trailing stop
-         if(CFG_Use_Trailing && profitPips >= CFG_Trail_Start_Pips)
-         {
-            double trailLevel = ask + (CFG_Trail_Step_Pips * point * 10);
-            if(trailLevel < newSL || currentSL == 0)
+            if(valid)
             {
-               newSL = trailLevel;
+               if(m_trade->PositionModify(ticket, newSL, currentTP))
+               {
+                  Print("ManagePositions: Position #", ticket, " SL moved to ", newSL);
+               }
             }
-         }
-      }
-
-      //--- Modify position if SL changed
-      if(newSL != currentSL && newSL != 0)
-      {
-         newSL = NormalizeDouble(newSL, symInfo.Digits());
-
-         if(trade.PositionModify(ticket, newSL, currentTP))
-         {
-            if(CFG_Enable_Logging)
-               Print("✓ Position #", ticket, " SL moved to ", newSL, " (profit: ", DoubleToString(profitPips, 1), " pips)");
          }
       }
    }
-}
+};
