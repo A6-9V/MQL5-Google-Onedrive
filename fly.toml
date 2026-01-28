@@ -2,9 +2,12 @@ app = "mql5-automation"
 primary_region = "iad"
 
 [build]
+  dockerfile = "Dockerfile.cloud"
 
 [env]
   PYTHONUNBUFFERED = "1"
+  TZ = "UTC"
+  ENV = "production"
 
 [[services]]
   internal_port = 8080
