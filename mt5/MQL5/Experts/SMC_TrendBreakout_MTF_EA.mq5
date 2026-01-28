@@ -210,6 +210,11 @@ void OnTick()
    if(CopyBuffer(emaFastHandle, 0, 0, 3, emaFast) <= 0) return;
    if(CopyBuffer(emaSlowHandle, 0, 0, 3, emaSlow) <= 0) return;
    
+   //--- Extract latest indicator values for calculations
+   double latestAtr = atr[0];
+   double latestUpperBand = upperBand[0];
+   double latestLowerBand = lowerBand[0];
+
    //--- Get current prices
    double ask = Ask;
    double bid = Bid;
@@ -227,27 +232,27 @@ void OnTick()
    bool buySignal = (close[1] > upperBand[1] && close[0] > close[1] && bullishConfirmation);
    bool sellSignal = (close[1] < lowerBand[1] && close[0] < close[1] && bearishConfirmation);
    
-   //--- BOLT Optimization: Pass ask/bid to trade functions to avoid redundant SymbolInfoDouble() calls in a hot path.
+   //--- BOLT Optimization: Pass pre-fetched indicator values to trade functions to avoid redundant CopyBuffer() calls in a hot path.
    //--- Execute trades
    if(buySignal) {
-      OpenBuyTrade(ask);
+      OpenBuyTrade(ask, latestAtr, latestUpperBand, latestLowerBand);
    }
    else if(sellSignal) {
-      OpenSellTrade(bid);
+      OpenSellTrade(bid, latestAtr, latestUpperBand, latestLowerBand);
    }
 }
 
 //+------------------------------------------------------------------+
 //| Open Buy Trade                                                     |
 //+------------------------------------------------------------------+
-void OpenBuyTrade(double ask)
+void OpenBuyTrade(double ask, double latestAtr, double latestUpperBand, double latestLowerBand)
 {
    //--- Calculate Stop Loss
-   double sl = CalculateSL(ask, false);
+   double sl = CalculateSL(ask, false, latestAtr);
    if(sl <= 0) return;
    
    //--- Calculate Take Profit
-   double tp = CalculateTP(ask, sl, false);
+   double tp = CalculateTP(ask, sl, false, latestUpperBand, latestLowerBand);
    if(tp <= 0) return;
    
    //--- Normalize prices
@@ -271,14 +276,14 @@ void OpenBuyTrade(double ask)
 //+------------------------------------------------------------------+
 //| Open Sell Trade                                                    |
 //+------------------------------------------------------------------+
-void OpenSellTrade(double bid)
+void OpenSellTrade(double bid, double latestAtr, double latestUpperBand, double latestLowerBand)
 {
    //--- Calculate Stop Loss
-   double sl = CalculateSL(bid, true);
+   double sl = CalculateSL(bid, true, latestAtr);
    if(sl <= 0) return;
    
    //--- Calculate Take Profit
-   double tp = CalculateTP(bid, sl, true);
+   double tp = CalculateTP(bid, sl, true, latestUpperBand, latestLowerBand);
    if(tp <= 0) return;
    
    //--- Normalize prices
@@ -302,19 +307,16 @@ void OpenSellTrade(double bid)
 //+------------------------------------------------------------------+
 //| Calculate Stop Loss                                                 |
 //+------------------------------------------------------------------+
-double CalculateSL(double price, bool isSell)
+double CalculateSL(double price, bool isSell, double latestAtr)
 {
    double sl = 0;
-   double atr[];
-   ArraySetAsSeries(atr, true);
    
    if(SLMode == SL_ATR) {
-      if(CopyBuffer(atrHandle, 0, 0, 1, atr) <= 0) return 0;
-      double atrValue = atr[0];
+      if(latestAtr <= 0) return 0; // Basic validation
       if(isSell) {
-         sl = price + (atrValue * ATR_SL_Mult);
+         sl = price + (latestAtr * ATR_SL_Mult);
       } else {
-         sl = price - (atrValue * ATR_SL_Mult);
+         sl = price - (latestAtr * ATR_SL_Mult);
       }
    }
    else if(SLMode == SL_FIXED_POINTS) {
@@ -326,12 +328,11 @@ double CalculateSL(double price, bool isSell)
    }
    else if(SLMode == SL_SWING) {
       // Simplified swing - use ATR as fallback
-      if(CopyBuffer(atrHandle, 0, 0, 1, atr) <= 0) return 0;
-      double atrValue = atr[0];
+      if(latestAtr <= 0) return 0; // Basic validation
       if(isSell) {
-         sl = price + (atrValue * ATR_SL_Mult) + (SwingSLBufferPoints * g_point);
+         sl = price + (latestAtr * ATR_SL_Mult) + (SwingSLBufferPoints * g_point);
       } else {
-         sl = price - (atrValue * ATR_SL_Mult) - (SwingSLBufferPoints * g_point);
+         sl = price - (latestAtr * ATR_SL_Mult) - (SwingSLBufferPoints * g_point);
       }
    }
    
@@ -341,7 +342,7 @@ double CalculateSL(double price, bool isSell)
 //+------------------------------------------------------------------+
 //| Calculate Take Profit                                               |
 //+------------------------------------------------------------------+
-double CalculateTP(double price, double sl, bool isSell)
+double CalculateTP(double price, double sl, bool isSell, double latestUpperBand, double latestLowerBand)
 {
    double tp = 0;
    double slDistance = MathAbs(price - sl);
@@ -361,20 +362,24 @@ double CalculateTP(double price, double sl, bool isSell)
       }
    }
    else if(TPMode == TP_DONCHIAN_WIDTH) {
-      double upperBand[], lowerBand[];
-      ArraySetAsSeries(upperBand, true);
-      ArraySetAsSeries(lowerBand, true);
-      // iBands buffers: 1=upper, 2=lower
-      if(CopyBuffer(donchianBandsHandle, 1, 0, 1, upperBand) <= 0 ||
-         CopyBuffer(donchianBandsHandle, 2, 0, 1, lowerBand) <= 0) {
-         // Fallback to RR
-         return CalculateTP(price, sl, isSell);
+      //--- ⚡ Bolt: Bug fix for infinite recursion and performance improvement.
+      //--- Use pre-fetched indicator values instead of new CopyBuffer calls.
+      //--- If values are invalid, fall back *directly* to RR calculation to avoid recursion.
+      if(latestUpperBand <= 0 || latestLowerBand <= 0) {
+         // Fallback to RR directly
+         if(isSell) {
+            tp = price - (slDistance * RR);
+         } else {
+            tp = price + (slDistance * RR);
+         }
       }
-      double donchianWidth = (upperBand[0] - lowerBand[0]) * DonchianTP_Mult;
-      if(isSell) {
-         tp = price - donchianWidth;
-      } else {
-         tp = price + donchianWidth;
+      else {
+         double donchianWidth = (latestUpperBand - latestLowerBand) * DonchianTP_Mult;
+         if(isSell) {
+            tp = price - donchianWidth;
+         } else {
+            tp = price + donchianWidth;
+         }
       }
    }
    
