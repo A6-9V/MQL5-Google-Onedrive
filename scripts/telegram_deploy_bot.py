@@ -56,21 +56,29 @@ async def run_deployment(platform: str) -> Tuple[bool, str]:
     cmd = DEPLOY_COMMANDS[platform]
     try:
         logger.info(f"Running deployment: {' '.join(cmd)}")
-        result = subprocess.run(
-            cmd,
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
             cwd=REPO_ROOT,
-            capture_output=True,
-            text=True,
-            timeout=300  # 5 minute timeout
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
         )
-        
-        output = result.stdout + result.stderr
-        if result.returncode == 0:
-            return True, f"✅ Deployment to {platform} successful!\n\n{output[:1000]}"
-        else:
-            return False, f"❌ Deployment to {platform} failed:\n\n{output[:1000]}"
-    except subprocess.TimeoutExpired:
-        return False, f"⏱️ Deployment to {platform} timed out after 5 minutes"
+
+        try:
+            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=300)
+
+            output = stdout.decode('utf-8', errors='replace') + stderr.decode('utf-8', errors='replace')
+
+            if process.returncode == 0:
+                return True, f"✅ Deployment to {platform} successful!\n\n{output[:1000]}"
+            else:
+                return False, f"❌ Deployment to {platform} failed:\n\n{output[:1000]}"
+        except asyncio.TimeoutError:
+            try:
+                process.kill()
+                await process.wait()
+            except Exception:
+                pass
+            return False, f"⏱️ Deployment to {platform} timed out after 5 minutes"
     except Exception as e:
         return False, f"❌ Error running deployment: {str(e)}"
 
