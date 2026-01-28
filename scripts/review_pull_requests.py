@@ -100,6 +100,44 @@ def analyze_branch_name(branch_name):
     return info
 
 
+def get_all_branch_details():
+    """Get detailed information about all branches using a single git command."""
+    # We use git for-each-ref to get commit date and ahead/behind counts relative to origin/main
+    # Note: %(ahead-behind:origin/main) requires git 2.41+
+    cmd = ["git", "for-each-ref", "--format=%(refname:short)|%(committerdate:iso8601)|%(ahead-behind:origin/main)", "refs/remotes/origin"]
+    result = run_command(cmd)
+
+    details = {}
+    if result and result.returncode == 0:
+        for line in result.stdout.strip().split("\n"):
+            if not line.strip():
+                continue
+            parts = line.split("|")
+            if len(parts) >= 3:
+                ref = parts[0].strip()
+                date = parts[1].strip()
+                ahead_behind = parts[2].strip()
+
+                # Parse ahead/behind
+                try:
+                    # Output is "ahead behind"
+                    ahead_str, _ = ahead_behind.split()
+                    ahead = int(ahead_str)
+                except (ValueError, IndexError):
+                    ahead = 0
+
+                # ref is like "origin/branchname"
+                branch_short = ref.replace("origin/", "")
+
+                details[ref] = {
+                    "branch": branch_short,
+                    "full_name": ref,
+                    "commit_count": ahead,
+                    "last_commit_date": date
+                }
+    return details
+
+
 def get_branch_info(branch_name):
     """Get detailed information about a branch."""
     branch = branch_name.replace("origin/", "")
@@ -204,14 +242,22 @@ def main():
         print("=" * 80)
         print()
         
+        # Pre-fetch all branch details to avoid N+1 git calls
+        all_branch_details = get_all_branch_details()
+
         for category, branches in sorted(categories.items()):
             print(f"{category.upper()}: {len(branches)} branches")
             for branch, info in branches[:10]:  # Show first 10
-                branch_details = get_branch_info(branch)
+                # Use pre-fetched details if available, otherwise fallback
+                branch_details = all_branch_details.get(branch)
+
+                if not branch_details:
+                    branch_details = get_branch_info(branch)
+
                 print(f"  - {info['description']}")
                 print(f"    Branch: {branch_details['branch']}")
                 print(f"    Commits: {branch_details['commit_count']}")
-                if branch_details['last_commit_date']:
+                if branch_details.get('last_commit_date'):
                     print(f"    Last commit: {branch_details['last_commit_date']}")
             if len(branches) > 10:
                 print(f"    ... and {len(branches) - 10} more")
