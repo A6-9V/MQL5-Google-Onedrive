@@ -41,6 +41,7 @@ input double             Inp_Money_SizeOptimized_Percent       =1.0;         // 
 input group              "ZOLO Integration"
 input bool               EnableWebRequest                      =true;
 input string             WebRequestURL                         = "http://203.147.134.90";
+input string             ZoloEncryptionKey                     = ""; // Leave empty for no encryption
 
 //+------------------------------------------------------------------+
 //| Global expert object                                             |
@@ -238,6 +239,6 @@ void OnTimer(void)
    string msg = StringFormat("And bridge https://chat.whatsapp.com/J3io2JyrkBe0uCbB9WBHJE?mode=hqrc to schedule research to help analy uptime real data %s", timeStr);
 
    Print(msg);
-   SendSignalToBridge(msg, EnableWebRequest, WebRequestURL);
+   SendSignalToBridge(msg, EnableWebRequest, WebRequestURL, ZoloEncryptionKey);
   }
 //+------------------------------------------------------------------+

@@ -96,6 +96,7 @@ input bool   PushNotifications     = true;
 input group "ZOLO Integration"
 input bool   EnableWebRequest      = true;
 input string WebRequestURL         = "http://203.147.134.90";
+input string ZoloEncryptionKey     = ""; // Leave empty for no encryption
 
 CTrade gTrade;
 
@@ -452,7 +453,7 @@ void OnTick()
                             (donLong||donShort ? "Y" : "N"));
   Notify(msg);
 
-  if(EnableWebRequest) SendSignalToBridge(msg, EnableWebRequest, WebRequestURL);
+  if(EnableWebRequest) SendSignalToBridge(msg, EnableWebRequest, WebRequestURL, ZoloEncryptionKey);
 
   if(!EnableTrading) return;
   if(OnePositionPerSymbol && HasOpenPosition(_Symbol, MagicNumber)) return;
