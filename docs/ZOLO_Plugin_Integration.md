@@ -57,6 +57,8 @@ When a trading signal is generated, the EA sends a JSON payload to the endpoint:
 
 ## Security Considerations
 
+- **Encryption (Upcoming)**: Signal messages are slated for encryption. A stub has been added to `ZoloBridge.mqh`.
+  - **Reference Implementation**: [Replit Project](https://replit.com/join/rtvyfhtnow-keamouyleng369)
 - Always verify the endpoint URL before enabling web requests
 - The URL must be explicitly allowed in MT5 settings for security
 - Web requests have a 5-second timeout
