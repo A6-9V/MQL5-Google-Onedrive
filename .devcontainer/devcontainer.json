@@ -1,0 +1,60 @@
+{
+  "name": "MQL5 Trading Automation Dev Container",
+  "build": {
+    "dockerfile": "../Dockerfile.dev",
+    "context": ".."
+  },
+  "features": {
+    "ghcr.io/devcontainers/features/python:1": {
+      "version": "3.11"
+    },
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {}
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "ms-python.black-formatter",
+        "ms-azuretools.vscode-docker",
+        "GitHub.copilot",
+        "eamodio.gitlens",
+        "ms-vscode.powershell"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.linting.enabled": true,
+        "python.linting.pylintEnabled": true,
+        "python.formatting.provider": "black",
+        "editor.formatOnSave": true,
+        "files.eol": "\n"
+      }
+    }
+  },
+  "forwardPorts": [8080, 5000, 3000],
+  "portsAttributes": {
+    "8080": {
+      "label": "Main App",
+      "onAutoForward": "notify"
+    },
+    "5000": {
+      "label": "API Server",
+      "onAutoForward": "ignore"
+    },
+    "3000": {
+      "label": "Dashboard",
+      "onAutoForward": "ignore"
+    }
+  },
+  "postCreateCommand": "pip install -r requirements.txt && pip install -r scripts/requirements_bot.txt",
+  "remoteUser": "root",
+  "mounts": [
+    "source=${localWorkspaceFolder}/config,target=/app/config,type=bind,consistency=cached",
+    "source=${localWorkspaceFolder}/logs,target=/app/logs,type=bind,consistency=cached"
+  ],
+  "remoteEnv": {
+    "PYTHONPATH": "/app",
+    "PYTHONUNBUFFERED": "1"
+  }
+}

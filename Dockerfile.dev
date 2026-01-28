@@ -1,0 +1,58 @@
+# Development Dockerfile for MQL5 Trading Automation System
+FROM python:3.11-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies for development
+RUN apt-get update && apt-get install -y \
+    git \
+    bash \
+    curl \
+    wget \
+    vim \
+    nano \
+    build-essential \
+    gcc \
+    g++ \
+    make \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install development tools
+RUN pip install --upgrade pip setuptools wheel
+
+# Copy requirements first (for better caching)
+COPY requirements.txt* ./
+COPY scripts/requirements_bot.txt* ./scripts/
+
+# Install Python dependencies
+RUN if [ -f requirements.txt ]; then pip install --no-cache-dir -r requirements.txt; fi
+RUN if [ -f scripts/requirements_bot.txt ]; then pip install --no-cache-dir -r scripts/requirements_bot.txt; fi
+
+# Install development dependencies
+RUN pip install --no-cache-dir \
+    black \
+    pylint \
+    pytest \
+    ipython \
+    jupyter
+
+# Copy application files
+COPY . .
+
+# Create necessary directories
+RUN mkdir -p logs config mt5
+
+# Make scripts executable
+RUN chmod +x scripts/*.py scripts/*.sh 2>/dev/null || true
+
+# Set Python path and environment
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Expose ports
+EXPOSE 8080 5000 3000
+
+# Default command - keep container running for development
+CMD ["tail", "-f", "/dev/null"]

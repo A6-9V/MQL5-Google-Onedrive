@@ -4,27 +4,19 @@
 .github
 
 # Python
-__pycache__
-*.pyc
-*.pyo
-*.pyd
-.Python
+__pycache__/
+*.py[cod]
+*$py.class
 *.so
-*.egg
-*.egg-info
-dist
-build
+.Python
+venv/
+env/
+ENV/
 .venv
-venv
-env
-
-# Logs
-logs/*
-*.log
 
 # IDE
-.vscode
-.idea
+.vscode/
+.idea/
 *.swp
 *.swo
 *~
@@ -32,14 +24,34 @@ logs/*
 # OS
 .DS_Store
 Thumbs.db
+Desktop.ini
+
+# Logs
+logs/
+*.log
+
+# Config (sensitive)
+config/vault.json
+.env
+.env.*
+
+# Build artifacts
+dist/
+build/
+*.ex5
+
+# Documentation
+*.md
+!README.md
+
+# Dev container
+.devcontainer/
+
+# Docker
+docker-compose*.yml
+Dockerfile.dev
 
 # Temporary files
 *.tmp
-*.bak
-*.cache
-
-# Pages repo (if cloned locally)
-pages-repo
-
-# Documentation (optional - include if needed)
-# docs
+*.temp
+.cache

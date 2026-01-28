@@ -1,0 +1,33 @@
+========================================
+EXNESS REAL ACCOUNT CONNECTION DETAILS
+========================================
+
+Account Information:
+  Login: 411534497
+  Server: Exness-MT5Real8
+  Account Type: REAL
+
+Connection Steps:
+1. Open Exness MT5 application
+2. Go to: File → Login to Trade Account
+3. Enter credentials:
+   - Login: 411534497
+   - Password: [Your Password]
+   - Server: Exness-MT5Real8
+4. Click "Login"
+5. Verify account shows "Real" or "Live" account
+
+Next Steps After Login:
+1. Open MetaEditor (F4)
+2. Compile all .mq5 files (F7)
+3. Refresh Navigator (Ctrl+N → Right-click → Refresh)
+4. Attach EA to chart with conservative settings
+5. Enable AutoTrading (Ctrl+E)
+
+IMPORTANT SAFETY REMINDERS:
+- Start with RiskPercent: 1.0
+- Enable Stop Loss (SLMode: SL_ATR)
+- Monitor first trades closely
+- Never risk more than you can afford to lose
+
+========================================

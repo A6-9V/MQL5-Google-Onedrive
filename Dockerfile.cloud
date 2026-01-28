@@ -1,0 +1,43 @@
+# Production Dockerfile for Cloud Deployment
+FROM python:3.11-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies (minimal for production)
+RUN apt-get update && apt-get install -y \
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements first (for better Docker layer caching)
+COPY requirements.txt ./
+COPY scripts/requirements_bot.txt* ./scripts/
+
+# Install Python dependencies
+RUN pip install --no-cache-dir --upgrade pip && \
+    if [ -f requirements.txt ]; then pip install --no-cache-dir -r requirements.txt; fi && \
+    if [ -f scripts/requirements_bot.txt ]; then pip install --no-cache-dir -r scripts/requirements_bot.txt; fi
+
+# Copy application files
+COPY . .
+
+# Create logs directory
+RUN mkdir -p logs config
+
+# Make scripts executable
+RUN chmod +x scripts/*.py scripts/*.sh 2>/dev/null || true
+
+# Set Python path and environment
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+
+# Expose port
+EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD python -c "import sys; sys.exit(0)"
+
+# Default command - can be overridden by cloud platform
+CMD ["python", "scripts/telegram_deploy_bot.py"]

@@ -36,9 +36,13 @@ ENV/
 *.swo
 *~
 
+# Dev Container (keep config, ignore cache)
+.devcontainer/.cache/
+
 # OS
 Thumbs.db
 Desktop.ini
 
 # Personal vault - sensitive credentials
 config/vault.json
+data/
