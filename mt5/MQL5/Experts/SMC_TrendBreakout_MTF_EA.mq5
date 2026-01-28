@@ -191,19 +191,16 @@ void OnTick()
    positionOpen = false;
    
    //--- Get indicator values
-   double atr[];
    double upperBand[];
    double lowerBand[];
    double emaFast[];
    double emaSlow[];
    
-   ArraySetAsSeries(atr, true);
    ArraySetAsSeries(upperBand, true);
    ArraySetAsSeries(lowerBand, true);
    ArraySetAsSeries(emaFast, true);
    ArraySetAsSeries(emaSlow, true);
    
-   if(CopyBuffer(atrHandle, 0, 0, 3, atr) <= 0) return;
    // iBands buffers: 1=upper, 2=lower
    if(CopyBuffer(donchianBandsHandle, 1, 0, 3, upperBand) <= 0) return;
    if(CopyBuffer(donchianBandsHandle, 2, 0, 3, lowerBand) <= 0) return;
@@ -211,7 +208,6 @@ void OnTick()
    if(CopyBuffer(emaSlowHandle, 0, 0, 3, emaSlow) <= 0) return;
    
    //--- Extract latest indicator values for calculations
-   double latestAtr = atr[0];
    double latestUpperBand = upperBand[0];
    double latestLowerBand = lowerBand[0];
 
@@ -234,11 +230,19 @@ void OnTick()
    
    //--- BOLT Optimization: Pass pre-fetched indicator values to trade functions to avoid redundant CopyBuffer() calls in a hot path.
    //--- Execute trades
-   if(buySignal) {
-      OpenBuyTrade(ask, latestAtr, latestUpperBand, latestLowerBand);
-   }
-   else if(sellSignal) {
-      OpenSellTrade(bid, latestAtr, latestUpperBand, latestLowerBand);
+   if(buySignal || sellSignal)
+   {
+     //--- ⚡ Bolt: Defer ATR calculation until a signal is confirmed to avoid unnecessary calls.
+     double atr[];
+     ArraySetAsSeries(atr, true);
+     if(CopyBuffer(atrHandle, 0, 0, 1, atr) <= 0) return;
+
+     if(buySignal) {
+       OpenBuyTrade(ask, atr[0], latestUpperBand, latestLowerBand);
+     }
+     else { // sellSignal must be true
+       OpenSellTrade(bid, atr[0], latestUpperBand, latestLowerBand);
+     }
    }
 }
 
