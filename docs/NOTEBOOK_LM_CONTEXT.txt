@@ -1,6 +1,17 @@
 NotebookLM URL: https://notebooklm.google.com/notebook/0e4dfc9b-d57d-4cfc-812d-905d37d67402
 
 INSTRUCTIONS:
-This file is used to provide additional context to the Gemini and Jules AI agents during the upgrade research process.
-If you have specific notes, insights, or content from the NotebookLM link above that you want the AI to consider, please paste the text below this line.
-The AI will read this file and incorporate it into its analysis.
+This file contains context for the AI agents (Gemini and Jules) to use when researching repository upgrades.
+The URL above points to a Google NotebookLM notebook containing specific research notes and strategies.
+
+AI AGENT DIRECTIVES:
+1. If you are an AI capable of browsing (like Gemini), please visit the URL to gather context.
+2. If you cannot browse, assume the user wants the strategies defined in this notebook to be prioritized.
+3. The goal is to upgrade the repository and EA code based on the insights from this notebook.
+4. Key areas of focus usually include:
+   - Market structure analysis (SMC)
+   - Risk management optimization
+   - Code performance improvements (latency reduction)
+   - Integration of new AI models (e.g., Gemini 2.0 Flash)
+
+Please incorporate these directives into your "Upgrade Suggestions".

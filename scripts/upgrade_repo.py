@@ -7,6 +7,7 @@ Reads market research and suggests code upgrades using Gemini and Jules.
 import os
 import logging
 import requests
+import warnings
 # TODO: google.generativeai is deprecated, migrate to google.genai in future
 # import google.genai as genai
 import google.generativeai as genai
@@ -17,6 +18,9 @@ from dotenv import load_dotenv
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+# Suppress deprecation warnings
+warnings.filterwarnings("ignore", category=UserWarning, module="google.generativeai")
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DOCS_DIR = REPO_ROOT / "docs"
@@ -29,8 +33,12 @@ def ask_jules(prompt):
     api_url = os.environ.get("JULES_API_URL")
     model = os.environ.get("JULES_MODEL", "jules-v1")
 
-    if not api_key or not api_url:
-        logger.warning("Skipping Jules (Key/URL missing)")
+    if not api_key:
+        logger.warning("Skipping Jules (Key missing)")
+        return None
+
+    if not api_url:
+        logger.warning("Skipping Jules (URL missing)")
         return None
 
     headers = {
@@ -92,6 +100,7 @@ def main():
     if notebook_path.exists():
         with open(notebook_path, 'r') as f:
             notebook_context = f.read()
+            logger.info("Loaded NotebookLM context.")
 
     # Get EA code context
     ea_path = REPO_ROOT / "mt5/MQL5/Experts/SMC_TrendBreakout_MTF_EA.mq5"

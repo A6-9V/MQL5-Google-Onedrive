@@ -9,8 +9,7 @@ import json
 import logging
 import requests
 import concurrent.futures
-# TODO: google.generativeai is deprecated, migrate to google.genai in future
-# import google.genai as genai
+import warnings
 from datetime import datetime
 from pathlib import Path
 from dotenv import load_dotenv
@@ -18,6 +17,9 @@ from dotenv import load_dotenv
 # Setup logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
+# Suppress deprecation warnings from google.generativeai if present
+warnings.filterwarnings("ignore", category=UserWarning, module="google.generativeai")
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DOCS_DIR = REPO_ROOT / "docs"
@@ -158,8 +160,12 @@ def analyze_with_jules(data):
     api_url = os.environ.get("JULES_API_URL")
     model = os.environ.get("JULES_MODEL", "jules-v1")
 
-    if not api_key or not api_url:
-        logger.warning("JULES_API_KEY or JULES_API_URL not found. Skipping Jules analysis.")
+    if not api_key:
+        logger.warning("JULES_API_KEY not found. Skipping Jules analysis.")
+        return None
+
+    if not api_url:
+        logger.warning("JULES_API_URL not found. Skipping Jules analysis.")
         return None
 
     prompt = f"""
@@ -177,6 +183,8 @@ def analyze_with_jules(data):
         "Content-Type": "application/json",
         "Authorization": f"Bearer {api_key}"
     }
+
+    # Matches the structure in AiAssistant.mqh: {"model": "...", "prompt": "..."}
     payload = {
         "model": model,
         "prompt": prompt
@@ -203,7 +211,7 @@ def analyze_with_jules(data):
         logger.error(f"Jules analysis failed: {e}")
         error_msg = f"Jules analysis failed: {e}"
         if "NameResolutionError" in str(e) or "Failed to resolve" in str(e):
-            error_msg += "\n\n**Hint:** The Jules API URL might be incorrect. Please check `JULES_API_URL` in `.env`. If you intended to use the Jules CLI tool, note that this script attempts a REST API call."
+            error_msg += "\n\n**Hint:** The Jules API URL might be incorrect. Please check `JULES_API_URL` in `.env`."
         return error_msg
 
 def main():
