@@ -1,52 +1,52 @@
 {
-  "timestamp": "2026-01-26T05:09:09.850883",
+  "timestamp": "2026-01-27T20:03:42.311756",
   "symbols": {
     "EURUSD=X": {
-      "price": 1.1864,
+      "price": 1.198,
       "trend": "UP",
-      "volatility": "LOW",
+      "volatility": "HIGH",
       "history_last_5_closes": [
-        1.1639,
         1.1728,
         1.1673,
         1.1755,
-        1.1864
+        1.1858,
+        1.198
       ]
     },
     "GBPUSD=X": {
-      "price": 1.3661,
+      "price": 1.3782,
       "trend": "UP",
       "volatility": "LOW",
       "history_last_5_closes": [
-        1.3418,
         1.3441,
         1.3419,
         1.3501,
-        1.3661
+        1.3663,
+        1.3782
       ]
     },
     "GC=F": {
-      "price": 5067.8999,
+      "price": 5092.1001,
       "trend": "UP",
       "volatility": "HIGH",
       "history_last_5_closes": [
-        4759.6001,
         4831.7998,
         4908.7998,
         4976.2002,
-        5067.8999
+        5079.7002,
+        5092.1001
       ]
     },
     "BTC-USD": {
-      "price": 87592.0078,
+      "price": 88268.1016,
       "trend": "DOWN",
       "volatility": "HIGH",
       "history_last_5_closes": [
-        89376.9609,
-        89462.4531,
         89503.875,
         89110.7344,
-        87592.0078
+        86572.2188,
+        88267.1406,
+        88268.1016
       ]
     }
   }

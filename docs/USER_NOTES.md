@@ -32,3 +32,12 @@ This file serves as a central location for your personal notes, ideas, and exter
 ### 📍 Locations
 - **Battambang, Cambodia**: [Google Maps Link](https://goo.gl/maps/VSnv4avE8pHZxBzd9) (Approx: 13.126164, 103.189738)
 - **ZOLO Bridge Server**: Phnom Penh, Cambodia (IP: 203.147.134.90)
+
+### Research Schedule Setup
+- **Date**: 2026-01-27 19:58:56
+- **Status**: Setup Complete (Scheduler Running)
+- **Issues**:
+  - **Gemini**: API Quota Exceeded (429). Requires waiting for quota reset or billing upgrade.
+  - **Jules**: Connection Failed (NameResolutionError). The API URL `https://api.jules.ai/v1/completion` is unreachable. Check if `JULES_API_URL` in `.env` matches the correct endpoint (possibly the ZOLO Bridge IP or a different service) or if the CLI tool (`@google/jules`) should be used instead.
+- **Scheduler**: Running (PID verified)
+- **Verification**: Market research script executes but analysis fails due to above issues.

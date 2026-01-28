@@ -199,7 +199,10 @@ def analyze_with_jules(data):
 
     except Exception as e:
         logger.error(f"Jules analysis failed: {e}")
-        return f"Jules analysis failed: {e}"
+        error_msg = f"Jules analysis failed: {e}"
+        if "NameResolutionError" in str(e) or "Failed to resolve" in str(e):
+            error_msg += "\n\n**Hint:** The Jules API URL might be incorrect. Please check `JULES_API_URL` in `.env`. If you intended to use the Jules CLI tool, note that this script attempts a REST API call."
+        return error_msg
 
 def main():
     logger.info("Starting Market Research...")
