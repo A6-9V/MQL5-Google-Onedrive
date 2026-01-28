@@ -115,16 +115,16 @@ static void DrawText(const string name, const datetime t, const double price, co
 
 static double HighestHigh(const double &high[], const int start, const int count)
 {
-  double hh = -DBL_MAX;
-  for(int i=start;i<start+count;i++) hh = (high[i] > hh ? high[i] : hh);
-  return hh;
+  int idx = ArrayMaximum(high, start, count);
+  if(idx == -1) return -DBL_MAX;
+  return high[idx];
 }
 
 static double LowestLow(const double &low[], const int start, const int count)
 {
-  double ll = DBL_MAX;
-  for(int i=start;i<start+count;i++) ll = (low[i] < ll ? low[i] : ll);
-  return ll;
+  int idx = ArrayMinimum(low, start, count);
+  if(idx == -1) return DBL_MAX;
+  return low[idx];
 }
 
 // --- Cached MTF direction (performance)

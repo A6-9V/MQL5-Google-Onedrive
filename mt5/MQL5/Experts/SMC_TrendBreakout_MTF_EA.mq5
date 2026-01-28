@@ -102,7 +102,6 @@ CTrade gTrade;
 
 int gFractalsHandle = INVALID_HANDLE;
 int gAtrHandle      = INVALID_HANDLE;
-int gDonchianHandle = INVALID_HANDLE;
 int gEmaFastHandle  = INVALID_HANDLE;
 int gEmaSlowHandle  = INVALID_HANDLE;
 int gRsiHandle      = INVALID_HANDLE;
@@ -139,10 +138,11 @@ static int GetMTFDir()
   if(gEmaFastHandle==INVALID_HANDLE || gEmaSlowHandle==INVALID_HANDLE) return 0;
 
   // PERF: Only check for new MTF direction on a new bar of the LowerTF.
-  datetime mtf_time[1];
-  if(CopyTime(_Symbol, LowerTF, 0, 1, mtf_time) != 1) return 0; // if data not ready, return neutral
-  if(mtf_time[0] == g_mtfDir_lastCheckTime) return g_mtfDir_cachedValue; // return cached value
-  g_mtfDir_lastCheckTime = mtf_time[0];
+  // OPTIMIZATION: Use iTime for a faster check than CopyTime.
+  datetime mtf_time = iTime(_Symbol, LowerTF, 0);
+  if(mtf_time == 0) return 0; // if data not ready, return neutral
+  if(mtf_time == g_mtfDir_lastCheckTime) return g_mtfDir_cachedValue; // return cached value
+  g_mtfDir_lastCheckTime = mtf_time;
 
   double fast[2], slow[2];
   ArraySetAsSeries(fast, true);
@@ -278,8 +278,6 @@ int OnInit()
 
   // PERF: Validate and cache Donchian lookback once.
   gDonchianLookback = (DonchianLookback < 2 ? 2 : DonchianLookback);
-  gDonchianHandle = iDonchian(_Symbol, gSignalTf, gDonchianLookback);
-  if(gDonchianHandle == INVALID_HANDLE) return INIT_FAILED;
 
   gEmaFastHandle = iMA(_Symbol, LowerTF, EMAFast, 0, MODE_EMA, PRICE_CLOSE);
   gEmaSlowHandle = iMA(_Symbol, LowerTF, EMASlow, 0, MODE_EMA, PRICE_CLOSE);
@@ -307,9 +305,6 @@ int OnInit()
   G_STOPS_LEVEL = MathMax(stopsLevel, freezeLevel);
   G_MIN_STOP_PRICE = (G_STOPS_LEVEL > 0 ? G_STOPS_LEVEL * G_POINT : 0.0);
 
-  // PERF: Validate and cache Donchian lookback once.
-  gDonchianLookback = (DonchianLookback < 2 ? 2 : DonchianLookback);
-
   return INIT_SUCCEEDED;
 }
 
@@ -317,7 +312,6 @@ void OnDeinit(const int reason)
 {
   if(gFractalsHandle != INVALID_HANDLE) IndicatorRelease(gFractalsHandle);
   if(gAtrHandle != INVALID_HANDLE) IndicatorRelease(gAtrHandle);
-  if(gDonchianHandle != INVALID_HANDLE) IndicatorRelease(gDonchianHandle);
   if(gEmaFastHandle != INVALID_HANDLE) IndicatorRelease(gEmaFastHandle);
   if(gEmaSlowHandle != INVALID_HANDLE) IndicatorRelease(gEmaSlowHandle);
   if(gRsiHandle != INVALID_HANDLE) IndicatorRelease(gRsiHandle);
@@ -329,12 +323,9 @@ void OnTick()
   // This is a critical optimization that prevents expensive calls (like CopyRates)
   // from running on every single price tick within the same bar.
   const int sigBar = (FireOnClose ? 1 : 0);
-  datetime time[2]; // Index 0 is current bar, 1 is last closed bar.
-  ArraySetAsSeries(time, true);
-  // Ensure we have enough bars to get the time for our signal bar.
-  if(CopyTime(_Symbol, gSignalTf, 0, sigBar + 1, time) <= sigBar) return;
-
-  datetime sigTime = time[sigBar];
+  // OPTIMIZATION: Use iTime for a faster check than CopyTime.
+  datetime sigTime = iTime(_Symbol, gSignalTf, sigBar);
+  if(sigTime == 0) return; // Data not ready
   if(sigTime == gLastSignalBarTime) return; // Not a new signal bar, exit early.
 
   // Now that we've passed all checks, we can commit to this bar time.
@@ -387,16 +378,16 @@ void OnTick()
     if(closeSig <= 0.0) return; // Abort if price is invalid.
   }
 
-  // --- Donchian Channel (using native indicator for performance) ---
-  // The native iDonchian is faster as the terminal manages state and calculations.
-  double donchianUp[1], donchianDn[1];
-  // We need the Donchian value from the bar *preceding* the signal bar.
+  // --- Donchian Channel (using native CopyHigh/CopyLow for performance) ---
+  // OPTIMIZATION: Using CopyHigh/CopyLow with ArrayMaximum/ArrayMinimum is the standard
+  // and most efficient way in MQL5 to calculate a range high/low without a custom indicator.
   int donStart = sigBar + 1;
-  if(CopyBuffer(gDonchianHandle, 0, donStart, 1, donchianUp) != 1) return;
-  if(CopyBuffer(gDonchianHandle, 1, donStart, 1, donchianDn) != 1) return;
+  double highs[], lows[];
+  if(CopyHigh(_Symbol, gSignalTf, donStart, gDonchianLookback, highs) != gDonchianLookback) return;
+  if(CopyLow(_Symbol, gSignalTf, donStart, gDonchianLookback, lows) != gDonchianLookback) return;
 
-  double donHigh = donchianUp[0];
-  double donLow  = donchianDn[0];
+  double donHigh = highs[ArrayMaximum(highs)];
+  double donLow  = lows[ArrayMinimum(lows)];
   if(donHigh <= 0 || donLow <= 0) return; // Data not ready or invalid
 
   // --- Primary Signals (without MTF confirmation yet) ---
