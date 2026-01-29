@@ -32,6 +32,8 @@ jobs:
     permissions:
       contents: read
       packages: write
+    outputs:
+      dev_tag_line: ${{ steps.meta.outputs.tags }}
     
     steps:
       - name: Checkout code
@@ -73,7 +75,8 @@ jobs:
       
       - name: Run tests in container
         run: |
-          docker run --rm ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:dev-${{ github.sha }} \
+          DEV_TAG=$(echo "${{ steps.meta.outputs.tags }}" | tr ',' '\n' | grep 'dev-' | head -n 1)
+          docker run --rm $DEV_TAG \
             python -c "import sys; print('Python:', sys.version); sys.exit(0)"
       
       - name: Image digest
@@ -104,7 +107,8 @@ jobs:
       
       - name: Pull latest dev image
         run: |
-          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:dev-${{ github.sha }} || \
+          DEV_TAG=$(echo "${{ needs.build-and-test.outputs.dev_tag_line }}" | tr ',' '\n' | grep 'dev-' | head -n 1)
+          docker pull $DEV_TAG || \
           docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:develop || \
           docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main
       

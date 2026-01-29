@@ -191,63 +191,66 @@ void OnTick()
    }
    positionOpen = false;
    
-   //--- Get indicator values
-   double upperBand[];
-   double lowerBand[];
-   double emaFast[];
-   double emaSlow[];
-   
+   //--- ⚡ Bolt: Performance optimization - lazy load confirmation indicators.
+   //--- First, fetch only the primary signal (Donchian) to check for a potential breakout.
+   double upperBand[3];
+   double lowerBand[3];
    ArraySetAsSeries(upperBand, true);
    ArraySetAsSeries(lowerBand, true);
-   ArraySetAsSeries(emaFast, true);
-   ArraySetAsSeries(emaSlow, true);
-   
+
    // iBands buffers: 1=upper, 2=lower
    if(CopyBuffer(donchianBandsHandle, 1, 0, 3, upperBand) <= 0) return;
    if(CopyBuffer(donchianBandsHandle, 2, 0, 3, lowerBand) <= 0) return;
-   if(CopyBuffer(emaFastHandle, 0, 0, 3, emaFast) <= 0) return;
-   if(CopyBuffer(emaSlowHandle, 0, 0, 3, emaSlow) <= 0) return;
-   
-   //--- Extract latest indicator values for calculations
-   double latestUpperBand = upperBand[0];
-   double latestLowerBand = lowerBand[0];
 
    //--- Get current prices
    double ask = Ask;
    double bid = Bid;
    
-   double close[3];
-   close[0] = rates[0].close;
-   close[1] = rates[1].close;
-   close[2] = rates[2].close;
+   //--- Pre-check for a Donchian Breakout *before* fetching confirmation data
+   bool potentialBuy = (rates[1].close > upperBand[1] && rates[0].close > rates[1].close);
+   bool potentialSell = (rates[1].close < lowerBand[1] && rates[0].close < rates[1].close);
    
-   //--- Lower TF Confirmation: Check EMA direction
-   bool bullishConfirmation = (emaFast[0] > emaSlow[0] && emaFast[1] > emaSlow[1]);
-   bool bearishConfirmation = (emaFast[0] < emaSlow[0] && emaFast[1] < emaSlow[1]);
+   bool buySignal = false;
+   bool sellSignal = false;
+
+   //--- If a potential breakout exists, *then* fetch expensive confirmation indicators.
+   if(potentialBuy || potentialSell)
+   {
+      double emaFast[3];
+      double emaSlow[3];
+      ArraySetAsSeries(emaFast, true);
+      ArraySetAsSeries(emaSlow, true);
+
+      if(CopyBuffer(emaFastHandle, 0, 0, 3, emaFast) <= 0) return;
+      if(CopyBuffer(emaSlowHandle, 0, 0, 3, emaSlow) <= 0) return;
+
+      //--- Lower TF Confirmation: Check EMA direction
+      bool bullishConfirmation = (emaFast[0] > emaSlow[0] && emaFast[1] > emaSlow[1]);
+      bool bearishConfirmation = (emaFast[0] < emaSlow[0] && emaFast[1] < emaSlow[1]);
+
+      //--- Final Signal Confirmation
+      if(potentialBuy && bullishConfirmation) buySignal = true;
+      if(potentialSell && bearishConfirmation) sellSignal = true;
+   }
    
-   //--- Donchian Breakout Detection
-   bool buySignal = (close[1] > upperBand[1] && close[0] > close[1] && bullishConfirmation);
-   bool sellSignal = (close[1] < lowerBand[1] && close[0] < close[1] && bearishConfirmation);
-   
-   //--- BOLT Optimization: Pass pre-fetched indicator values to trade functions to avoid redundant CopyBuffer() calls in a hot path.
    //--- Execute trades
    if(buySignal || sellSignal)
    {
-     //--- ⚡ Bolt: Defer ATR calculation until a signal is confirmed to avoid unnecessary calls.
+     //--- Defer ATR calculation until a signal is confirmed to avoid unnecessary calls.
      double atr[];
      ArraySetAsSeries(atr, true);
      if(CopyBuffer(atrHandle, 0, 0, 1, atr) <= 0) return;
 
-     //--- ⚡ Bolt: Performance optimization - fetch account info once before trade execution.
+     //--- Fetch account info once before trade execution.
      double accountBalance = AccountInfoDouble(ACCOUNT_BALANCE);
      double accountEquity = AccountInfoDouble(ACCOUNT_EQUITY);
      double freeMargin = AccountInfoDouble(ACCOUNT_MARGIN_FREE);
 
      if(buySignal) {
-       OpenBuyTrade(ask, atr[0], latestUpperBand, latestLowerBand, accountBalance, accountEquity, freeMargin);
+       OpenBuyTrade(ask, atr[0], upperBand[0], lowerBand[0], accountBalance, accountEquity, freeMargin);
      }
      else { // sellSignal must be true
-       OpenSellTrade(bid, atr[0], latestUpperBand, latestLowerBand, accountBalance, accountEquity, freeMargin);
+       OpenSellTrade(bid, atr[0], upperBand[0], lowerBand[0], accountBalance, accountEquity, freeMargin);
      }
    }
 }
