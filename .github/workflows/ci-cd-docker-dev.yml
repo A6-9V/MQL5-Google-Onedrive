@@ -60,7 +60,7 @@ jobs:
             type=ref,event=pr
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
-            type=sha,prefix=dev-
+            type=sha,prefix=dev-,sha-len=0
       
       - name: Build Docker Dev image
         uses: docker/build-push-action@v5
