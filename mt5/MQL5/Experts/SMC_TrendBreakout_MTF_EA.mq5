@@ -238,11 +238,16 @@ void OnTick()
      ArraySetAsSeries(atr, true);
      if(CopyBuffer(atrHandle, 0, 0, 1, atr) <= 0) return;
 
+     //--- ⚡ Bolt: Performance optimization - fetch account info once before trade execution.
+     double accountBalance = AccountInfoDouble(ACCOUNT_BALANCE);
+     double accountEquity = AccountInfoDouble(ACCOUNT_EQUITY);
+     double freeMargin = AccountInfoDouble(ACCOUNT_MARGIN_FREE);
+
      if(buySignal) {
-       OpenBuyTrade(ask, atr[0], latestUpperBand, latestLowerBand);
+       OpenBuyTrade(ask, atr[0], latestUpperBand, latestLowerBand, accountBalance, accountEquity, freeMargin);
      }
      else { // sellSignal must be true
-       OpenSellTrade(bid, atr[0], latestUpperBand, latestLowerBand);
+       OpenSellTrade(bid, atr[0], latestUpperBand, latestLowerBand, accountBalance, accountEquity, freeMargin);
      }
    }
 }
@@ -250,7 +255,7 @@ void OnTick()
 //+------------------------------------------------------------------+
 //| Open Buy Trade                                                     |
 //+------------------------------------------------------------------+
-void OpenBuyTrade(double ask, double latestAtr, double latestUpperBand, double latestLowerBand)
+void OpenBuyTrade(double ask, double latestAtr, double latestUpperBand, double latestLowerBand, double accountBalance, double accountEquity, double freeMargin)
 {
    //--- Calculate Stop Loss
    double sl = CalculateSL(ask, false, latestAtr);
@@ -265,7 +270,7 @@ void OpenBuyTrade(double ask, double latestAtr, double latestUpperBand, double l
    tp = NormalizeDouble(tp, g_digits);
    
    //--- Calculate lot size
-   double lots = CalculateLots(ask - sl);
+   double lots = CalculateLots(ask - sl, accountBalance, accountEquity, freeMargin);
    if(lots <= 0) return;
    
    //--- Open buy position
@@ -281,7 +286,7 @@ void OpenBuyTrade(double ask, double latestAtr, double latestUpperBand, double l
 //+------------------------------------------------------------------+
 //| Open Sell Trade                                                    |
 //+------------------------------------------------------------------+
-void OpenSellTrade(double bid, double latestAtr, double latestUpperBand, double latestLowerBand)
+void OpenSellTrade(double bid, double latestAtr, double latestUpperBand, double latestLowerBand, double accountBalance, double accountEquity, double freeMargin)
 {
    //--- Calculate Stop Loss
    double sl = CalculateSL(bid, true, latestAtr);
@@ -296,7 +301,7 @@ void OpenSellTrade(double bid, double latestAtr, double latestUpperBand, double 
    tp = NormalizeDouble(tp, g_digits);
    
    //--- Calculate lot size
-   double lots = CalculateLots(sl - bid);
+   double lots = CalculateLots(sl - bid, accountBalance, accountEquity, freeMargin);
    if(lots <= 0) return;
    
    //--- Open sell position
@@ -394,16 +399,16 @@ double CalculateTP(double price, double sl, bool isSell, double latestUpperBand,
 //+------------------------------------------------------------------+
 //| Calculate Lot Size                                                  |
 //+------------------------------------------------------------------+
-double CalculateLots(double slDistance)
+double CalculateLots(double slDistance, double accountBalance, double accountEquity, double freeMargin)
 {
    if(slDistance <= 0) return 0;
    if(RiskPercent <= 0) return 0;
    
-   //--- Get account balance/equity
-   double accountBalance = RiskUseEquity ? AccountInfoDouble(ACCOUNT_EQUITY) : AccountInfoDouble(ACCOUNT_BALANCE);
+   //--- Get account balance/equity from parameters
+   double balanceOrEquity = RiskUseEquity ? accountEquity : accountBalance;
    
    //--- Calculate risk amount
-   double riskAmount = accountBalance * (RiskPercent / 100.0);
+   double riskAmount = balanceOrEquity * (RiskPercent / 100.0);
    
    //--- Calculate lots
    double lots = (riskAmount / (slDistance / g_point * g_tickSize / g_point * g_tickValue));
@@ -417,7 +422,6 @@ double CalculateLots(double slDistance)
    
    //--- Check margin if needed
    if(RiskClampToFreeMargin) {
-      double freeMargin = AccountInfoDouble(ACCOUNT_MARGIN_FREE);
       double marginRequired = g_marginInitial * lots;
       if(marginRequired > freeMargin) {
          lots = (freeMargin / g_marginInitial);
