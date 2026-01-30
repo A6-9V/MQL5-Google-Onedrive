@@ -115,16 +115,18 @@ static void DrawText(const string name, const datetime t, const double price, co
 
 static double HighestHigh(const double &high[], const int start, const int count)
 {
-  double hh = -DBL_MAX;
-  for(int i=start;i<start+count;i++) hh = (high[i] > hh ? high[i] : hh);
-  return hh;
+  // ⚡ Bolt: Use native ArrayMaximum for better performance.
+  // MQL5 native functions are implemented in optimized C++ and are faster than manual loops.
+  int index = ArrayMaximum(high, start, count);
+  return (index != -1) ? high[index] : -DBL_MAX;
 }
 
 static double LowestLow(const double &low[], const int start, const int count)
 {
-  double ll = DBL_MAX;
-  for(int i=start;i<start+count;i++) ll = (low[i] < ll ? low[i] : ll);
-  return ll;
+  // ⚡ Bolt: Use native ArrayMinimum for better performance.
+  // MQL5 native functions are implemented in optimized C++ and are faster than manual loops.
+  int index = ArrayMinimum(low, start, count);
+  return (index != -1) ? low[index] : DBL_MAX;
 }
 
 // --- Cached MTF direction (performance)
