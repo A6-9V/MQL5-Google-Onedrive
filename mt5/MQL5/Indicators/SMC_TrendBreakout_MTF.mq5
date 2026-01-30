@@ -60,6 +60,7 @@ int gEmaSlowHandle  = INVALID_HANDLE;
 int gTrendDir = 0;
 
 string gObjPrefix;
+int    g_objCount = 0; // ⚡ Bolt: Cached object count for performance
 
 datetime gLastBarTime = 0;
 
@@ -74,28 +75,23 @@ static void Notify(const string msg)
 
 static void  SafeDeleteOldObjects()
 {
-  // keep last MaxObjects objects with prefix, delete oldest (by time suffix)
-  // simple cap: if too many, delete all (fast & safe for indicator)
-  int total = ObjectsTotal(0, 0, -1);
-  int cnt = 0;
-  for(int i=total-1;i>=0;i--)
-  {
-    string name = ObjectName(0, i, 0, -1);
-    if(StringFind(name, gObjPrefix) == 0) cnt++;
-  }
-  if(cnt <= MaxObjects) return;
-  for(int i=total-1;i>=0;i--)
-  {
-    string name = ObjectName(0, i, 0, -1);
-    if(StringFind(name, gObjPrefix) == 0) ObjectDelete(0, name);
-  }
+  // ⚡ Bolt: Performance optimization.
+  // Using a cached count and native ObjectsDeleteAll() is much faster than manual loops
+  // that iterate through all chart objects using ObjectName() and StringFind().
+  if(g_objCount <= MaxObjects) return;
+
+  ObjectsDeleteAll(0, gObjPrefix);
+  g_objCount = 0;
 }
 
 static void DrawHLine(const string name, const double price, const color c, const ENUM_LINE_STYLE st, const int w)
 {
   if(!DrawStructureLines && !DrawBreakoutLines) return;
   if(ObjectFind(0, name) >= 0) return;
-  ObjectCreate(0, name, OBJ_HLINE, 0, 0, price);
+  if(ObjectCreate(0, name, OBJ_HLINE, 0, 0, price))
+  {
+    g_objCount++; // ⚡ Bolt: Track created objects
+  }
   ObjectSetInteger(0, name, OBJPROP_COLOR, c);
   ObjectSetInteger(0, name, OBJPROP_STYLE, st);
   ObjectSetInteger(0, name, OBJPROP_WIDTH, w);
@@ -105,7 +101,10 @@ static void DrawHLine(const string name, const double price, const color c, cons
 static void DrawText(const string name, const datetime t, const double price, const string txt, const color c)
 {
   if(ObjectFind(0, name) >= 0) return;
-  ObjectCreate(0, name, OBJ_TEXT, 0, t, price);
+  if(ObjectCreate(0, name, OBJ_TEXT, 0, t, price))
+  {
+    g_objCount++; // ⚡ Bolt: Track created objects
+  }
   ObjectSetString(0, name, OBJPROP_TEXT, txt);
   ObjectSetInteger(0, name, OBJPROP_COLOR, c);
   ObjectSetInteger(0, name, OBJPROP_ANCHOR, ANCHOR_LEFT);
@@ -115,14 +114,16 @@ static void DrawText(const string name, const datetime t, const double price, co
 
 static double HighestHigh(const double &high[], const int start, const int count)
 {
-  // ⚡ Bolt: Using native ArrayMaximum() is significantly faster than a manual script loop.
+  // ⚡ Bolt: Use native ArrayMaximum for better performance.
+  // MQL5 native functions are implemented in optimized C++ and are faster than manual loops.
   int index = ArrayMaximum(high, start, count);
   return (index != -1) ? high[index] : -DBL_MAX;
 }
 
 static double LowestLow(const double &low[], const int start, const int count)
 {
-  // ⚡ Bolt: Using native ArrayMinimum() is significantly faster than a manual script loop.
+  // ⚡ Bolt: Use native ArrayMinimum for better performance.
+  // MQL5 native functions are implemented in optimized C++ and are faster than manual loops.
   int index = ArrayMinimum(low, start, count);
   return (index != -1) ? low[index] : DBL_MAX;
 }
@@ -167,6 +168,15 @@ int OnInit()
   PlotIndexSetInteger(1, PLOT_ARROW, ArrowCodeShort);
 
   gObjPrefix = StringFormat("SMC_TB_MTF_%I64u_", (long)ChartID());
+
+  // ⚡ Bolt: Initialize object count for performance optimization.
+  // One-time O(N) loop is acceptable in OnInit to avoid O(N) loops in OnCalculate.
+  g_objCount = 0;
+  int total = ObjectsTotal(0, 0, -1);
+  for(int i = 0; i < total; i++)
+  {
+    if(StringFind(ObjectName(0, i), gObjPrefix) == 0) g_objCount++;
+  }
 
   // fractals on main TF
   gFractalsHandle = iFractals(_Symbol, _Period);
@@ -239,8 +249,10 @@ int OnCalculate(
   double lastSwingLow  = 0.0; datetime lastSwingLowT  = 0;
   for(int i=sigBar+2; i<need; i++)
   {
-    if(lastSwingHighT==0 && upFr[i] != 0.0) { lastSwingHigh = upFr[i]; lastSwingHighT = time[i]; }
-    if(lastSwingLowT==0  && dnFr[i] != 0.0) { lastSwingLow  = dnFr[i]; lastSwingLowT  = time[i]; }
+    // ⚡ Bolt: Fix bug where EMPTY_VALUE (DBL_MAX) was incorrectly identified as a valid fractal.
+    // This avoids processing incorrect data and ensures correct signal logic.
+    if(lastSwingHighT==0 && upFr[i] != 0.0 && upFr[i] != EMPTY_VALUE) { lastSwingHigh = upFr[i]; lastSwingHighT = time[i]; }
+    if(lastSwingLowT==0  && dnFr[i] != 0.0 && dnFr[i] != EMPTY_VALUE) { lastSwingLow  = dnFr[i]; lastSwingLowT  = time[i]; }
     if(lastSwingHighT!=0 && lastSwingLowT!=0) break;
   }
 
