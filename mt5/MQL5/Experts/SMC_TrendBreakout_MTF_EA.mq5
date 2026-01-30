@@ -320,29 +320,28 @@ void OpenSellTrade(double bid, double latestAtr, double latestUpperBand, double 
 double CalculateSL(double price, bool isSell, double latestAtr)
 {
    double sl = 0;
-   
-   if(SLMode == SL_ATR) {
-      if(latestAtr <= 0) return 0; // Basic validation
+
+   //--- ⚡ Bolt: Refactored for performance and DRY principle.
+   //--- Merged SL_ATR and SL_SWING as their core logic is identical.
+   if(SLMode == SL_ATR || SLMode == SL_SWING)
+   {
+      if(latestAtr <= 0) return 0; // Basic validation for ATR-based modes.
+
+      double atrOffset = latestAtr * ATR_SL_Mult;
+      double swingBuffer = (SLMode == SL_SWING) ? (SwingSLBufferPoints * g_point) : 0;
+
       if(isSell) {
-         sl = price + (latestAtr * ATR_SL_Mult);
+         sl = price + atrOffset + swingBuffer;
       } else {
-         sl = price - (latestAtr * ATR_SL_Mult);
+         sl = price - atrOffset - swingBuffer;
       }
    }
-   else if(SLMode == SL_FIXED_POINTS) {
+   else if(SLMode == SL_FIXED_POINTS)
+   {
       if(isSell) {
          sl = price + (FixedSLPoints * g_point);
       } else {
          sl = price - (FixedSLPoints * g_point);
-      }
-   }
-   else if(SLMode == SL_SWING) {
-      // Simplified swing - use ATR as fallback
-      if(latestAtr <= 0) return 0; // Basic validation
-      if(isSell) {
-         sl = price + (latestAtr * ATR_SL_Mult) + (SwingSLBufferPoints * g_point);
-      } else {
-         sl = price - (latestAtr * ATR_SL_Mult) - (SwingSLBufferPoints * g_point);
       }
    }
    
