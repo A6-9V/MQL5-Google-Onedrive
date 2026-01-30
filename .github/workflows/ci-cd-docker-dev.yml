@@ -32,6 +32,8 @@ jobs:
     permissions:
       contents: read
       packages: write
+    outputs:
+      tags: ${{ steps.meta.outputs.tags }}
     
     steps:
       - name: Checkout code
@@ -73,7 +75,8 @@ jobs:
       
       - name: Run tests in container
         run: |
-          docker run --rm ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:dev-${{ github.sha }} \
+          # Use the first tag from the metadata output, which corresponds to the dev-SHA tag
+          docker run --rm $(echo "${{ steps.meta.outputs.tags }}" | head -n 1) \
             python -c "import sys; print('Python:', sys.version); sys.exit(0)"
       
       - name: Image digest
@@ -104,7 +107,8 @@ jobs:
       
       - name: Pull latest dev image
         run: |
-          docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:dev-${{ github.sha }} || \
+          # Use the SHA-based tag from the build job's output
+          docker pull $(echo "${{ needs.build-and-test.outputs.tags }}" | head -n 1) || \
           docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:develop || \
           docker pull ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:main
       

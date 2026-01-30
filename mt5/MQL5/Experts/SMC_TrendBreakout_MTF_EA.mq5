@@ -191,23 +191,16 @@ void OnTick()
    }
    positionOpen = false;
    
-   //--- Get indicator values
+   //--- Get primary signal indicator values (Donchian)
    double upperBand[];
    double lowerBand[];
-   double emaFast[];
-   double emaSlow[];
-   
    ArraySetAsSeries(upperBand, true);
    ArraySetAsSeries(lowerBand, true);
-   ArraySetAsSeries(emaFast, true);
-   ArraySetAsSeries(emaSlow, true);
    
    // iBands buffers: 1=upper, 2=lower
    if(CopyBuffer(donchianBandsHandle, 1, 0, 3, upperBand) <= 0) return;
    if(CopyBuffer(donchianBandsHandle, 2, 0, 3, lowerBand) <= 0) return;
-   if(CopyBuffer(emaFastHandle, 0, 0, 3, emaFast) <= 0) return;
-   if(CopyBuffer(emaSlowHandle, 0, 0, 3, emaSlow) <= 0) return;
-   
+
    //--- Extract latest indicator values for calculations
    double latestUpperBand = upperBand[0];
    double latestLowerBand = lowerBand[0];
@@ -221,13 +214,32 @@ void OnTick()
    close[1] = rates[1].close;
    close[2] = rates[2].close;
    
-   //--- Lower TF Confirmation: Check EMA direction
-   bool bullishConfirmation = (emaFast[0] > emaSlow[0] && emaFast[1] > emaSlow[1]);
-   bool bearishConfirmation = (emaFast[0] < emaSlow[0] && emaFast[1] < emaSlow[1]);
-   
-   //--- Donchian Breakout Detection
-   bool buySignal = (close[1] > upperBand[1] && close[0] > close[1] && bullishConfirmation);
-   bool sellSignal = (close[1] < lowerBand[1] && close[0] < close[1] && bearishConfirmation);
+   //--- Preliminary Donchian Breakout Detection (without confirmation)
+   bool buyBreakout = (close[1] > upperBand[1] && close[0] > close[1]);
+   bool sellBreakout = (close[1] < lowerBand[1] && close[0] < close[1]);
+
+   bool buySignal = false;
+   bool sellSignal = false;
+
+   //--- ⚡ Bolt: Lazy load confirmation indicators only if a breakout occurs.
+   if(buyBreakout || sellBreakout)
+   {
+      //--- Get Lower TF Confirmation indicator values
+      double emaFast[];
+      double emaSlow[];
+      ArraySetAsSeries(emaFast, true);
+      ArraySetAsSeries(emaSlow, true);
+      if(CopyBuffer(emaFastHandle, 0, 0, 3, emaFast) <= 0) return;
+      if(CopyBuffer(emaSlowHandle, 0, 0, 3, emaSlow) <= 0) return;
+
+      //--- Lower TF Confirmation: Check EMA direction
+      bool bullishConfirmation = (emaFast[0] > emaSlow[0] && emaFast[1] > emaSlow[1]);
+      bool bearishConfirmation = (emaFast[0] < emaSlow[0] && emaFast[1] < emaSlow[1]);
+
+      //--- Final Signal Calculation
+      buySignal = buyBreakout && bullishConfirmation;
+      sellSignal = sellBreakout && bearishConfirmation;
+   }
    
    //--- BOLT Optimization: Pass pre-fetched indicator values to trade functions to avoid redundant CopyBuffer() calls in a hot path.
    //--- Execute trades
