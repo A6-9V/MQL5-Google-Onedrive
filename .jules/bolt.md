@@ -22,3 +22,7 @@ This journal is for CRITICAL, non-routine performance learnings ONLY.
 ## 2026-01-20 - Robust New Bar Check in MQL5 OnCalculate
 **Learning:** An early exit in `OnCalculate` based on bar time MUST check `prev_calculated > 0`. If `prev_calculated == 0`, the terminal is requesting a full recalculation (e.g., after a history sync or data gap fill), and exiting early would result in stale data. Also, using `iTime()` is more robust than indexing into the `time[]` array if the array's series state is unknown.
 **Action:** Always wrap "new bar" early exits in indicators with `if(prev_calculated > 0 && ...)` and prefer `iTime()` for the current bar's timestamp.
+
+## 2026-01-21 - MQL5 Performance: Static Arrays and Multiplier Pre-calculation
+**Learning:** In high-frequency MQL5 code like `OnTick`, repeated memory allocations for arrays (e.g., `MqlRates`, `double` buffers) create measurable overhead. Using the `static` keyword allows memory reuse across calls. Furthermore, complex mathematical formulas (like lot size calculations involving multiple divisions/multiplications) can often be simplified into a single pre-calculated multiplier in `OnInit`, significantly reducing the CPU cycles required per tick.
+**Action:** Always declare data-fetching arrays as `static` in `OnTick`. Pre-calculate constant portions of trading formulas in `OnInit` and store them in cached global variables.
