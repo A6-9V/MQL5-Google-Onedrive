@@ -80,6 +80,8 @@ double g_lotStep;
 double g_tickValue;
 double g_tickSize;
 double g_marginInitial;
+double g_riskMultiplier;
+double g_lotValuePerUnit;
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                     |
@@ -100,6 +102,10 @@ int OnInit()
    g_tickValue = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE);
    g_tickSize = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_SIZE);
    g_marginInitial = SymbolInfoDouble(_Symbol, SYMBOL_MARGIN_INITIAL);
+
+   //--- ⚡ Bolt: Pre-calculate lot size constants for performance
+   g_riskMultiplier = RiskPercent / 100.0;
+   g_lotValuePerUnit = (g_tickSize > 0) ? (g_tickValue / g_tickSize) : 0;
 
    //--- Initialize indicators
    atrHandle = iATR(_Symbol, _Period, ATR_Period);
@@ -177,10 +183,23 @@ void OnTick()
    if(currentBarTime == lastBarTime) return; // Exit if not a new bar
    lastBarTime = currentBarTime;
 
-   //--- ⚡ Bolt: Consolidate CopyRates calls for performance.
+   //--- ⚡ Bolt: Consolidate CopyRates calls and use static buffer for performance.
    //--- Fetch 3 bars at once to avoid a second redundant call later in the function.
-   MqlRates rates[];
-   ArraySetAsSeries(rates, true);
+   static MqlRates rates[];
+   static double upperBand[], lowerBand[], emaFast[], emaSlow[], atr[];
+   static bool firstTick = true;
+
+   if(firstTick)
+   {
+      ArraySetAsSeries(rates, true);
+      ArraySetAsSeries(upperBand, true);
+      ArraySetAsSeries(lowerBand, true);
+      ArraySetAsSeries(emaFast, true);
+      ArraySetAsSeries(emaSlow, true);
+      ArraySetAsSeries(atr, true);
+      firstTick = false;
+   }
+
    if(CopyRates(_Symbol, _Period, 0, 3, rates) <= 0) return; // Fetch 3 bars
    
    //--- Check if position already open
@@ -193,11 +212,6 @@ void OnTick()
    positionOpen = false;
    
    //--- Get primary signal indicator values (Donchian)
-   double upperBand[];
-   double lowerBand[];
-   ArraySetAsSeries(upperBand, true);
-   ArraySetAsSeries(lowerBand, true);
-   
    // iBands buffers: 1=upper, 2=lower
    if(CopyBuffer(donchianBandsHandle, 1, 0, 3, upperBand) <= 0) return;
    if(CopyBuffer(donchianBandsHandle, 2, 0, 3, lowerBand) <= 0) return;
@@ -210,14 +224,10 @@ void OnTick()
    double ask = Ask;
    double bid = Bid;
    
-   double close[3];
-   close[0] = rates[0].close;
-   close[1] = rates[1].close;
-   close[2] = rates[2].close;
-   
    //--- Preliminary Donchian Breakout Detection (without confirmation)
-   bool buyBreakout = (close[1] > upperBand[1] && close[0] > close[1]);
-   bool sellBreakout = (close[1] < lowerBand[1] && close[0] < close[1]);
+   //--- ⚡ Bolt: Access rates directly instead of copying to a local array.
+   bool buyBreakout = (rates[1].close > upperBand[1] && rates[0].close > rates[1].close);
+   bool sellBreakout = (rates[1].close < lowerBand[1] && rates[0].close < rates[1].close);
 
    bool buySignal = false;
    bool sellSignal = false;
@@ -226,10 +236,6 @@ void OnTick()
    if(buyBreakout || sellBreakout)
    {
       //--- Get Lower TF Confirmation indicator values
-      double emaFast[];
-      double emaSlow[];
-      ArraySetAsSeries(emaFast, true);
-      ArraySetAsSeries(emaSlow, true);
       if(CopyBuffer(emaFastHandle, 0, 0, 3, emaFast) <= 0) return;
       if(CopyBuffer(emaSlowHandle, 0, 0, 3, emaSlow) <= 0) return;
 
@@ -247,8 +253,6 @@ void OnTick()
    if(buySignal || sellSignal)
    {
      //--- ⚡ Bolt: Defer ATR calculation until a signal is confirmed to avoid unnecessary calls.
-     double atr[];
-     ArraySetAsSeries(atr, true);
      if(CopyBuffer(atrHandle, 0, 0, 1, atr) <= 0) return;
 
      //--- ⚡ Bolt: Performance optimization - fetch account info once before trade execution.
@@ -413,17 +417,14 @@ double CalculateTP(double price, double sl, bool isSell, double latestUpperBand,
 //+------------------------------------------------------------------+
 double CalculateLots(double slDistance, double accountBalance, double accountEquity, double freeMargin)
 {
-   if(slDistance <= 0) return 0;
-   if(RiskPercent <= 0) return 0;
+   if(slDistance <= 0 || g_lotValuePerUnit <= 0) return 0;
    
    //--- Get account balance/equity from parameters
    double balanceOrEquity = RiskUseEquity ? accountEquity : accountBalance;
    
-   //--- Calculate risk amount
-   double riskAmount = balanceOrEquity * (RiskPercent / 100.0);
-   
-   //--- Calculate lots
-   double lots = (riskAmount / (slDistance / g_point * g_tickSize / g_point * g_tickValue));
+   //--- ⚡ Bolt: Optimized lot calculation using pre-calculated constants.
+   //--- Original: (balanceOrEquity * (RiskPercent / 100.0)) / (slDistance / g_point * g_tickSize / g_point * g_tickValue)
+   double lots = (balanceOrEquity * g_riskMultiplier) / (slDistance * g_lotValuePerUnit);
    
    //--- Normalize lot size
    lots = MathFloor(lots / g_lotStep) * g_lotStep;
