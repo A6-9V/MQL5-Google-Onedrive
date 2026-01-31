@@ -65,8 +65,6 @@ int    g_objCount = 0; // ⚡ Bolt: Cached object count for performance
 datetime gLastBarTime = 0;
 
 static int   ClampInt(const int v, const int lo, const int hi) { return (v<lo?lo:(v>hi?hi:v)); }
-static bool  IsNewBar(const datetime t0) { if(t0==gLastBarTime) return false; gLastBarTime=t0; return true; }
-
 static void Notify(const string msg)
 {
   if(PopupAlerts) Alert(msg);
@@ -135,7 +133,7 @@ static int      g_mtfDir_cachedValue = 0;
 static int GetMTFDir()
 {
   if(!RequireMTFConfirm) return 0;
-  if(gEmaFastHandle==INVALID_HANDLE || gEmaSlowHandle==INVALID_HANDLE) return 0;
+  if(gEmaFastHandle == INVALID_HANDLE || gEmaSlowHandle == INVALID_HANDLE) return 0;
 
   // PERF: Only check for new MTF direction on a new bar of the LowerTF.
   datetime mtf_time[1];
@@ -143,12 +141,10 @@ static int GetMTFDir()
   if(mtf_time[0] == g_mtfDir_lastCheckTime) return g_mtfDir_cachedValue;
   g_mtfDir_lastCheckTime = mtf_time[0];
 
-  double fast[2], slow[2];
-  ArraySetAsSeries(fast, true);
-  ArraySetAsSeries(slow, true);
-
-  if(CopyBuffer(gEmaFastHandle, 0, 1, 1, fast) != 1) { g_mtfDir_cachedValue=0; return 0; }
-  if(CopyBuffer(gEmaSlowHandle, 0, 1, 1, slow) != 1) { g_mtfDir_cachedValue=0; return 0; }
+  // ⚡ Bolt: Efficiently copy only the single required value.
+  double fast[1], slow[1];
+  if(CopyBuffer(gEmaFastHandle, 0, 1, 1, fast) != 1) { g_mtfDir_cachedValue = 0; return 0; }
+  if(CopyBuffer(gEmaSlowHandle, 0, 1, 1, slow) != 1) { g_mtfDir_cachedValue = 0; return 0; }
 
   if(fast[0] > slow[0]) g_mtfDir_cachedValue = 1;
   else if(fast[0] < slow[0]) g_mtfDir_cachedValue = -1;
@@ -209,6 +205,15 @@ int OnCalculate(
   const int &spread[])
 {
   if(rates_total < 100) return 0;
+
+  // ⚡ Bolt: Early exit if not a new bar. This avoids redundant ArraySetAsSeries calls
+  // and buffer clearing loops on every price tick.
+  // We check prev_calculated > 0 to ensure a full recalculation is performed if requested by the terminal.
+  datetime currentBarTime = iTime(_Symbol, _Period, 0);
+  if(currentBarTime == 0) return 0; // History not ready
+  if(prev_calculated > 0 && currentBarTime == gLastBarTime) return rates_total;
+  gLastBarTime = currentBarTime;
+
   int donLookback = (DonchianLookback < 2 ? 2 : DonchianLookback);
 
   ArraySetAsSeries(time, true);
@@ -217,52 +222,71 @@ int OnCalculate(
   ArraySetAsSeries(low, true);
   ArraySetAsSeries(close, true);
 
-  // Clear only newly calculated area; indicator buffers are series arrays (0 = current bar)
-  int start = (prev_calculated==0 ? rates_total-1 : rates_total - prev_calculated);
-  start = ClampInt(start, 0, rates_total-1);
-  for(int i=start;i>=0;i--)
+  // ⚡ Bolt: Use ArrayInitialize for efficient bulk clearing on first run.
+  if(prev_calculated == 0)
   {
-    gLongBuf[i]  = EMPTY_VALUE;
-    gShortBuf[i] = EMPTY_VALUE;
+    ArrayInitialize(gLongBuf, EMPTY_VALUE);
+    ArrayInitialize(gShortBuf, EMPTY_VALUE);
   }
-
-  // Only emit signals once per new bar (less spam); use bar 1 when FireOnClose.
-  if(!IsNewBar(time[0])) return rates_total;
+  else
+  {
+    // Clear only newly calculated area (usually just the current bar)
+    int start = rates_total - prev_calculated;
+    start = ClampInt(start, 0, rates_total - 1);
+    for(int i = start; i >= 0; i--)
+    {
+      gLongBuf[i] = EMPTY_VALUE;
+      gShortBuf[i] = EMPTY_VALUE;
+    }
+  }
 
   SafeDeleteOldObjects();
 
   const int sigBar = (FireOnClose ? 1 : 0);
-  if(sigBar >= rates_total-1) return rates_total;
-
-  // --- Pull fractal buffers for last ~500 bars for swing detection
-  int need = MathMin(600, rates_total);
-  double upFr[600], dnFr[600];
-  ArraySetAsSeries(upFr, true);
-  ArraySetAsSeries(dnFr, true);
-
-  int gotUp = CopyBuffer(gFractalsHandle, 0, 0, need, upFr);
-  int gotDn = CopyBuffer(gFractalsHandle, 1, 0, need, dnFr);
-  if(gotUp <= 0 || gotDn <= 0) return rates_total;
+  if(sigBar >= rates_total - 1) return rates_total;
 
   // Find most recent confirmed swing high/low (fractal appears 2 bars after formation)
   double lastSwingHigh = 0.0; datetime lastSwingHighT = 0;
-  double lastSwingLow  = 0.0; datetime lastSwingLowT  = 0;
-  for(int i=sigBar+2; i<need; i++)
+  double lastSwingLow = 0.0; datetime lastSwingLowT = 0;
+
+  if(UseSMC)
   {
-    // ⚡ Bolt: Fix bug where EMPTY_VALUE (DBL_MAX) was incorrectly identified as a valid fractal.
-    // This avoids processing incorrect data and ensures correct signal logic.
-    if(lastSwingHighT==0 && upFr[i] != 0.0 && upFr[i] != EMPTY_VALUE) { lastSwingHigh = upFr[i]; lastSwingHighT = time[i]; }
-    if(lastSwingLowT==0  && dnFr[i] != 0.0 && dnFr[i] != EMPTY_VALUE) { lastSwingLow  = dnFr[i]; lastSwingLowT  = time[i]; }
-    if(lastSwingHighT!=0 && lastSwingLowT!=0) break;
+    // ⚡ Bolt: Lazy load fractal data only if SMC features are enabled.
+    int need = MathMin(600, rates_total);
+    double upFr[600], dnFr[600];
+
+    // Note: For static arrays, we skip ArraySetAsSeries and rely on CopyBuffer's default
+    // filling order (index 0 is the start_pos bar) to improve efficiency.
+    if(CopyBuffer(gFractalsHandle, 0, 0, need, upFr) > 0 &&
+       CopyBuffer(gFractalsHandle, 1, 0, need, dnFr) > 0)
+    {
+      for(int i = sigBar + 2; i < need; i++)
+      {
+        // ⚡ Bolt: Fix bug where EMPTY_VALUE (DBL_MAX) was incorrectly identified as a valid fractal.
+        // This avoids processing incorrect data and ensures correct signal logic.
+        if(lastSwingHighT == 0 && upFr[i] != 0.0 && upFr[i] != EMPTY_VALUE) { lastSwingHigh = upFr[i]; lastSwingHighT = time[i]; }
+        if(lastSwingLowT == 0 && dnFr[i] != 0.0 && dnFr[i] != EMPTY_VALUE) { lastSwingLow = dnFr[i]; lastSwingLowT = time[i]; }
+        if(lastSwingHighT != 0 && lastSwingLowT != 0) break;
+      }
+    }
   }
 
   // --- Determine Donchian breakout bounds (exclude current forming bar and signal bar)
-  int donStart = sigBar + 1;
-  int donCount = donLookback;
-  if(donStart + donCount >= rates_total) return rates_total;
+  double donHigh = 0;
+  double donLow = 0;
 
-  double donHigh = HighestHigh(high, donStart, donCount);
-  double donLow  = LowestLow(low, donStart, donCount);
+  if(UseDonchianBreakout)
+  {
+    // ⚡ Bolt: Lazy calculate Donchian bounds only if breakout features are enabled.
+    int donStart = sigBar + 1;
+    int donCount = donLookback;
+    if(donStart + donCount < rates_total)
+    {
+      donHigh = HighestHigh(high, donStart, donCount);
+      donLow = LowestLow(low, donStart, donCount);
+    }
+    else return rates_total;
+  }
 
   // --- Lower TF confirmation
   int mtfDir = GetMTFDir(); // 1 up, -1 down, 0 neutral/unknown
