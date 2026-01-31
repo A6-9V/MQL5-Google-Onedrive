@@ -80,6 +80,8 @@ double g_lotStep;
 double g_tickValue;
 double g_tickSize;
 double g_marginInitial;
+double g_riskMultiplier;
+double g_lotValuePerUnit;
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                     |
@@ -100,6 +102,19 @@ int OnInit()
    g_tickValue = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE);
    g_tickSize = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_SIZE);
    g_marginInitial = SymbolInfoDouble(_Symbol, SYMBOL_MARGIN_INITIAL);
+
+   //--- ⚡ Bolt: Pre-calculate lot size multipliers to avoid redundant math in OnTick.
+   g_riskMultiplier = RiskPercent / 100.0;
+
+   // Formula: MoneyPerLot = (Distance / TickSize) * TickValue
+   // We want: MoneyPerLot = Distance * Multiplier
+   // So: Multiplier = TickValue / TickSize
+   // The original code used: slDistance / g_point * g_tickSize / g_point * g_tickValue
+   // which is: slDistance * (g_tickSize / (g_point * g_point)) * g_tickValue
+   if(g_point > 0 && g_tickSize > 0)
+      g_lotValuePerUnit = (g_tickSize / (g_point * g_point)) * g_tickValue;
+   else
+      g_lotValuePerUnit = 0;
 
    //--- Initialize indicators
    atrHandle = iATR(_Symbol, _Period, ATR_Period);
@@ -179,7 +194,8 @@ void OnTick()
 
    //--- ⚡ Bolt: Consolidate CopyRates calls for performance.
    //--- Fetch 3 bars at once to avoid a second redundant call later in the function.
-   MqlRates rates[];
+   //--- Using static arrays allows MQL5 to reuse memory allocations.
+   static MqlRates rates[];
    ArraySetAsSeries(rates, true);
    if(CopyRates(_Symbol, _Period, 0, 3, rates) <= 0) return; // Fetch 3 bars
    
@@ -193,8 +209,8 @@ void OnTick()
    positionOpen = false;
    
    //--- Get primary signal indicator values (Donchian)
-   double upperBand[];
-   double lowerBand[];
+   static double upperBand[];
+   static double lowerBand[];
    ArraySetAsSeries(upperBand, true);
    ArraySetAsSeries(lowerBand, true);
    
@@ -226,8 +242,8 @@ void OnTick()
    if(buyBreakout || sellBreakout)
    {
       //--- Get Lower TF Confirmation indicator values
-      double emaFast[];
-      double emaSlow[];
+      static double emaFast[];
+      static double emaSlow[];
       ArraySetAsSeries(emaFast, true);
       ArraySetAsSeries(emaSlow, true);
       if(CopyBuffer(emaFastHandle, 0, 0, 3, emaFast) <= 0) return;
@@ -247,7 +263,7 @@ void OnTick()
    if(buySignal || sellSignal)
    {
      //--- ⚡ Bolt: Defer ATR calculation until a signal is confirmed to avoid unnecessary calls.
-     double atr[];
+     static double atr[];
      ArraySetAsSeries(atr, true);
      if(CopyBuffer(atrHandle, 0, 0, 1, atr) <= 0) return;
 
@@ -419,11 +435,11 @@ double CalculateLots(double slDistance, double accountBalance, double accountEqu
    //--- Get account balance/equity from parameters
    double balanceOrEquity = RiskUseEquity ? accountEquity : accountBalance;
    
-   //--- Calculate risk amount
-   double riskAmount = balanceOrEquity * (RiskPercent / 100.0);
+   //--- ⚡ Bolt: Use pre-calculated multipliers for high-performance lot calculation.
+   double riskAmount = balanceOrEquity * g_riskMultiplier;
    
-   //--- Calculate lots
-   double lots = (riskAmount / (slDistance / g_point * g_tickSize / g_point * g_tickValue));
+   if(slDistance <= 0 || g_lotValuePerUnit <= 0) return 0;
+   double lots = riskAmount / (slDistance * g_lotValuePerUnit);
    
    //--- Normalize lot size
    lots = MathFloor(lots / g_lotStep) * g_lotStep;
