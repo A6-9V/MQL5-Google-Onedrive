@@ -173,6 +173,7 @@ void OnTick()
    //--- ⚡ Bolt: Performance optimization - check for new bar before expensive operations.
    //--- Using iTime() is much faster than CopyRates() for a simple new bar check.
    datetime currentBarTime = iTime(_Symbol, _Period, 0);
+   if(currentBarTime == 0) return; // History not ready
    if(currentBarTime == lastBarTime) return; // Exit if not a new bar
    lastBarTime = currentBarTime;
 
