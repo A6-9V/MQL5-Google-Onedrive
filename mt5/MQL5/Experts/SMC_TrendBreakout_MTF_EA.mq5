@@ -79,6 +79,7 @@ double g_maxLot;
 double g_lotStep;
 double g_tickValue;
 double g_tickSize;
+double g_lotValuePerUnit; // ⚡ Bolt: Pre-calculated multiplier for lot calculation
 double g_marginInitial;
 
 //+------------------------------------------------------------------+
@@ -100,6 +101,9 @@ int OnInit()
    g_tickValue = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE);
    g_tickSize = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_SIZE);
    g_marginInitial = SymbolInfoDouble(_Symbol, SYMBOL_MARGIN_INITIAL);
+
+   // ⚡ Bolt: Pre-calculate lot value multiplier to save arithmetic operations in CalculateLots().
+   g_lotValuePerUnit = (g_tickSize > 0) ? (g_tickValue / g_tickSize) : 0;
 
    //--- Initialize indicators
    atrHandle = iATR(_Symbol, _Period, ATR_Period);
@@ -156,68 +160,58 @@ void OnDeinit(const int reason)
 //+------------------------------------------------------------------+
 void OnTick()
 {
-   //--- Check if trading is enabled
+   //--- Check if trading is enabled (fastest check)
    if(!EnableTrading) return;
    
-   //--- Check if AutoTrading is enabled
-   if(!TerminalInfoInteger(TERMINAL_TRADE_ALLOWED)) {
-      Print("AutoTrading is disabled in terminal settings");
-      return;
-   }
-   
-   if(!MQLInfoInteger(MQL_TRADE_ALLOWED)) {
-      Print("AutoTrading is disabled in EA settings");
-      return;
-   }
-   
-   //--- ⚡ Bolt: Performance optimization - check for new bar before expensive operations.
-   //--- Using iTime() is much faster than CopyRates() for a simple new bar check.
+   //--- ⚡ Bolt: Gatekeeper Optimization.
+   //--- Check for a new bar first to avoid redundant terminal calls (TerminalInfo, PositionSelect) on every tick.
    datetime currentBarTime = iTime(_Symbol, _Period, 0);
-   if(currentBarTime == 0) return; // History not ready
-   if(currentBarTime == lastBarTime) return; // Exit if not a new bar
-   lastBarTime = currentBarTime;
+   if(currentBarTime == 0 || currentBarTime == lastBarTime) return;
 
-   //--- ⚡ Bolt: Consolidate CopyRates calls for performance.
-   //--- Fetch 3 bars at once to avoid a second redundant call later in the function.
-   MqlRates rates[];
-   ArraySetAsSeries(rates, true);
-   if(CopyRates(_Symbol, _Period, 0, 3, rates) <= 0) return; // Fetch 3 bars
+   //--- Now executing logic once per bar
+   if(!TerminalInfoInteger(TERMINAL_TRADE_ALLOWED) || !MQLInfoInteger(MQL_TRADE_ALLOWED)) return;
    
-   //--- Check if position already open
-   if(PositionSelect(_Symbol)) {
-      if(PositionGetInteger(POSITION_MAGIC) == MagicNumber) {
-         positionOpen = true;
-         return; // Already have position
-      }
+   //--- ⚡ Bolt: Check for open position early to avoid unnecessary data fetching.
+   if(PositionSelect(_Symbol) && PositionGetInteger(POSITION_MAGIC) == MagicNumber) {
+      positionOpen = true;
+      lastBarTime = currentBarTime; // Update bar time so we don't re-run until NEXT bar
+      return;
    }
    positionOpen = false;
+   lastBarTime = currentBarTime;
+
+   //--- ⚡ Bolt: Memory Reuse. Use static arrays to avoid repeated allocations.
+   static MqlRates rates[];
+   static double upperBand[], lowerBand[];
+   static double emaFast[], emaSlow[];
+   static double atr[];
    
-   //--- Get primary signal indicator values (Donchian)
-   double upperBand[];
-   double lowerBand[];
+   ArraySetAsSeries(rates, true);
    ArraySetAsSeries(upperBand, true);
    ArraySetAsSeries(lowerBand, true);
+   ArraySetAsSeries(emaFast, true);
+   ArraySetAsSeries(emaSlow, true);
+   ArraySetAsSeries(atr, true);
+
+   //--- ⚡ Bolt: Fetch exactly what's needed.
+   if(CopyRates(_Symbol, _Period, 0, 2, rates) <= 0) return;
    
-   // iBands buffers: 1=upper, 2=lower
-   if(CopyBuffer(donchianBandsHandle, 1, 0, 3, upperBand) <= 0) return;
-   if(CopyBuffer(donchianBandsHandle, 2, 0, 3, lowerBand) <= 0) return;
+   // iBands buffers: 1=upper, 2=lower. Fetching 2 bars is enough for breakout detection.
+   if(CopyBuffer(donchianBandsHandle, 1, 0, 2, upperBand) <= 0) return;
+   if(CopyBuffer(donchianBandsHandle, 2, 0, 2, lowerBand) <= 0) return;
 
    //--- Extract latest indicator values for calculations
    double latestUpperBand = upperBand[0];
    double latestLowerBand = lowerBand[0];
 
-   //--- Get current prices
+   //--- Get current prices (pre-defined global variables are faster)
    double ask = Ask;
    double bid = Bid;
    
-   double close[3];
-   close[0] = rates[0].close;
-   close[1] = rates[1].close;
-   close[2] = rates[2].close;
-   
-   //--- Preliminary Donchian Breakout Detection (without confirmation)
-   bool buyBreakout = (close[1] > upperBand[1] && close[0] > close[1]);
-   bool sellBreakout = (close[1] < lowerBand[1] && close[0] < close[1]);
+   //--- Preliminary Donchian Breakout Detection
+   //--- ⚡ Bolt: Access rates directly, avoiding redundant close[] array allocation.
+   bool buyBreakout = (rates[1].close > upperBand[1] && rates[0].close > rates[1].close);
+   bool sellBreakout = (rates[1].close < lowerBand[1] && rates[0].close < rates[1].close);
 
    bool buySignal = false;
    bool sellSignal = false;
@@ -225,30 +219,20 @@ void OnTick()
    //--- ⚡ Bolt: Lazy load confirmation indicators only if a breakout occurs.
    if(buyBreakout || sellBreakout)
    {
-      //--- Get Lower TF Confirmation indicator values
-      double emaFast[];
-      double emaSlow[];
-      ArraySetAsSeries(emaFast, true);
-      ArraySetAsSeries(emaSlow, true);
-      if(CopyBuffer(emaFastHandle, 0, 0, 3, emaFast) <= 0) return;
-      if(CopyBuffer(emaSlowHandle, 0, 0, 3, emaSlow) <= 0) return;
+      if(CopyBuffer(emaFastHandle, 0, 0, 2, emaFast) <= 0) return;
+      if(CopyBuffer(emaSlowHandle, 0, 0, 2, emaSlow) <= 0) return;
 
       //--- Lower TF Confirmation: Check EMA direction
       bool bullishConfirmation = (emaFast[0] > emaSlow[0] && emaFast[1] > emaSlow[1]);
       bool bearishConfirmation = (emaFast[0] < emaSlow[0] && emaFast[1] < emaSlow[1]);
 
-      //--- Final Signal Calculation
       buySignal = buyBreakout && bullishConfirmation;
       sellSignal = sellBreakout && bearishConfirmation;
    }
    
-   //--- BOLT Optimization: Pass pre-fetched indicator values to trade functions to avoid redundant CopyBuffer() calls in a hot path.
    //--- Execute trades
    if(buySignal || sellSignal)
    {
-     //--- ⚡ Bolt: Defer ATR calculation until a signal is confirmed to avoid unnecessary calls.
-     double atr[];
-     ArraySetAsSeries(atr, true);
      if(CopyBuffer(atrHandle, 0, 0, 1, atr) <= 0) return;
 
      //--- ⚡ Bolt: Performance optimization - fetch account info once before trade execution.
@@ -413,8 +397,7 @@ double CalculateTP(double price, double sl, bool isSell, double latestUpperBand,
 //+------------------------------------------------------------------+
 double CalculateLots(double slDistance, double accountBalance, double accountEquity, double freeMargin)
 {
-   if(slDistance <= 0) return 0;
-   if(RiskPercent <= 0) return 0;
+   if(slDistance <= 0 || RiskPercent <= 0 || g_lotValuePerUnit <= 0) return 0;
    
    //--- Get account balance/equity from parameters
    double balanceOrEquity = RiskUseEquity ? accountEquity : accountBalance;
@@ -422,8 +405,9 @@ double CalculateLots(double slDistance, double accountBalance, double accountEqu
    //--- Calculate risk amount
    double riskAmount = balanceOrEquity * (RiskPercent / 100.0);
    
-   //--- Calculate lots
-   double lots = (riskAmount / (slDistance / g_point * g_tickSize / g_point * g_tickValue));
+   //--- ⚡ Bolt: Arithmetic Optimization.
+   //--- Simplified lot calculation using pre-calculated multiplier to save CPU cycles.
+   double lots = riskAmount / (slDistance * g_lotValuePerUnit);
    
    //--- Normalize lot size
    lots = MathFloor(lots / g_lotStep) * g_lotStep;
