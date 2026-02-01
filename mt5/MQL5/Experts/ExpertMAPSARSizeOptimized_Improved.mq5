@@ -404,31 +404,36 @@ void OnDeinit(const int reason)
 //+------------------------------------------------------------------+
 void OnTick(void)
 {
-   //--- Check if trading is allowed
+   // ⚡ Bolt: Lightweight new bar check as a gatekeeper.
+   // Using iTime() is much faster than CopyRates() and avoids expensive logic on every tick.
+   datetime currentBarTime = iTime(Symbol(), Period(), 0);
+   if(currentBarTime == 0) return; // History not ready
+   bool isNewBar = (currentBarTime != LastBarTime);
+
+   // ⚡ Bolt: Early exit if not a new bar and EveryTick is disabled.
+   // This skips all trading logic, daily limit checks, and API calls for the rest of the bar.
+   if(!Expert_EveryTick && !isNewBar) return;
+
+   //--- Check if trading is allowed (deferred after new bar check)
    if(!IsTradingAllowed())
       return;
+
+   // ⚡ Bolt: Only update statistics on a new bar to save CPU.
+   // HistorySelect() and history loops are expensive and should not run on every tick.
+   // Statistics are also updated in OnTrade() to maintain real-time accuracy.
+   if(isNewBar)
+   {
+      UpdateDailyStatistics();
+      LastBarTime = currentBarTime;
+      LogDebug("New bar detected");
+   }
 
    //--- Check daily limits
    if(!CheckDailyLimits())
       return;
 
-   //--- Update daily statistics
-   UpdateDailyStatistics();
-
    //--- Process expert tick
    ExtExpert.OnTick();
-
-   //--- Update trade count if new bar
-   MqlRates rates[];
-   ArraySetAsSeries(rates, true);
-   if(CopyRates(Symbol(), Period(), 0, 1, rates) > 0)
-   {
-      if(LastBarTime != rates[0].time)
-      {
-         LastBarTime = rates[0].time;
-         LogDebug("New bar detected");
-      }
-   }
 }
 
 //+------------------------------------------------------------------+
@@ -437,6 +442,10 @@ void OnTick(void)
 void OnTrade(void)
 {
    ExtExpert.OnTrade();
+
+   // ⚡ Bolt: Update daily statistics immediately after a trade event
+   // to ensure accuracy despite the lazy-loading optimization in OnTick.
+   UpdateDailyStatistics();
 
    //--- Update trade statistics
    if(HistorySelect(TimeCurrent() - 60, TimeCurrent()))
