@@ -1,0 +1,52 @@
+<svg width="512" height="512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#667eea;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#764ba2;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="512" height="512" rx="80" fill="url(#gradient)"/>
+  
+  <!-- Chart icon -->
+  <g transform="translate(100, 100)">
+    <!-- Grid lines -->
+    <line x1="0" y1="256" x2="312" y2="256" stroke="rgba(255,255,255,0.2)" stroke-width="2"/>
+    <line x1="0" y1="192" x2="312" y2="192" stroke="rgba(255,255,255,0.2)" stroke-width="2"/>
+    <line x1="0" y1="128" x2="312" y2="128" stroke="rgba(255,255,255,0.2)" stroke-width="2"/>
+    <line x1="0" y1="64" x2="312" y2="64" stroke="rgba(255,255,255,0.2)" stroke-width="2"/>
+    
+    <!-- Axes -->
+    <line x1="20" y1="0" x2="20" y2="280" stroke="white" stroke-width="3"/>
+    <line x1="20" y1="280" x2="332" y2="280" stroke="white" stroke-width="3"/>
+    
+    <!-- Candlestick chart -->
+    <!-- Bullish candle -->
+    <rect x="50" y="180" width="30" height="60" fill="#10b981" stroke="#10b981" stroke-width="2"/>
+    <line x1="65" y1="160" x2="65" y2="240" stroke="#10b981" stroke-width="2"/>
+    
+    <!-- Bearish candle -->
+    <rect x="100" y="140" width="30" height="80" fill="#ef4444" stroke="#ef4444" stroke-width="2"/>
+    <line x1="115" y1="120" x2="115" y2="220" stroke="#ef4444" stroke-width="2"/>
+    
+    <!-- Bullish candle -->
+    <rect x="150" y="160" width="30" height="70" fill="#10b981" stroke="#10b981" stroke-width="2"/>
+    <line x1="165" y1="140" x2="165" y2="230" stroke="#10b981" stroke-width="2"/>
+    
+    <!-- Bullish candle -->
+    <rect x="200" y="120" width="30" height="80" fill="#10b981" stroke="#10b981" stroke-width="2"/>
+    <line x1="215" y1="100" x2="215" y2="200" stroke="#10b981" stroke-width="2"/>
+    
+    <!-- Bearish candle -->
+    <rect x="250" y="110" width="30" height="60" fill="#ef4444" stroke="#ef4444" stroke-width="2"/>
+    <line x1="265" y1="90" x2="265" y2="170" stroke="#ef4444" stroke-width="2"/>
+    
+    <!-- Trend line -->
+    <line x1="40" y1="220" x2="280" y2="120" stroke="#fbbf24" stroke-width="3" stroke-dasharray="5,5"/>
+  </g>
+  
+  <!-- Text -->
+  <text x="256" y="430" font-family="Arial, sans-serif" font-size="48" font-weight="bold" fill="white" text-anchor="middle">MQL5</text>
+  <text x="256" y="470" font-family="Arial, sans-serif" font-size="24" fill="rgba(255,255,255,0.9)" text-anchor="middle">Trading</text>
+</svg>
