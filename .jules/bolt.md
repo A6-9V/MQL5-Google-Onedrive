@@ -22,3 +22,7 @@ This journal is for CRITICAL, non-routine performance learnings ONLY.
 ## 2026-01-20 - Robust New Bar Check in MQL5 OnCalculate
 **Learning:** An early exit in `OnCalculate` based on bar time MUST check `prev_calculated > 0`. If `prev_calculated == 0`, the terminal is requesting a full recalculation (e.g., after a history sync or data gap fill), and exiting early would result in stale data. Also, using `iTime()` is more robust than indexing into the `time[]` array if the array's series state is unknown.
 **Action:** Always wrap "new bar" early exits in indicators with `if(prev_calculated > 0 && ...)` and prefer `iTime()` for the current bar's timestamp.
+
+## 2026-01-20 - MQL5 OnTick Execution Flow Optimization
+**Learning:** Significant performance gains in MQL5 EAs can be achieved by carefully ordering the logic in `OnTick`. Moving the `PositionSelect` check before `CopyRates` and `CopyBuffer` avoids expensive data operations when a trade is already active. Additionally, reducing the requested bar count in data fetching functions to the absolute minimum (e.g., 2 instead of 3) and using `SymbolInfoTick` for atomic, lazy price retrieval further reduces overhead.
+**Action:** Always place 'gatekeeper' checks (new bar, position existence, terminal trading allowed) at the top of `OnTick` and minimize the data payload for indicator and price fetching to only what is strictly necessary for the current bar's logic.

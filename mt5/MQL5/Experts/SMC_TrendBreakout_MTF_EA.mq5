@@ -184,10 +184,21 @@ void OnTick()
       return;
    }
 
+   //--- ⚡ Bolt: Performance optimization - check if position already open BEFORE fetching data.
+   //--- This avoids redundant CopyRates and CopyBuffer calls if we are already in a trade.
+   if(PositionSelect(_Symbol)) {
+      if(PositionGetInteger(POSITION_MAGIC) == MagicNumber) {
+         positionOpen = true;
+         lastBarTime = currentBarTime;
+         return;
+      }
+   }
+   positionOpen = false;
+
    lastBarTime = currentBarTime;
 
    //--- ⚡ Bolt: Consolidate CopyRates calls and use static buffer for performance.
-   //--- Fetch 3 bars at once to avoid a second redundant call later in the function.
+   //--- Fetch 2 bars at once to avoid fetching unused data (index 2 was never used).
    static MqlRates rates[];
    static double upperBand[], lowerBand[], emaFast[], emaSlow[], atr[];
    static bool firstTick = true;
@@ -203,30 +214,14 @@ void OnTick()
       firstTick = false;
    }
 
-   if(CopyRates(_Symbol, _Period, 0, 3, rates) <= 0) return; // Fetch 3 bars
-   
-   //--- Check if position already open
-   if(PositionSelect(_Symbol)) {
-      if(PositionGetInteger(POSITION_MAGIC) == MagicNumber) {
-         positionOpen = true;
-         return; // Already have position
-      }
-   }
-   positionOpen = false;
+   if(CopyRates(_Symbol, _Period, 0, 2, rates) <= 0) return; // Fetch 2 bars
    
    //--- Get primary signal indicator values (Donchian)
    // iBands buffers: 1=upper, 2=lower
-   if(CopyBuffer(donchianBandsHandle, 1, 0, 3, upperBand) <= 0) return;
-   if(CopyBuffer(donchianBandsHandle, 2, 0, 3, lowerBand) <= 0) return;
+   // ⚡ Bolt: Only fetch 2 bars instead of 3 to improve efficiency.
+   if(CopyBuffer(donchianBandsHandle, 1, 0, 2, upperBand) <= 0) return;
+   if(CopyBuffer(donchianBandsHandle, 2, 0, 2, lowerBand) <= 0) return;
 
-   //--- Extract latest indicator values for calculations
-   double latestUpperBand = upperBand[0];
-   double latestLowerBand = lowerBand[0];
-
-   //--- Get current prices
-   double ask = Ask;
-   double bid = Bid;
-   
    //--- Preliminary Donchian Breakout Detection (without confirmation)
    //--- ⚡ Bolt: Access rates directly instead of copying to a local array.
    bool buyBreakout = (rates[1].close > upperBand[1] && rates[0].close > rates[1].close);
@@ -239,8 +234,9 @@ void OnTick()
    if(buyBreakout || sellBreakout)
    {
       //--- Get Lower TF Confirmation indicator values
-      if(CopyBuffer(emaFastHandle, 0, 0, 3, emaFast) <= 0) return;
-      if(CopyBuffer(emaSlowHandle, 0, 0, 3, emaSlow) <= 0) return;
+      // ⚡ Bolt: Only fetch 2 bars instead of 3 to improve efficiency.
+      if(CopyBuffer(emaFastHandle, 0, 0, 2, emaFast) <= 0) return;
+      if(CopyBuffer(emaSlowHandle, 0, 0, 2, emaSlow) <= 0) return;
 
       //--- Lower TF Confirmation: Check EMA direction
       bool bullishConfirmation = (emaFast[0] > emaSlow[0] && emaFast[1] > emaSlow[1]);
@@ -255,6 +251,16 @@ void OnTick()
    //--- Execute trades
    if(buySignal || sellSignal)
    {
+     //--- ⚡ Bolt: Defer price and indicator assignments until a signal is confirmed.
+     //--- Use SymbolInfoTick for efficient retrieval of current prices.
+     MqlTick lastTick;
+     if(!SymbolInfoTick(_Symbol, lastTick)) return;
+     double ask = lastTick.ask;
+     double bid = lastTick.bid;
+
+     double latestUpperBand = upperBand[0];
+     double latestLowerBand = lowerBand[0];
+
      //--- ⚡ Bolt: Defer ATR calculation until a signal is confirmed to avoid unnecessary calls.
      if(CopyBuffer(atrHandle, 0, 0, 1, atr) <= 0) return;
 
