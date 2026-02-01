@@ -22,3 +22,7 @@ This journal is for CRITICAL, non-routine performance learnings ONLY.
 ## 2026-01-20 - Robust New Bar Check in MQL5 OnCalculate
 **Learning:** An early exit in `OnCalculate` based on bar time MUST check `prev_calculated > 0`. If `prev_calculated == 0`, the terminal is requesting a full recalculation (e.g., after a history sync or data gap fill), and exiting early would result in stale data. Also, using `iTime()` is more robust than indexing into the `time[]` array if the array's series state is unknown.
 **Action:** Always wrap "new bar" early exits in indicators with `if(prev_calculated > 0 && ...)` and prefer `iTime()` for the current bar's timestamp.
+
+## 2026-01-21 - MQL5 Local Array Sizing and Shadowing
+**Learning:** Declaring large or dynamic arrays as `static` in MQL5's `OnTick` is good for memory reuse. However, for small, occasional data (like confirmation EMAs or ATR), fixed-size local arrays (e.g., `double buffer[2]`) are safer and more efficient. They avoid the overhead of dynamic resizing by `CopyBuffer` and eliminate the risk of "shadowing" or "uninitialized state" bugs that can occur with static dynamic arrays if they are not consistently populated on every execution path.
+**Action:** Use fixed-size local arrays for small data sets (1-5 elements) that are only needed conditionally. Reserve `static` dynamic arrays for large data (like price history) that is required on every tick.
