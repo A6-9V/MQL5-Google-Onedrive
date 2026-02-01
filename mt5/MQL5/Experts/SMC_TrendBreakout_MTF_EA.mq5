@@ -165,7 +165,15 @@ void OnTick()
    //--- Check if trading is enabled
    if(!EnableTrading) return;
    
-   //--- Check if AutoTrading is enabled
+   //--- ⚡ Bolt: Performance optimization - check for new bar before expensive operations.
+   //--- Using iTime() is much faster than CopyRates() for a simple new bar check.
+   datetime currentBarTime = iTime(_Symbol, _Period, 0);
+   if(currentBarTime == 0) return; // History not ready
+   if(currentBarTime == lastBarTime) return; // Exit if not a new bar
+
+   //--- ⚡ Bolt: Defer terminal state checks until AFTER the new bar check.
+   //--- TerminalInfoInteger and MQLInfoInteger are relatively expensive API calls.
+   //--- Moving them here avoids thousands of redundant calls per hour on every price tick.
    if(!TerminalInfoInteger(TERMINAL_TRADE_ALLOWED)) {
       Print("AutoTrading is disabled in terminal settings");
       return;
@@ -175,12 +183,7 @@ void OnTick()
       Print("AutoTrading is disabled in EA settings");
       return;
    }
-   
-   //--- ⚡ Bolt: Performance optimization - check for new bar before expensive operations.
-   //--- Using iTime() is much faster than CopyRates() for a simple new bar check.
-   datetime currentBarTime = iTime(_Symbol, _Period, 0);
-   if(currentBarTime == 0) return; // History not ready
-   if(currentBarTime == lastBarTime) return; // Exit if not a new bar
+
    lastBarTime = currentBarTime;
 
    //--- ⚡ Bolt: Consolidate CopyRates calls and use static buffer for performance.
