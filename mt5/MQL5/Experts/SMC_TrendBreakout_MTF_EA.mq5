@@ -197,7 +197,8 @@ void OnTick()
    //--- Using static arrays allows MQL5 to reuse memory allocations.
    static MqlRates rates[];
    ArraySetAsSeries(rates, true);
-   if(CopyRates(_Symbol, _Period, 0, 3, rates) <= 0) return; // Fetch 3 bars
+   int copied = CopyRates(_Symbol, _Period, 0, 3, rates);
+   if(copied < 3) return; // Need at least 3 bars (0,1,2)
    
    //--- Check if position already open
    if(PositionSelect(_Symbol)) {
