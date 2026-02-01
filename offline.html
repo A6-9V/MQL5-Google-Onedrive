@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Offline - MQL5 Trading Automation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            padding: 50px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            text-align: center;
+            max-width: 500px;
+        }
+
+        .icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            color: #333;
+            font-size: 2em;
+            margin-bottom: 15px;
+        }
+
+        p {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 20px;
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 12px 30px;
+            background: #667eea;
+            color: white;
+            text-decoration: none;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: background 0.3s;
+            border: none;
+            cursor: pointer;
+            font-size: 1em;
+        }
+
+        .btn:hover {
+            background: #5568d3;
+        }
+
+        .status {
+            margin-top: 30px;
+            padding-top: 30px;
+            border-top: 1px solid #eee;
+        }
+
+        .status-text {
+            color: #888;
+            font-size: 0.9em;
+        }
+
+        .online {
+            color: #10b981;
+            font-weight: 600;
+        }
+
+        .offline {
+            color: #ef4444;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">📡</div>
+        <h1>You're Offline</h1>
+        <p>
+            It looks like you've lost your internet connection. 
+            Don't worry, some features are still available offline.
+        </p>
+        <p>
+            This Progressive Web App will automatically reconnect when you're back online.
+        </p>
+        <button class="btn" onclick="location.reload()">Try Again</button>
+
+        <div class="status">
+            <div class="status-text">
+                Connection Status: <span id="status" class="offline">Offline</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Update connection status
+        function updateStatus() {
+            const statusEl = document.getElementById('status');
+            if (navigator.onLine) {
+                statusEl.textContent = 'Online';
+                statusEl.className = 'online';
+                // Auto-reload when back online
+                setTimeout(() => location.reload(), 1000);
+            } else {
+                statusEl.textContent = 'Offline';
+                statusEl.className = 'offline';
+            }
+        }
+
+        // Listen for connection changes
+        window.addEventListener('online', updateStatus);
+        window.addEventListener('offline', updateStatus);
+
+        // Initial check
+        updateStatus();
+
+        // Periodic check
+        setInterval(() => {
+            if (navigator.onLine) {
+                updateStatus();
+            }
+        }, 5000);
+    </script>
+</body>
+</html>

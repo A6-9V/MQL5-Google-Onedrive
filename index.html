@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MQL5 Trading Automation Dashboard</title>
+    <link rel="manifest" href="/manifest.json">
+    <meta name="theme-color" content="#667eea">
+    <meta name="description" content="GenX FX Trading System - SMC + Trend Breakout (MTF) for Exness MT5">
+    <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
     <style>
         * {
             margin: 0;
@@ -187,6 +191,12 @@
                 <p>Configure risk parameters, notifications, and automation preferences.</p>
                 <a href="#" class="btn">Configure</a>
             </div>
+
+            <div class="card">
+                <h2>🔍 Service Worker</h2>
+                <p>Inspect and manage PWA service worker, cache storage, and offline functionality.</p>
+                <a href="/sw-inspector.html" class="btn">Inspect Views</a>
+            </div>
         </div>
 
         <div class="status">
@@ -227,6 +237,40 @@
                 });
             }
         });
+
+        // Register Service Worker for PWA functionality
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/service-worker.js')
+                    .then(registration => {
+                        console.log('Service Worker registered successfully:', registration.scope);
+                        
+                        // Check for updates
+                        registration.addEventListener('updatefound', () => {
+                            const newWorker = registration.installing;
+                            console.log('Service Worker update found');
+                            
+                            newWorker.addEventListener('statechange', () => {
+                                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                    // New service worker available, prompt user
+                                    if (confirm('New version available! Reload to update?')) {
+                                        newWorker.postMessage({ type: 'SKIP_WAITING' });
+                                        window.location.reload();
+                                    }
+                                }
+                            });
+                        });
+                    })
+                    .catch(error => {
+                        console.error('Service Worker registration failed:', error);
+                    });
+
+                // Handle service worker controller change
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    window.location.reload();
+                });
+            });
+        }
     </script>
 </body>
 </html>
