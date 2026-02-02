@@ -166,7 +166,8 @@ bool CheckDailyLimits()
    dt.sec = 0;
    datetime todayStart = StructToTime(dt);
 
-   //--- Reset daily statistics if new day
+   //--- ⚡ Bolt: Reset daily statistics if new day.
+   //--- This ensures that even if trading was blocked yesterday, stats are cleared today.
    if(LastTradeDate != todayStart)
    {
       TradesToday = 0;
@@ -220,9 +221,18 @@ bool CheckDailyLimits()
 void UpdateDailyStatistics()
 {
    double currentProfit = 0.0;
+   int count = 0;
 
-   //--- Calculate current day's profit/loss
-   if(HistorySelect(TimeCurrent() - PeriodSeconds(PERIOD_D1), TimeCurrent()))
+   //--- ⚡ Bolt: Calculate today's start time properly instead of rolling 24h window.
+   MqlDateTime dt;
+   TimeToStruct(TimeCurrent(), dt);
+   dt.hour = 0;
+   dt.min = 0;
+   dt.sec = 0;
+   datetime todayStart = StructToTime(dt);
+
+   //--- ⚡ Bolt: Optimized history selection range and synchronized daily statistics.
+   if(HistorySelect(todayStart, TimeCurrent()))
    {
       int total = HistoryDealsTotal();
       for(int i = 0; i < total; i++)
@@ -232,6 +242,10 @@ void UpdateDailyStatistics()
          {
             if(HistoryDealGetInteger(ticket, DEAL_MAGIC) == Expert_MagicNumber)
             {
+               //--- Count entry deals for the day
+               if(HistoryDealGetInteger(ticket, DEAL_ENTRY) == DEAL_ENTRY_IN)
+                  count++;
+
                double profit = HistoryDealGetDouble(ticket, DEAL_PROFIT);
                double swap = HistoryDealGetDouble(ticket, DEAL_SWAP);
                double commission = HistoryDealGetDouble(ticket, DEAL_COMMISSION);
@@ -241,10 +255,17 @@ void UpdateDailyStatistics()
       }
    }
 
+   TradesToday = count;
    if(currentProfit > 0)
+   {
       DailyProfit = currentProfit;
+      DailyLoss = 0;
+   }
    else
+   {
+      DailyProfit = 0;
       DailyLoss = MathAbs(currentProfit);
+   }
 }
 
 //+------------------------------------------------------------------+
@@ -370,6 +391,10 @@ int OnInit(void)
    DailyProfit = 0.0;
    DailyLoss = 0.0;
 
+   //--- ⚡ Bolt: Initialize statistics and set timer for periodic updates.
+   UpdateDailyStatistics();
+   EventSetTimer(60);
+
    //--- Success message
    LogInfo("Expert Advisor initialized successfully");
    LogInfo("Account: ", IntegerToString(AccountInfoInteger(ACCOUNT_LOGIN)));
@@ -386,6 +411,9 @@ int OnInit(void)
 //+------------------------------------------------------------------+
 void OnDeinit(const int reason)
 {
+   //--- ⚡ Bolt: Cleanup timer.
+   EventKillTimer();
+
    //--- Print final statistics
    double finalBalance = AccountInfoDouble(ACCOUNT_BALANCE);
    double totalProfit = finalBalance - InitialBalance;
@@ -404,6 +432,21 @@ void OnDeinit(const int reason)
 //+------------------------------------------------------------------+
 void OnTick(void)
 {
+   //--- ⚡ Bolt: Optimized new bar detection and early exit.
+   datetime currentBarTime = iTime(Symbol(), Period(), 0);
+   bool isNewBar = (currentBarTime != 0 && currentBarTime != LastBarTime);
+
+   //--- Skip processing if every-tick is disabled and it's not a new bar.
+   if(!Expert_EveryTick && !isNewBar)
+      return;
+
+   if(isNewBar)
+   {
+      LastBarTime = currentBarTime;
+      LogDebug("New bar detected");
+   }
+
+   //--- ⚡ Bolt: Defer gatekeeper checks until after new bar/every-tick gate.
    //--- Check if trading is allowed
    if(!IsTradingAllowed())
       return;
@@ -412,23 +455,10 @@ void OnTick(void)
    if(!CheckDailyLimits())
       return;
 
-   //--- Update daily statistics
-   UpdateDailyStatistics();
+   //--- ⚡ Bolt: UpdateDailyStatistics removed from OnTick and moved to event-driven OnTrade and periodic OnTimer.
 
    //--- Process expert tick
    ExtExpert.OnTick();
-
-   //--- Update trade count if new bar
-   MqlRates rates[];
-   ArraySetAsSeries(rates, true);
-   if(CopyRates(Symbol(), Period(), 0, 1, rates) > 0)
-   {
-      if(LastBarTime != rates[0].time)
-      {
-         LastBarTime = rates[0].time;
-         LogDebug("New bar detected");
-      }
-   }
 }
 
 //+------------------------------------------------------------------+
@@ -438,28 +468,9 @@ void OnTrade(void)
 {
    ExtExpert.OnTrade();
 
-   //--- Update trade statistics
-   if(HistorySelect(TimeCurrent() - 60, TimeCurrent()))
-   {
-      int total = HistoryDealsTotal();
-      for(int i = total - 1; i >= 0; i--)
-      {
-         ulong ticket = HistoryDealGetTicket(i);
-         if(ticket > 0)
-         {
-            if(HistoryDealGetInteger(ticket, DEAL_MAGIC) == Expert_MagicNumber)
-            {
-               datetime dealTime = (datetime)HistoryDealGetInteger(ticket, DEAL_TIME);
-               if(dealTime > LastTradeDate)
-               {
-                  TradesToday++;
-                  LogInfo("Trade executed. Total trades today: ", IntegerToString(TradesToday));
-                  break;
-               }
-            }
-         }
-      }
-   }
+   //--- ⚡ Bolt: Relocated statistics update to event handler.
+   UpdateDailyStatistics();
+   LogInfo("Trade executed. Total trades today: ", IntegerToString(TradesToday));
 }
 
 //+------------------------------------------------------------------+
