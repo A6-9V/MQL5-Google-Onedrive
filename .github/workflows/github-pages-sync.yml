@@ -20,7 +20,7 @@ concurrency:
 
 jobs:
   sync-to-pages:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     env:
       PAGES_REPO: Mouy-leng/-LengKundee-mql5.github.io.git
       PAGES_BRANCH: main
