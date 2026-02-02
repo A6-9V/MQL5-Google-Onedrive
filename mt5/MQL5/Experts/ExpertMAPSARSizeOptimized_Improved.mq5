@@ -78,6 +78,7 @@ double   DailyProfit = 0.0;
 double   DailyLoss = 0.0;
 double   InitialBalance = 0.0;
 datetime LastTradeDate = 0;
+datetime g_todayStart = 0; // ⚡ Bolt: Cached today's start time for efficient history selection
 
 //+------------------------------------------------------------------+
 //| Logging Functions                                                |
@@ -158,23 +159,8 @@ bool IsTradingAllowed()
 //+------------------------------------------------------------------+
 bool CheckDailyLimits()
 {
-   datetime currentDate = TimeCurrent();
-   MqlDateTime dt;
-   TimeToStruct(currentDate, dt);
-   dt.hour = 0;
-   dt.min = 0;
-   dt.sec = 0;
-   datetime todayStart = StructToTime(dt);
-
-   //--- Reset daily statistics if new day
-   if(LastTradeDate != todayStart)
-   {
-      TradesToday = 0;
-      DailyProfit = 0.0;
-      DailyLoss = 0.0;
-      LastTradeDate = todayStart;
-      LogInfo("New trading day started. Resetting daily statistics.");
-   }
+   //--- ⚡ Bolt: Rollover reset logic moved to OnTick() for better performance and
+   //--- to ensure it runs even when EveryTick is disabled.
 
    //--- Check max trades per day
    if(Inp_Risk_MaxTradesPerDay > 0 && TradesToday >= Inp_Risk_MaxTradesPerDay)
@@ -221,8 +207,17 @@ void UpdateDailyStatistics()
 {
    double currentProfit = 0.0;
 
-   //--- Calculate current day's profit/loss
-   if(HistorySelect(TimeCurrent() - PeriodSeconds(PERIOD_D1), TimeCurrent()))
+   //--- ⚡ Bolt: Performance optimization - use precisely calculated g_todayStart.
+   //--- This avoids expensive 24-hour scans and ensures statistics match the current trading day.
+   if(g_todayStart == 0)
+   {
+      MqlDateTime dt;
+      TimeToStruct(TimeCurrent(), dt);
+      dt.hour = 0; dt.min = 0; dt.sec = 0;
+      g_todayStart = StructToTime(dt);
+   }
+
+   if(HistorySelect(g_todayStart, TimeCurrent()))
    {
       int total = HistoryDealsTotal();
       for(int i = 0; i < total; i++)
@@ -241,10 +236,16 @@ void UpdateDailyStatistics()
       }
    }
 
-   if(currentProfit > 0)
+   if(currentProfit >= 0)
+   {
       DailyProfit = currentProfit;
+      DailyLoss = 0.0;
+   }
    else
+   {
+      DailyProfit = 0.0;
       DailyLoss = MathAbs(currentProfit);
+   }
 }
 
 //+------------------------------------------------------------------+
@@ -370,6 +371,10 @@ int OnInit(void)
    DailyProfit = 0.0;
    DailyLoss = 0.0;
 
+   //--- ⚡ Bolt: Initialize daily statistics and set timer for periodic updates
+   UpdateDailyStatistics();
+   EventSetTimer(60);
+
    //--- Success message
    LogInfo("Expert Advisor initialized successfully");
    LogInfo("Account: ", IntegerToString(AccountInfoInteger(ACCOUNT_LOGIN)));
@@ -386,6 +391,9 @@ int OnInit(void)
 //+------------------------------------------------------------------+
 void OnDeinit(const int reason)
 {
+   //--- ⚡ Bolt: Kill timer on deinitialization
+   EventKillTimer();
+
    //--- Print final statistics
    double finalBalance = AccountInfoDouble(ACCOUNT_BALANCE);
    double totalProfit = finalBalance - InitialBalance;
@@ -404,6 +412,25 @@ void OnDeinit(const int reason)
 //+------------------------------------------------------------------+
 void OnTick(void)
 {
+   //--- ⚡ Bolt: Optimized Day-Rollover check.
+   //--- This happens at the top to ensure daily stats are reset exactly at midnight.
+   //--- Using integer division is extremely cheap and avoids expensive TimeToStruct calls on every tick.
+   datetime currentTickTime = TimeCurrent();
+   if(currentTickTime / 86400 != LastTradeDate / 86400)
+   {
+      MqlDateTime dt;
+      TimeToStruct(currentTickTime, dt);
+      dt.hour = 0; dt.min = 0; dt.sec = 0;
+      g_todayStart = StructToTime(dt);
+
+      TradesToday = 0;
+      DailyProfit = 0.0;
+      DailyLoss = 0.0;
+      LastTradeDate = g_todayStart;
+      UpdateDailyStatistics();
+      LogInfo("New trading day started. Resetting daily statistics.");
+   }
+
    //--- Check if trading is allowed
    if(!IsTradingAllowed())
       return;
@@ -412,22 +439,20 @@ void OnTick(void)
    if(!CheckDailyLimits())
       return;
 
-   //--- Update daily statistics
-   UpdateDailyStatistics();
+   //--- ⚡ Bolt: Moved UpdateDailyStatistics() from OnTick to OnTrade and OnTimer
+   //--- to avoid expensive history scanning on every price tick.
 
    //--- Process expert tick
+   //--- We do NOT throttle this call with a "new bar" check here because ExtExpert
+   //--- already manages its own EveryTick setting and needs to run for trailing stops.
    ExtExpert.OnTick();
 
-   //--- Update trade count if new bar
-   MqlRates rates[];
-   ArraySetAsSeries(rates, true);
-   if(CopyRates(Symbol(), Period(), 0, 1, rates) > 0)
+   //--- ⚡ Bolt: Use lightweight iTime() to detect and log new bars instead of expensive CopyRates().
+   datetime currentBarTime = iTime(_Symbol, _Period, 0);
+   if(currentBarTime != 0 && currentBarTime != LastBarTime)
    {
-      if(LastBarTime != rates[0].time)
-      {
-         LastBarTime = rates[0].time;
-         LogDebug("New bar detected");
-      }
+      LastBarTime = currentBarTime;
+      LogDebug("New bar detected");
    }
 }
 
@@ -437,6 +462,9 @@ void OnTick(void)
 void OnTrade(void)
 {
    ExtExpert.OnTrade();
+
+   //--- ⚡ Bolt: Update daily statistics when a trade occurs
+   UpdateDailyStatistics();
 
    //--- Update trade statistics
    if(HistorySelect(TimeCurrent() - 60, TimeCurrent()))
@@ -467,9 +495,8 @@ void OnTrade(void)
 //+------------------------------------------------------------------+
 void OnTimer(void)
 {
+   //--- ⚡ Bolt: Periodic background update of statistics.
    ExtExpert.OnTimer();
-
-   //--- Update statistics periodically
    UpdateDailyStatistics();
 }
 
