@@ -28,7 +28,7 @@ env:
 jobs:
   build-and-test:
     name: Build and Test Docker Dev Image
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     permissions:
       contents: read
       packages: write
@@ -85,7 +85,7 @@ jobs:
   deploy-dev:
     name: Deploy Dev Environment
     needs: build-and-test
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     if: github.ref == 'refs/heads/develop' || github.event_name == 'workflow_dispatch'
     environment:
       name: dev
@@ -132,7 +132,7 @@ jobs:
   deploy-cloud:
     name: Deploy to Cloud Platform
     needs: build-and-test
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'cloud')
     environment:
       name: production

@@ -104,7 +104,7 @@ void LogDebug(string message)
 //+------------------------------------------------------------------+
 //| Check Trading Allowed                                            |
 //+------------------------------------------------------------------+
-bool IsTradingAllowed()
+bool IsTradingAllowed(datetime time)
 {
    //--- Check if trading is enabled
    if(!Expert_EnableTrading)
@@ -129,9 +129,8 @@ bool IsTradingAllowed()
    //--- Check time filter
    if(Inp_Risk_EnableTimeFilter)
    {
-      MqlDateTime dt;
-      TimeToStruct(TimeCurrent(), dt);
-      int currentHour = dt.hour;
+      // ⚡ Bolt: Use fast math for hour calculation to avoid expensive TimeToStruct call.
+      int currentHour = (int)((time / 3600) % 24);
 
       if(Inp_Risk_StartHour <= Inp_Risk_EndHour)
       {
@@ -169,31 +168,35 @@ bool CheckDailyLimits()
       return false;
    }
 
-   //--- Check daily loss limit
-   if(Inp_Risk_MaxDailyLoss > 0)
+   //--- ⚡ Bolt: Fetch account balance once to reduce terminal API calls.
+   if(Inp_Risk_MaxDailyLoss > 0 || Inp_Risk_MaxDailyProfit > 0)
    {
       double balance = AccountInfoDouble(ACCOUNT_BALANCE);
-      double maxLoss = balance * (Inp_Risk_MaxDailyLoss / 100.0);
 
-      if(DailyLoss >= maxLoss)
+      //--- Check daily loss limit
+      if(Inp_Risk_MaxDailyLoss > 0)
       {
-         LogError("Daily loss limit reached: ", DoubleToString(DailyLoss, 2), " (Max: ", DoubleToString(maxLoss, 2), ")");
-         if(Expert_ShowAlerts) Alert("Daily loss limit reached!");
-         return false;
+         double maxLoss = balance * (Inp_Risk_MaxDailyLoss / 100.0);
+
+         if(DailyLoss >= maxLoss)
+         {
+            LogError("Daily loss limit reached: ", DoubleToString(DailyLoss, 2), " (Max: ", DoubleToString(maxLoss, 2), ")");
+            if(Expert_ShowAlerts) Alert("Daily loss limit reached!");
+            return false;
+         }
       }
-   }
 
-   //--- Check daily profit limit
-   if(Inp_Risk_MaxDailyProfit > 0)
-   {
-      double balance = AccountInfoDouble(ACCOUNT_BALANCE);
-      double maxProfit = balance * (Inp_Risk_MaxDailyProfit / 100.0);
-
-      if(DailyProfit >= maxProfit)
+      //--- Check daily profit limit
+      if(Inp_Risk_MaxDailyProfit > 0)
       {
-         LogInfo("Daily profit limit reached: ", DoubleToString(DailyProfit, 2), " (Max: ", DoubleToString(maxProfit, 2), ")");
-         if(Expert_ShowAlerts) Alert("Daily profit target reached!");
-         return false;
+         double maxProfit = balance * (Inp_Risk_MaxDailyProfit / 100.0);
+
+         if(DailyProfit >= maxProfit)
+         {
+            LogInfo("Daily profit limit reached: ", DoubleToString(DailyProfit, 2), " (Max: ", DoubleToString(maxProfit, 2), ")");
+            if(Expert_ShowAlerts) Alert("Daily profit target reached!");
+            return false;
+         }
       }
    }
 
@@ -206,6 +209,7 @@ bool CheckDailyLimits()
 void UpdateDailyStatistics()
 {
    double currentProfit = 0.0;
+   int tradesToday = 0;
 
    //--- ⚡ Bolt: Performance optimization - use precisely calculated g_todayStart.
    //--- This avoids expensive 24-hour scans and ensures statistics match the current trading day.
@@ -223,19 +227,22 @@ void UpdateDailyStatistics()
       for(int i = 0; i < total; i++)
       {
          ulong ticket = HistoryDealGetTicket(i);
-         if(ticket > 0)
+         if(ticket > 0 && HistoryDealGetInteger(ticket, DEAL_MAGIC) == Expert_MagicNumber)
          {
-            if(HistoryDealGetInteger(ticket, DEAL_MAGIC) == Expert_MagicNumber)
-            {
-               double profit = HistoryDealGetDouble(ticket, DEAL_PROFIT);
-               double swap = HistoryDealGetDouble(ticket, DEAL_SWAP);
-               double commission = HistoryDealGetDouble(ticket, DEAL_COMMISSION);
-               currentProfit += profit + swap + commission;
-            }
+            // ⚡ Bolt: Consolidate trade counting and profit calculation into a single history scan.
+            // We count only entry deals (DEAL_ENTRY_IN) to accurately track the number of trades.
+            if(HistoryDealGetInteger(ticket, DEAL_ENTRY) == DEAL_ENTRY_IN)
+               tradesToday++;
+
+            double profit = HistoryDealGetDouble(ticket, DEAL_PROFIT);
+            double swap = HistoryDealGetDouble(ticket, DEAL_SWAP);
+            double commission = HistoryDealGetDouble(ticket, DEAL_COMMISSION);
+            currentProfit += profit + swap + commission;
          }
       }
    }
 
+   TradesToday = tradesToday;
    if(currentProfit >= 0)
    {
       DailyProfit = currentProfit;
@@ -432,7 +439,8 @@ void OnTick(void)
    }
 
    //--- Check if trading is allowed
-   if(!IsTradingAllowed())
+   // ⚡ Bolt: Pass currentTickTime to avoid redundant TimeCurrent() calls.
+   if(!IsTradingAllowed(currentTickTime))
       return;
 
    //--- Check daily limits
@@ -461,32 +469,17 @@ void OnTick(void)
 //+------------------------------------------------------------------+
 void OnTrade(void)
 {
+   int oldTrades = TradesToday;
    ExtExpert.OnTrade();
 
-   //--- ⚡ Bolt: Update daily statistics when a trade occurs
+   //--- ⚡ Bolt: Update daily statistics (profit and trades) when a trade occurs.
+   //--- This consolidated update avoids redundant HistorySelect calls and secondary scans.
    UpdateDailyStatistics();
 
-   //--- Update trade statistics
-   if(HistorySelect(TimeCurrent() - 60, TimeCurrent()))
+   //--- Log trade execution if the trade count increased
+   if(TradesToday > oldTrades)
    {
-      int total = HistoryDealsTotal();
-      for(int i = total - 1; i >= 0; i--)
-      {
-         ulong ticket = HistoryDealGetTicket(i);
-         if(ticket > 0)
-         {
-            if(HistoryDealGetInteger(ticket, DEAL_MAGIC) == Expert_MagicNumber)
-            {
-               datetime dealTime = (datetime)HistoryDealGetInteger(ticket, DEAL_TIME);
-               if(dealTime > LastTradeDate)
-               {
-                  TradesToday++;
-                  LogInfo("Trade executed. Total trades today: ", IntegerToString(TradesToday));
-                  break;
-               }
-            }
-         }
-      }
+      LogInfo("Trade executed. Total trades today: ", IntegerToString(TradesToday));
    }
 }
 

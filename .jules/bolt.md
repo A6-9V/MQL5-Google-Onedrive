@@ -26,3 +26,7 @@ This journal is for CRITICAL, non-routine performance learnings ONLY.
 ## 2026-01-20 - MQL5 OnTick Execution Flow Optimization
 **Learning:** Significant performance gains in MQL5 EAs can be achieved by carefully ordering the logic in `OnTick`. Moving the `PositionSelect` check before `CopyRates` and `CopyBuffer` avoids expensive data operations when a trade is already active. Additionally, reducing the requested bar count in data fetching functions to the absolute minimum (e.g., 2 instead of 3) and using `SymbolInfoTick` for atomic, lazy price retrieval further reduces overhead.
 **Action:** Always place 'gatekeeper' checks (new bar, position existence, terminal trading allowed) at the top of `OnTick` and minimize the data payload for indicator and price fetching to only what is strictly necessary for the current bar's logic.
+
+## 2026-01-22 - Fast Math for Time Extraction and History Consolidation
+**Learning:** Extracting time components (like the current hour) from an MQL5 `datetime` is significantly faster using simple modulus and division math than calling `TimeToStruct`. Additionally, consolidating multiple event-driven history scans (e.g., counting trades and calculating profit) into a single daily-range scan avoids redundant API calls and improves robustness against missing events during restarts.
+**Action:** Use `(time / 3600) % 24` for hour extraction and consolidate all history-dependent statistics into a single scan within `UpdateDailyStatistics()` to minimize `HistorySelect` overhead.
