@@ -221,8 +221,14 @@ void UpdateDailyStatistics()
 {
    double currentProfit = 0.0;
 
+   // ⚡ Bolt: Calculate start of today for more accurate and efficient history selection.
+   MqlDateTime dt;
+   TimeToStruct(TimeCurrent(), dt);
+   dt.hour = 0; dt.min = 0; dt.sec = 0;
+   datetime todayStart = StructToTime(dt);
+
    //--- Calculate current day's profit/loss
-   if(HistorySelect(TimeCurrent() - PeriodSeconds(PERIOD_D1), TimeCurrent()))
+   if(HistorySelect(todayStart, TimeCurrent()))
    {
       int total = HistoryDealsTotal();
       for(int i = 0; i < total; i++)
@@ -378,6 +384,12 @@ int OnInit(void)
    LogInfo("Magic Number: ", IntegerToString(Expert_MagicNumber));
    LogInfo("Initial Balance: ", DoubleToString(InitialBalance, 2));
 
+   // ⚡ Bolt: Enable timer for periodic statistics updates (60 seconds)
+   EventSetTimer(60);
+
+   // ⚡ Bolt: Initial statistics update on startup to avoid stale data
+   UpdateDailyStatistics();
+
    return(INIT_SUCCEEDED);
 }
 
@@ -386,6 +398,9 @@ int OnInit(void)
 //+------------------------------------------------------------------+
 void OnDeinit(const int reason)
 {
+   // ⚡ Bolt: Cleanup timer
+   EventKillTimer();
+
    //--- Print final statistics
    double finalBalance = AccountInfoDouble(ACCOUNT_BALANCE);
    double totalProfit = finalBalance - InitialBalance;
@@ -404,6 +419,17 @@ void OnDeinit(const int reason)
 //+------------------------------------------------------------------+
 void OnTick(void)
 {
+   //--- ⚡ Bolt: Performance optimization - perform a lightweight new bar check using iTime()
+   //--- as the very first gatekeeper. This avoids all subsequent expensive API calls and logic
+   //--- on every price tick when not needed.
+   if(!Expert_EveryTick)
+   {
+      datetime currentBarTime = iTime(Symbol(), Period(), 0);
+      if(currentBarTime == 0) return; // History not ready
+      if(currentBarTime == LastBarTime) return;
+      LastBarTime = currentBarTime;
+   }
+
    //--- Check if trading is allowed
    if(!IsTradingAllowed())
       return;
@@ -412,23 +438,11 @@ void OnTick(void)
    if(!CheckDailyLimits())
       return;
 
-   //--- Update daily statistics
-   UpdateDailyStatistics();
+   //--- ⚡ Bolt: Removed UpdateDailyStatistics() from OnTick hot path.
+   //--- It is now called from OnTrade() and OnTimer() to reduce overhead.
 
    //--- Process expert tick
    ExtExpert.OnTick();
-
-   //--- Update trade count if new bar
-   MqlRates rates[];
-   ArraySetAsSeries(rates, true);
-   if(CopyRates(Symbol(), Period(), 0, 1, rates) > 0)
-   {
-      if(LastBarTime != rates[0].time)
-      {
-         LastBarTime = rates[0].time;
-         LogDebug("New bar detected");
-      }
-   }
 }
 
 //+------------------------------------------------------------------+
@@ -460,6 +474,9 @@ void OnTrade(void)
          }
       }
    }
+
+   // ⚡ Bolt: Update daily statistics on trade events
+   UpdateDailyStatistics();
 }
 
 //+------------------------------------------------------------------+
