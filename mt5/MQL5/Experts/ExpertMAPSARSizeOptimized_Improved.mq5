@@ -104,7 +104,7 @@ void LogDebug(string message)
 //+------------------------------------------------------------------+
 //| Check Trading Allowed                                            |
 //+------------------------------------------------------------------+
-bool IsTradingAllowed()
+bool IsTradingAllowed(datetime currentTime)
 {
    //--- Check if trading is enabled
    if(!Expert_EnableTrading)
@@ -129,9 +129,8 @@ bool IsTradingAllowed()
    //--- Check time filter
    if(Inp_Risk_EnableTimeFilter)
    {
-      MqlDateTime dt;
-      TimeToStruct(TimeCurrent(), dt);
-      int currentHour = dt.hour;
+      // ⚡ Bolt: Use fast math for hour extraction to avoid expensive TimeToStruct call.
+      int currentHour = (int)((currentTime / 3600) % 24);
 
       if(Inp_Risk_StartHour <= Inp_Risk_EndHour)
       {
@@ -169,10 +168,12 @@ bool CheckDailyLimits()
       return false;
    }
 
+   //--- ⚡ Bolt: Cache account balance to avoid redundant API calls.
+   double balance = (Inp_Risk_MaxDailyLoss > 0 || Inp_Risk_MaxDailyProfit > 0) ? AccountInfoDouble(ACCOUNT_BALANCE) : 0;
+
    //--- Check daily loss limit
    if(Inp_Risk_MaxDailyLoss > 0)
    {
-      double balance = AccountInfoDouble(ACCOUNT_BALANCE);
       double maxLoss = balance * (Inp_Risk_MaxDailyLoss / 100.0);
 
       if(DailyLoss >= maxLoss)
@@ -186,7 +187,6 @@ bool CheckDailyLimits()
    //--- Check daily profit limit
    if(Inp_Risk_MaxDailyProfit > 0)
    {
-      double balance = AccountInfoDouble(ACCOUNT_BALANCE);
       double maxProfit = balance * (Inp_Risk_MaxDailyProfit / 100.0);
 
       if(DailyProfit >= maxProfit)
@@ -206,15 +206,14 @@ bool CheckDailyLimits()
 void UpdateDailyStatistics()
 {
    double currentProfit = 0.0;
+   int currentTrades = 0;
 
    //--- ⚡ Bolt: Performance optimization - use precisely calculated g_todayStart.
    //--- This avoids expensive 24-hour scans and ensures statistics match the current trading day.
    if(g_todayStart == 0)
    {
-      MqlDateTime dt;
-      TimeToStruct(TimeCurrent(), dt);
-      dt.hour = 0; dt.min = 0; dt.sec = 0;
-      g_todayStart = StructToTime(dt);
+      // ⚡ Bolt: Use fast math for daily start calculation.
+      g_todayStart = (TimeCurrent() / 86400) * 86400;
    }
 
    if(HistorySelect(g_todayStart, TimeCurrent()))
@@ -225,17 +224,23 @@ void UpdateDailyStatistics()
          ulong ticket = HistoryDealGetTicket(i);
          if(ticket > 0)
          {
-            if(HistoryDealGetInteger(ticket, DEAL_MAGIC) == Expert_MagicNumber)
+            // ⚡ Bolt: Use faster property accessors (without ticket param) after selection.
+            if(HistoryDealGetInteger(DEAL_MAGIC) == Expert_MagicNumber)
             {
-               double profit = HistoryDealGetDouble(ticket, DEAL_PROFIT);
-               double swap = HistoryDealGetDouble(ticket, DEAL_SWAP);
-               double commission = HistoryDealGetDouble(ticket, DEAL_COMMISSION);
+               double profit = HistoryDealGetDouble(DEAL_PROFIT);
+               double swap = HistoryDealGetDouble(DEAL_SWAP);
+               double commission = HistoryDealGetDouble(DEAL_COMMISSION);
                currentProfit += profit + swap + commission;
+
+               // ⚡ Bolt: Consolidate trade counting for better efficiency and robustness.
+               if(HistoryDealGetInteger(DEAL_ENTRY) == DEAL_ENTRY_IN)
+                  currentTrades++;
             }
          }
       }
    }
 
+   TradesToday = currentTrades;
    if(currentProfit >= 0)
    {
       DailyProfit = currentProfit;
@@ -418,10 +423,8 @@ void OnTick(void)
    datetime currentTickTime = TimeCurrent();
    if(currentTickTime / 86400 != LastTradeDate / 86400)
    {
-      MqlDateTime dt;
-      TimeToStruct(currentTickTime, dt);
-      dt.hour = 0; dt.min = 0; dt.sec = 0;
-      g_todayStart = StructToTime(dt);
+      // ⚡ Bolt: Use fast math for daily start calculation.
+      g_todayStart = (currentTickTime / 86400) * 86400;
 
       TradesToday = 0;
       DailyProfit = 0.0;
@@ -432,7 +435,8 @@ void OnTick(void)
    }
 
    //--- Check if trading is allowed
-   if(!IsTradingAllowed())
+   // ⚡ Bolt: Pass current time to avoid redundant TimeCurrent() calls.
+   if(!IsTradingAllowed(currentTickTime))
       return;
 
    //--- Check daily limits
@@ -463,31 +467,10 @@ void OnTrade(void)
 {
    ExtExpert.OnTrade();
 
-   //--- ⚡ Bolt: Update daily statistics when a trade occurs
+   //--- ⚡ Bolt: Update daily statistics when a trade occurs.
+   //--- Consolidating statistics update here avoids redundant history scans.
    UpdateDailyStatistics();
-
-   //--- Update trade statistics
-   if(HistorySelect(TimeCurrent() - 60, TimeCurrent()))
-   {
-      int total = HistoryDealsTotal();
-      for(int i = total - 1; i >= 0; i--)
-      {
-         ulong ticket = HistoryDealGetTicket(i);
-         if(ticket > 0)
-         {
-            if(HistoryDealGetInteger(ticket, DEAL_MAGIC) == Expert_MagicNumber)
-            {
-               datetime dealTime = (datetime)HistoryDealGetInteger(ticket, DEAL_TIME);
-               if(dealTime > LastTradeDate)
-               {
-                  TradesToday++;
-                  LogInfo("Trade executed. Total trades today: ", IntegerToString(TradesToday));
-                  break;
-               }
-            }
-         }
-      }
-   }
+   LogInfo("Trade event detected. Updated daily statistics. Trades today: ", IntegerToString(TradesToday));
 }
 
 //+------------------------------------------------------------------+
