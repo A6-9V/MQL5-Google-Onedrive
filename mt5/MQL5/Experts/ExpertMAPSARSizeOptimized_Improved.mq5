@@ -129,9 +129,8 @@ bool IsTradingAllowed()
    //--- Check time filter
    if(Inp_Risk_EnableTimeFilter)
    {
-      MqlDateTime dt;
-      TimeToStruct(TimeCurrent(), dt);
-      int currentHour = dt.hour;
+      //--- ⚡ Bolt: Use fast integer math for hour extraction instead of TimeToStruct.
+      int currentHour = (int)((TimeCurrent() / 3600) % 24);
 
       if(Inp_Risk_StartHour <= Inp_Risk_EndHour)
       {
@@ -206,30 +205,31 @@ bool CheckDailyLimits()
 void UpdateDailyStatistics()
 {
    double currentProfit = 0.0;
+   TradesToday = 0; // ⚡ Bolt: Reset and recount from history for robustness
 
-   //--- ⚡ Bolt: Performance optimization - use precisely calculated g_todayStart.
-   //--- This avoids expensive 24-hour scans and ensures statistics match the current trading day.
-   if(g_todayStart == 0)
-   {
-      MqlDateTime dt;
-      TimeToStruct(TimeCurrent(), dt);
-      dt.hour = 0; dt.min = 0; dt.sec = 0;
-      g_todayStart = StructToTime(dt);
-   }
+   //--- ⚡ Bolt: Performance optimization - use fast integer math for g_todayStart.
+   //--- This avoids expensive TimeToStruct/StructToTime calls.
+   datetime now = TimeCurrent();
+   g_todayStart = (now / 86400) * 86400;
 
-   if(HistorySelect(g_todayStart, TimeCurrent()))
+   //--- ⚡ Bolt: Consolidate history scan. Count trades and calculate profit in one pass.
+   if(HistorySelect(g_todayStart, now))
    {
       int total = HistoryDealsTotal();
       for(int i = 0; i < total; i++)
       {
-         ulong ticket = HistoryDealGetTicket(i);
-         if(ticket > 0)
+         //--- ⚡ Bolt: After selecting a deal, use retrieval variants without ticket parameter for speed.
+         if(HistoryDealGetTicket(i) > 0)
          {
-            if(HistoryDealGetInteger(ticket, DEAL_MAGIC) == Expert_MagicNumber)
+            if(HistoryDealGetInteger(DEAL_MAGIC) == Expert_MagicNumber)
             {
-               double profit = HistoryDealGetDouble(ticket, DEAL_PROFIT);
-               double swap = HistoryDealGetDouble(ticket, DEAL_SWAP);
-               double commission = HistoryDealGetDouble(ticket, DEAL_COMMISSION);
+               //--- ⚡ Bolt: Increment trade count only for entry deals.
+               if(HistoryDealGetInteger(DEAL_ENTRY) == DEAL_ENTRY_IN)
+                  TradesToday++;
+
+               double profit = HistoryDealGetDouble(DEAL_PROFIT);
+               double swap = HistoryDealGetDouble(DEAL_SWAP);
+               double commission = HistoryDealGetDouble(DEAL_COMMISSION);
                currentProfit += profit + swap + commission;
             }
          }
@@ -414,18 +414,11 @@ void OnTick(void)
 {
    //--- ⚡ Bolt: Optimized Day-Rollover check.
    //--- This happens at the top to ensure daily stats are reset exactly at midnight.
-   //--- Using integer division is extremely cheap and avoids expensive TimeToStruct calls on every tick.
+   //--- Using integer division is extremely cheap and avoids expensive TimeToStruct/StructToTime calls on every tick.
    datetime currentTickTime = TimeCurrent();
    if(currentTickTime / 86400 != LastTradeDate / 86400)
    {
-      MqlDateTime dt;
-      TimeToStruct(currentTickTime, dt);
-      dt.hour = 0; dt.min = 0; dt.sec = 0;
-      g_todayStart = StructToTime(dt);
-
-      TradesToday = 0;
-      DailyProfit = 0.0;
-      DailyLoss = 0.0;
+      g_todayStart = (currentTickTime / 86400) * 86400;
       LastTradeDate = g_todayStart;
       UpdateDailyStatistics();
       LogInfo("New trading day started. Resetting daily statistics.");
@@ -463,30 +456,14 @@ void OnTrade(void)
 {
    ExtExpert.OnTrade();
 
-   //--- ⚡ Bolt: Update daily statistics when a trade occurs
+   //--- ⚡ Bolt: Update daily statistics when a trade occurs.
+   //--- UpdateDailyStatistics now consolidates all history-based checks into a single scan.
+   int prevTrades = TradesToday;
    UpdateDailyStatistics();
 
-   //--- Update trade statistics
-   if(HistorySelect(TimeCurrent() - 60, TimeCurrent()))
+   if(TradesToday > prevTrades)
    {
-      int total = HistoryDealsTotal();
-      for(int i = total - 1; i >= 0; i--)
-      {
-         ulong ticket = HistoryDealGetTicket(i);
-         if(ticket > 0)
-         {
-            if(HistoryDealGetInteger(ticket, DEAL_MAGIC) == Expert_MagicNumber)
-            {
-               datetime dealTime = (datetime)HistoryDealGetInteger(ticket, DEAL_TIME);
-               if(dealTime > LastTradeDate)
-               {
-                  TradesToday++;
-                  LogInfo("Trade executed. Total trades today: ", IntegerToString(TradesToday));
-                  break;
-               }
-            }
-         }
-      }
+      LogInfo("Trade executed. Total trades today: ", IntegerToString(TradesToday));
    }
 }
 
