@@ -82,6 +82,9 @@ double g_tickSize;
 double g_marginInitial;
 double g_riskMultiplier;
 double g_lotValuePerUnit;
+double g_invLotStep;       // ⚡ Bolt: Cached inverse of lot step to replace divisions with multiplications
+double g_invMarginInitial; // ⚡ Bolt: Cached inverse of margin to replace divisions with multiplications
+double g_swingSLBuffer;    // ⚡ Bolt: Cached point-converted swing buffer
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                     |
@@ -103,9 +106,12 @@ int OnInit()
    g_tickSize = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_SIZE);
    g_marginInitial = SymbolInfoDouble(_Symbol, SYMBOL_MARGIN_INITIAL);
 
-   //--- ⚡ Bolt: Pre-calculate lot size constants for performance
+   //--- ⚡ Bolt: Pre-calculate lot size and SL constants for performance
    g_riskMultiplier = RiskPercent / 100.0;
    g_lotValuePerUnit = (g_tickSize > 0) ? (g_tickValue / g_tickSize) : 0;
+   g_invLotStep = (g_lotStep > 0) ? (1.0 / g_lotStep) : 0;
+   g_invMarginInitial = (g_marginInitial > 0) ? (1.0 / g_marginInitial) : 0;
+   g_swingSLBuffer = SwingSLBufferPoints * g_point;
 
    //--- Initialize indicators
    atrHandle = iATR(_Symbol, _Period, ATR_Period);
@@ -354,7 +360,7 @@ double CalculateSL(double price, bool isSell, double latestAtr)
       if(latestAtr <= 0) return 0; // Basic validation for ATR-based modes.
 
       double atrOffset = latestAtr * ATR_SL_Mult;
-      double swingBuffer = (SLMode == SL_SWING) ? (SwingSLBufferPoints * g_point) : 0;
+      double swingBuffer = (SLMode == SL_SWING) ? g_swingSLBuffer : 0;
 
       if(isSell) {
          sl = price + atrOffset + swingBuffer;
@@ -436,7 +442,8 @@ double CalculateLots(double slDistance, double accountBalance, double accountEqu
    double lots = (balanceOrEquity * g_riskMultiplier) / (slDistance * g_lotValuePerUnit);
    
    //--- Normalize lot size
-   lots = MathFloor(lots / g_lotStep) * g_lotStep;
+   // ⚡ Bolt: Use pre-calculated inverse to replace division with multiplication
+   lots = MathFloor(lots * g_invLotStep) * g_lotStep;
    lots = MathMax(g_minLot, MathMin(lots, g_maxLot));
    
    //--- Apply user limits
@@ -446,8 +453,9 @@ double CalculateLots(double slDistance, double accountBalance, double accountEqu
    if(RiskClampToFreeMargin) {
       double marginRequired = g_marginInitial * lots;
       if(marginRequired > freeMargin) {
-         lots = (freeMargin / g_marginInitial);
-         lots = MathFloor(lots / g_lotStep) * g_lotStep;
+         // ⚡ Bolt: Use pre-calculated inverse to replace division with multiplication
+         lots = (freeMargin * g_invMarginInitial);
+         lots = MathFloor(lots * g_invLotStep) * g_lotStep;
          lots = MathMax(g_minLot, MathMin(lots, g_maxLot));
       }
    }
