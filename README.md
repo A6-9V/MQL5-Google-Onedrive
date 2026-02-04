@@ -106,6 +106,8 @@ Quick start:
 - [Verification Report](VERIFICATION.md) - System status and test results
 - [Startup Automation Guide](docs/Startup_Automation_Guide.md) - Complete guide
 - [Quick Start](docs/Quick_Start_Automation.md) - Quick start instructions
+- [Release Process](docs/RELEASE_PROCESS.md) - Creating and managing releases
+- [Changelog](CHANGELOG.md) - Version history and changes
 
 The automation system handles:
 - MT5 Terminal startup

@@ -22,6 +22,7 @@ Instructions for deploying the application to various platforms.
 - [Cloud Deployment Guide](Cloud_Deployment_Guide.md) - Deploying to Render, Railway, Fly.io, etc.
 - [Exness Deployment Guide](Exness_Deployment_Guide.md) - Specifics for Exness MT5.
 - [Secrets Management](Secrets_Management.md) - Handling API keys and credentials secureley.
+- [Release Process](RELEASE_PROCESS.md) - Creating and managing releases.
 
 ## 🤖 Automation & Operations
 
