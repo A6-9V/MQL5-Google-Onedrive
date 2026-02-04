@@ -331,9 +331,9 @@ main() {
                     package_mt5
                     ;;
                 6)
-                    local version=$(get_current_version)
-                    read -p "Enter release version (default: $version): " version
-                    version=${version:-$version}
+                    local default_version=$(get_current_version)
+                    read -p "Enter release version (default: $default_version): " version
+                    version=${version:-$default_version}
                     create_release_tag "$version"
                     ;;
                 7)
