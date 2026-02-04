@@ -82,6 +82,13 @@ double g_tickSize;
 double g_marginInitial;
 double g_riskMultiplier;
 double g_lotValuePerUnit;
+double g_invLotStep;
+double g_swingSLBuffer;
+double g_fixedSL;
+double g_fixedTP;
+double g_finalMinLot;
+double g_finalMaxLot;
+double g_lotRiskFactor;
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                     |
@@ -106,6 +113,17 @@ int OnInit()
    //--- ⚡ Bolt: Pre-calculate lot size constants for performance
    g_riskMultiplier = RiskPercent / 100.0;
    g_lotValuePerUnit = (g_tickSize > 0) ? (g_tickValue / g_tickSize) : 0;
+   g_invLotStep = (g_lotStep > 0) ? (1.0 / g_lotStep) : 0;
+   g_lotRiskFactor = (g_lotValuePerUnit > 0) ? (g_riskMultiplier / g_lotValuePerUnit) : 0;
+
+   //--- ⚡ Bolt: Pre-calculate SL/TP constants for performance
+   g_swingSLBuffer = SwingSLBufferPoints * g_point;
+   g_fixedSL = FixedSLPoints * g_point;
+   g_fixedTP = FixedTPPoints * g_point;
+
+   //--- ⚡ Bolt: Pre-calculate lot limits for performance
+   g_finalMinLot = MathMax(g_minLot, MinLots);
+   g_finalMaxLot = MathMin(g_maxLot, MaxLots);
 
    //--- Initialize indicators
    atrHandle = iATR(_Symbol, _Period, ATR_Period);
@@ -217,13 +235,11 @@ void OnTick()
    if(CopyRates(_Symbol, _Period, 0, 2, rates) <= 0) return; // Fetch 2 bars
    
    //--- Get primary signal indicator values (Donchian)
-   // iBands buffers: 1=upper, 2=lower
-   // ⚡ Bolt: Only fetch 2 bars instead of 3 to improve efficiency.
+   // ⚡ Bolt: Fetch 2 bars for both bands.
    if(CopyBuffer(donchianBandsHandle, 1, 0, 2, upperBand) <= 0) return;
    if(CopyBuffer(donchianBandsHandle, 2, 0, 2, lowerBand) <= 0) return;
 
    //--- Preliminary Donchian Breakout Detection (without confirmation)
-   //--- ⚡ Bolt: Access rates directly instead of copying to a local array.
    bool buyBreakout = (rates[1].close > upperBand[1] && rates[0].close > rates[1].close);
    bool sellBreakout = (rates[1].close < lowerBand[1] && rates[0].close < rates[1].close);
 
@@ -354,7 +370,7 @@ double CalculateSL(double price, bool isSell, double latestAtr)
       if(latestAtr <= 0) return 0; // Basic validation for ATR-based modes.
 
       double atrOffset = latestAtr * ATR_SL_Mult;
-      double swingBuffer = (SLMode == SL_SWING) ? (SwingSLBufferPoints * g_point) : 0;
+      double swingBuffer = (SLMode == SL_SWING) ? g_swingSLBuffer : 0;
 
       if(isSell) {
          sl = price + atrOffset + swingBuffer;
@@ -365,9 +381,9 @@ double CalculateSL(double price, bool isSell, double latestAtr)
    else if(SLMode == SL_FIXED_POINTS)
    {
       if(isSell) {
-         sl = price + (FixedSLPoints * g_point);
+         sl = price + g_fixedSL;
       } else {
-         sl = price - (FixedSLPoints * g_point);
+         sl = price - g_fixedSL;
       }
    }
    
@@ -391,9 +407,9 @@ double CalculateTP(double price, double sl, bool isSell, double latestUpperBand,
    }
    else if(TPMode == TP_FIXED_POINTS) {
       if(isSell) {
-         tp = price - (FixedTPPoints * g_point);
+         tp = price - g_fixedTP;
       } else {
-         tp = price + (FixedTPPoints * g_point);
+         tp = price + g_fixedTP;
       }
    }
    else if(TPMode == TP_DONCHIAN_WIDTH) {
@@ -426,29 +442,26 @@ double CalculateTP(double price, double sl, bool isSell, double latestUpperBand,
 //+------------------------------------------------------------------+
 double CalculateLots(double slDistance, double accountBalance, double accountEquity, double freeMargin)
 {
-   if(slDistance <= 0 || g_lotValuePerUnit <= 0) return 0;
+   if(slDistance <= 0 || g_lotRiskFactor <= 0) return 0;
    
    //--- Get account balance/equity from parameters
    double balanceOrEquity = RiskUseEquity ? accountEquity : accountBalance;
    
    //--- ⚡ Bolt: Optimized lot calculation using pre-calculated constants.
-   //--- Original: (balanceOrEquity * (RiskPercent / 100.0)) / (slDistance / g_point * g_tickSize / g_point * g_tickValue)
-   double lots = (balanceOrEquity * g_riskMultiplier) / (slDistance * g_lotValuePerUnit);
+   //--- Replacing division with multiplication by g_lotRiskFactor.
+   double lots = (balanceOrEquity * g_lotRiskFactor) / slDistance;
    
    //--- Normalize lot size
-   lots = MathFloor(lots / g_lotStep) * g_lotStep;
-   lots = MathMax(g_minLot, MathMin(lots, g_maxLot));
-   
-   //--- Apply user limits
-   lots = MathMax(MinLots, MathMin(lots, MaxLots));
+   lots = MathFloor(lots * g_invLotStep) * g_lotStep;
+   lots = MathMax(g_finalMinLot, MathMin(lots, g_finalMaxLot));
    
    //--- Check margin if needed
    if(RiskClampToFreeMargin) {
       double marginRequired = g_marginInitial * lots;
       if(marginRequired > freeMargin) {
          lots = (freeMargin / g_marginInitial);
-         lots = MathFloor(lots / g_lotStep) * g_lotStep;
-         lots = MathMax(g_minLot, MathMin(lots, g_maxLot));
+         lots = MathFloor(lots * g_invLotStep) * g_lotStep;
+         lots = MathMax(g_finalMinLot, MathMin(lots, g_finalMaxLot));
       }
    }
    
