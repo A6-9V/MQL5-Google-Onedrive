@@ -26,3 +26,7 @@ This journal is for CRITICAL, non-routine performance learnings ONLY.
 ## 2026-01-20 - MQL5 OnTick Execution Flow Optimization
 **Learning:** Significant performance gains in MQL5 EAs can be achieved by carefully ordering the logic in `OnTick`. Moving the `PositionSelect` check before `CopyRates` and `CopyBuffer` avoids expensive data operations when a trade is already active. Additionally, reducing the requested bar count in data fetching functions to the absolute minimum (e.g., 2 instead of 3) and using `SymbolInfoTick` for atomic, lazy price retrieval further reduces overhead.
 **Action:** Always place 'gatekeeper' checks (new bar, position existence, terminal trading allowed) at the top of `OnTick` and minimize the data payload for indicator and price fetching to only what is strictly necessary for the current bar's logic.
+
+## 2026-02-05 - Replacing Division with Multiplications by Cached Inverses
+**Learning:** In MQL5 'hot paths' like OnTick, division operations are significantly more expensive than multiplications. Pre-calculating the inverse of constant symbol properties (like lot step or margin) in OnInit() and using them for multiplication in CalculateLots() and CalculateSL() provides a measurable reduction in CPU overhead during trade execution.
+**Action:** Identify constant divisors in performance-critical paths and replace them with multiplications by cached inverse values calculated during initialization, ensuring safety checks for zero divisors.
