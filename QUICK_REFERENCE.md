@@ -138,6 +138,31 @@ free -h  # Memory
 # In MT5: File → Open Data Folder
 ```
 
+## 🚀 Release Management
+
+```bash
+# Prepare and create a release (interactive)
+bash scripts/prepare_release.sh
+
+# Full automated release
+bash scripts/prepare_release.sh --full
+
+# Individual steps
+bash scripts/prepare_release.sh --check      # Check prerequisites
+bash scripts/prepare_release.sh --validate   # Validate repository
+bash scripts/prepare_release.sh --test       # Run tests
+bash scripts/prepare_release.sh --package    # Package files
+bash scripts/prepare_release.sh --tag 1.22.0 # Create tag
+
+# Download latest release
+wget https://github.com/A6-9V/MQL5-Google-Onedrive/releases/latest/download/Exness_MT5_MQL5.zip
+
+# View releases
+gh release list  # if GitHub CLI is installed
+```
+
+See [RELEASE_QUICK_REF.md](RELEASE_QUICK_REF.md) for more release commands.
+
 ## 🆘 Common Issues
 
 ### Permission Denied
