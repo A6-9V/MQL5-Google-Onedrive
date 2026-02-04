@@ -4,7 +4,7 @@
 
 **Account**: 411534497
 **Server**: Exness-MT5Real8
-**VPS Location**: Singapore 09
+**VPS Location**: Singapore 10
 **Subscription ID**: 6773048
 **Plan**: 1 month ($15.00)
 **Auto-renewal**: Enabled
@@ -172,7 +172,7 @@
 ```
 Account: 411534497
 Server: Exness-MT5Real8
-VPS Location: Singapore 09
+VPS Location: Singapore 10
 Subscription ID: 6773048
 Plan: 1 month ($15.00)
 Auto-renewal: ✅ Enabled

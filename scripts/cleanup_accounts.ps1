@@ -107,11 +107,11 @@ Status = Active
 Balance = 50.00 USD
 
 [Network]
-LastScan = 2026.01.19 06:54:43.551
+LastScan = 2026.02.04 07:55:00.000
 Status = Connected
 
 [VPS]
-Location = Singapore 09
+Location = Singapore 10
 HostID = 6773048
 Ping = 2.73 ms
 Status = Connected
