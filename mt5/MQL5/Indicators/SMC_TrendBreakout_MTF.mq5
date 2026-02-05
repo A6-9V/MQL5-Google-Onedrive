@@ -233,11 +233,10 @@ int OnCalculate(
     // Clear only newly calculated area (usually just the current bar)
     int start = rates_total - prev_calculated;
     start = ClampInt(start, 0, rates_total - 1);
-    for(int i = start; i >= 0; i--)
-    {
-      gLongBuf[i] = EMPTY_VALUE;
-      gShortBuf[i] = EMPTY_VALUE;
-    }
+    // ⚡ Bolt: Use native ArrayFill for faster buffer clearing.
+    // Native functions are implemented in optimized C++ and are faster than manual loops.
+    ArrayFill(gLongBuf, 0, start + 1, EMPTY_VALUE);
+    ArrayFill(gShortBuf, 0, start + 1, EMPTY_VALUE);
   }
 
   SafeDeleteOldObjects();
