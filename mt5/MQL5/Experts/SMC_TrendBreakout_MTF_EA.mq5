@@ -80,6 +80,7 @@ double g_lotStep;
 double g_tickValue;
 double g_tickSize;
 double g_marginInitial;
+double g_invMarginInitial;
 double g_riskMultiplier;
 double g_lotValuePerUnit;
 double g_invLotStep;
@@ -109,6 +110,8 @@ int OnInit()
    g_tickValue = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE);
    g_tickSize = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_SIZE);
    g_marginInitial = SymbolInfoDouble(_Symbol, SYMBOL_MARGIN_INITIAL);
+   // ⚡ Bolt: Pre-calculate inverse margin to avoid division in CalculateLots.
+   g_invMarginInitial = (g_marginInitial > 0) ? (1.0 / g_marginInitial) : 0;
 
    //--- ⚡ Bolt: Pre-calculate lot size constants for performance
    g_riskMultiplier = RiskPercent / 100.0;
@@ -456,10 +459,11 @@ double CalculateLots(double slDistance, double accountBalance, double accountEqu
    lots = MathMax(g_finalMinLot, MathMin(lots, g_finalMaxLot));
    
    //--- Check margin if needed
-   if(RiskClampToFreeMargin) {
+   if(RiskClampToFreeMargin && g_invMarginInitial > 0) {
       double marginRequired = g_marginInitial * lots;
       if(marginRequired > freeMargin) {
-         lots = (freeMargin / g_marginInitial);
+         // ⚡ Bolt: Use pre-calculated inverse margin to avoid division.
+         lots = (freeMargin * g_invMarginInitial);
          lots = MathFloor(lots * g_invLotStep) * g_lotStep;
          lots = MathMax(g_finalMinLot, MathMin(lots, g_finalMaxLot));
       }
