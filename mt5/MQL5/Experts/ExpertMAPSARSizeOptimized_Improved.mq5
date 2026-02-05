@@ -80,6 +80,12 @@ double   InitialBalance = 0.0;
 datetime LastTradeDate = 0;
 datetime g_todayStart = 0; // ⚡ Bolt: Cached today's start time for efficient history selection
 
+//--- Cached daily limit constants (for performance)
+double   g_lossPercentFactor = 0;
+double   g_profitPercentFactor = 0;
+double   g_maxDailyLossCurrency = 0;
+double   g_maxDailyProfitCurrency = 0;
+
 //+------------------------------------------------------------------+
 //| Logging Functions                                                |
 //+------------------------------------------------------------------+
@@ -104,7 +110,20 @@ void LogDebug(string message)
 //+------------------------------------------------------------------+
 //| Check Trading Allowed                                            |
 //+------------------------------------------------------------------+
-bool IsTradingAllowed()
+//+------------------------------------------------------------------+
+//| Refresh Daily Limits                                             |
+//+------------------------------------------------------------------+
+void RefreshDailyLimits()
+{
+   double balance = AccountInfoDouble(ACCOUNT_BALANCE);
+   g_maxDailyLossCurrency = balance * g_lossPercentFactor;
+   g_maxDailyProfitCurrency = balance * g_profitPercentFactor;
+}
+
+//+------------------------------------------------------------------+
+//| Check Trading Allowed                                            |
+//+------------------------------------------------------------------+
+bool IsTradingAllowed(datetime now)
 {
    //--- Check if trading is enabled
    if(!Expert_EnableTrading)
@@ -130,7 +149,7 @@ bool IsTradingAllowed()
    if(Inp_Risk_EnableTimeFilter)
    {
       //--- ⚡ Bolt: Use fast integer math for hour extraction instead of TimeToStruct.
-      int currentHour = (int)((TimeCurrent() / 3600) % 24);
+      int currentHour = (int)((now / 3600) % 24);
 
       if(Inp_Risk_StartHour <= Inp_Risk_EndHour)
       {
@@ -171,12 +190,10 @@ bool CheckDailyLimits()
    //--- Check daily loss limit
    if(Inp_Risk_MaxDailyLoss > 0)
    {
-      double balance = AccountInfoDouble(ACCOUNT_BALANCE);
-      double maxLoss = balance * (Inp_Risk_MaxDailyLoss / 100.0);
-
-      if(DailyLoss >= maxLoss)
+      //--- ⚡ Bolt: Use cached currency limit to avoid redundant AccountInfoDouble calls and divisions.
+      if(DailyLoss >= g_maxDailyLossCurrency)
       {
-         LogError("Daily loss limit reached: ", DoubleToString(DailyLoss, 2), " (Max: ", DoubleToString(maxLoss, 2), ")");
+         LogError("Daily loss limit reached: ", DoubleToString(DailyLoss, 2), " (Max: ", DoubleToString(g_maxDailyLossCurrency, 2), ")");
          if(Expert_ShowAlerts) Alert("Daily loss limit reached!");
          return false;
       }
@@ -185,12 +202,10 @@ bool CheckDailyLimits()
    //--- Check daily profit limit
    if(Inp_Risk_MaxDailyProfit > 0)
    {
-      double balance = AccountInfoDouble(ACCOUNT_BALANCE);
-      double maxProfit = balance * (Inp_Risk_MaxDailyProfit / 100.0);
-
-      if(DailyProfit >= maxProfit)
+      //--- ⚡ Bolt: Use cached currency limit to avoid redundant AccountInfoDouble calls and divisions.
+      if(DailyProfit >= g_maxDailyProfitCurrency)
       {
-         LogInfo("Daily profit limit reached: ", DoubleToString(DailyProfit, 2), " (Max: ", DoubleToString(maxProfit, 2), ")");
+         LogInfo("Daily profit limit reached: ", DoubleToString(DailyProfit, 2), " (Max: ", DoubleToString(g_maxDailyProfitCurrency, 2), ")");
          if(Expert_ShowAlerts) Alert("Daily profit target reached!");
          return false;
       }
@@ -202,14 +217,13 @@ bool CheckDailyLimits()
 //+------------------------------------------------------------------+
 //| Update Daily Statistics                                          |
 //+------------------------------------------------------------------+
-void UpdateDailyStatistics()
+void UpdateDailyStatistics(datetime now)
 {
    double currentProfit = 0.0;
    TradesToday = 0; // ⚡ Bolt: Reset and recount from history for robustness
 
    //--- ⚡ Bolt: Performance optimization - use fast integer math for g_todayStart.
    //--- This avoids expensive TimeToStruct/StructToTime calls.
-   datetime now = TimeCurrent();
    g_todayStart = (now / 86400) * 86400;
 
    //--- ⚡ Bolt: Consolidate history scan. Count trades and calculate profit in one pass.
@@ -364,6 +378,10 @@ int OnInit(void)
       return(INIT_FAILED);
    }
 
+   //--- ⚡ Bolt: Initialize daily limit constants for performance
+   g_lossPercentFactor = Inp_Risk_MaxDailyLoss / 100.0;
+   g_profitPercentFactor = Inp_Risk_MaxDailyProfit / 100.0;
+
    //--- Initialize statistics
    InitialBalance = AccountInfoDouble(ACCOUNT_BALANCE);
    LastTradeDate = 0;
@@ -372,7 +390,8 @@ int OnInit(void)
    DailyLoss = 0.0;
 
    //--- ⚡ Bolt: Initialize daily statistics and set timer for periodic updates
-   UpdateDailyStatistics();
+   RefreshDailyLimits();
+   UpdateDailyStatistics(TimeCurrent());
    EventSetTimer(60);
 
    //--- Success message
@@ -420,12 +439,13 @@ void OnTick(void)
    {
       g_todayStart = (currentTickTime / 86400) * 86400;
       LastTradeDate = g_todayStart;
-      UpdateDailyStatistics();
+      RefreshDailyLimits();
+      UpdateDailyStatistics(currentTickTime);
       LogInfo("New trading day started. Resetting daily statistics.");
    }
 
    //--- Check if trading is allowed
-   if(!IsTradingAllowed())
+   if(!IsTradingAllowed(currentTickTime))
       return;
 
    //--- Check daily limits
@@ -456,10 +476,11 @@ void OnTrade(void)
 {
    ExtExpert.OnTrade();
 
-   //--- ⚡ Bolt: Update daily statistics when a trade occurs.
-   //--- UpdateDailyStatistics now consolidates all history-based checks into a single scan.
+   //--- ⚡ Bolt: Update daily statistics and limits when a trade occurs.
+   //--- Refreshing limits here ensures they stay accurate if balance changed.
    int prevTrades = TradesToday;
-   UpdateDailyStatistics();
+   RefreshDailyLimits();
+   UpdateDailyStatistics(TimeCurrent());
 
    if(TradesToday > prevTrades)
    {
@@ -474,7 +495,7 @@ void OnTimer(void)
 {
    //--- ⚡ Bolt: Periodic background update of statistics.
    ExtExpert.OnTimer();
-   UpdateDailyStatistics();
+   UpdateDailyStatistics(TimeCurrent());
 }
 
 //+------------------------------------------------------------------+
