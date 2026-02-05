@@ -26,3 +26,11 @@ This journal is for CRITICAL, non-routine performance learnings ONLY.
 ## 2026-01-20 - MQL5 OnTick Execution Flow Optimization
 **Learning:** Significant performance gains in MQL5 EAs can be achieved by carefully ordering the logic in `OnTick`. Moving the `PositionSelect` check before `CopyRates` and `CopyBuffer` avoids expensive data operations when a trade is already active. Additionally, reducing the requested bar count in data fetching functions to the absolute minimum (e.g., 2 instead of 3) and using `SymbolInfoTick` for atomic, lazy price retrieval further reduces overhead.
 **Action:** Always place 'gatekeeper' checks (new bar, position existence, terminal trading allowed) at the top of `OnTick` and minimize the data payload for indicator and price fetching to only what is strictly necessary for the current bar's logic.
+
+## 2026-02-05 - Lazy Loading MTF Confirmation in Indicators
+**Learning:** Cross-timeframe data access (using iTime, CopyTime, or CopyBuffer on a different timeframe) is one of the more expensive operations in MQL5 OnCalculate. Moving these checks to a "lazy loading" pattern—where they only execute if a primary signal has already been confirmed on the current timeframe—can save significant CPU resources, as signals typically occur on less than 5% of bars.
+**Action:** Always defer Multi-Timeframe (MTF) confirmation logic until after all primary single-timeframe signal conditions are met.
+
+## 2026-02-05 - Native ArrayFill vs. Scripted Loops for Buffer Clearing
+**Learning:** Native functions like ArrayFill and ArrayInitialize are implemented in optimized C++ within the MetaTrader terminal and are significantly faster than manual for-loops in MQL5 for clearing or initializing large indicator buffers. This is especially noticeable when calculating indicators on charts with thousands of bars.
+**Action:** Use ArrayFill() to clear specific ranges of indicator buffers in OnCalculate instead of manual loops.

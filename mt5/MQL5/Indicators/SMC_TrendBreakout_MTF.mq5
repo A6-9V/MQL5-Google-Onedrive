@@ -136,10 +136,11 @@ static int GetMTFDir()
   if(gEmaFastHandle == INVALID_HANDLE || gEmaSlowHandle == INVALID_HANDLE) return 0;
 
   // PERF: Only check for new MTF direction on a new bar of the LowerTF.
-  datetime mtf_time[1];
-  if(CopyTime(_Symbol, LowerTF, 0, 1, mtf_time) != 1) return 0;
-  if(mtf_time[0] == g_mtfDir_lastCheckTime) return g_mtfDir_cachedValue;
-  g_mtfDir_lastCheckTime = mtf_time[0];
+  // ⚡ Bolt: Using iTime() is more efficient than CopyTime() for a simple new bar check.
+  datetime mtf_time = iTime(_Symbol, LowerTF, 0);
+  if(mtf_time == 0) return 0;
+  if(mtf_time == g_mtfDir_lastCheckTime) return g_mtfDir_cachedValue;
+  g_mtfDir_lastCheckTime = mtf_time;
 
   // ⚡ Bolt: Efficiently copy only the single required value.
   double fast[1], slow[1];
@@ -230,14 +231,11 @@ int OnCalculate(
   }
   else
   {
-    // Clear only newly calculated area (usually just the current bar)
+    // ⚡ Bolt: Use native ArrayFill for faster clearing of the newly calculated area.
     int start = rates_total - prev_calculated;
-    start = ClampInt(start, 0, rates_total - 1);
-    for(int i = start; i >= 0; i--)
-    {
-      gLongBuf[i] = EMPTY_VALUE;
-      gShortBuf[i] = EMPTY_VALUE;
-    }
+    int count = ClampInt(start + 1, 1, rates_total);
+    ArrayFill(gLongBuf, 0, count, EMPTY_VALUE);
+    ArrayFill(gShortBuf, 0, count, EMPTY_VALUE);
   }
 
   SafeDeleteOldObjects();
@@ -252,8 +250,9 @@ int OnCalculate(
   if(UseSMC)
   {
     // ⚡ Bolt: Lazy load fractal data only if SMC features are enabled.
+    // ⚡ Bolt: Declare fractal arrays as static to reuse memory and reduce allocation overhead.
     int need = MathMin(600, rates_total);
-    double upFr[600], dnFr[600];
+    static double upFr[600], dnFr[600];
 
     // Note: For static arrays, we skip ArraySetAsSeries and rely on CopyBuffer's default
     // filling order (index 0 is the start_pos bar) to improve efficiency.
@@ -288,12 +287,6 @@ int OnCalculate(
     else return rates_total;
   }
 
-  // --- Lower TF confirmation
-  int mtfDir = GetMTFDir(); // 1 up, -1 down, 0 neutral/unknown
-
-  bool mtfOkLong  = (!RequireMTFConfirm) || (mtfDir == 1);
-  bool mtfOkShort = (!RequireMTFConfirm) || (mtfDir == -1);
-
   // --- Signals
   bool smcLong=false, smcShort=false, donLong=false, donShort=false;
 
@@ -308,8 +301,20 @@ int OnCalculate(
     if(close[sigBar] < donLow)  donShort = true;
   }
 
-  bool finalLong  = (smcLong || donLong) && mtfOkLong;
-  bool finalShort = (smcShort || donShort) && mtfOkShort;
+  // ⚡ Bolt: Lazy load MTF confirmation only if a primary signal is detected.
+  // This avoids redundant timeframe checks and indicator copying on most bars.
+  bool finalLong = false;
+  bool finalShort = false;
+
+  if(smcLong || smcShort || donLong || donShort)
+  {
+    int mtfDir = GetMTFDir();
+    bool mtfOkLong  = (!RequireMTFConfirm) || (mtfDir == 1);
+    bool mtfOkShort = (!RequireMTFConfirm) || (mtfDir == -1);
+
+    finalLong  = (smcLong || donLong) && mtfOkLong;
+    finalShort = (smcShort || donShort) && mtfOkShort;
+  }
 
   // --- Plot & draw
   double pnt = _Point;
