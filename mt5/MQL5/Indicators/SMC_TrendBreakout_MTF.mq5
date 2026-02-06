@@ -63,6 +63,8 @@ string gObjPrefix;
 int    g_objCount = 0; // ⚡ Bolt: Cached object count for performance
 
 datetime gLastBarTime = 0;
+int      gDonLookback = 0; // ⚡ Bolt: Cached Donchian lookback
+int      gSigBar      = 0; // ⚡ Bolt: Cached signal bar index
 
 static int   ClampInt(const int v, const int lo, const int hi) { return (v<lo?lo:(v>hi?hi:v)); }
 static void Notify(const string msg)
@@ -136,10 +138,11 @@ static int GetMTFDir()
   if(gEmaFastHandle == INVALID_HANDLE || gEmaSlowHandle == INVALID_HANDLE) return 0;
 
   // PERF: Only check for new MTF direction on a new bar of the LowerTF.
-  datetime mtf_time[1];
-  if(CopyTime(_Symbol, LowerTF, 0, 1, mtf_time) != 1) return 0;
-  if(mtf_time[0] == g_mtfDir_lastCheckTime) return g_mtfDir_cachedValue;
-  g_mtfDir_lastCheckTime = mtf_time[0];
+  // ⚡ Bolt: Use iTime for a lighter check than CopyTime.
+  datetime mtfTime = iTime(_Symbol, LowerTF, 0);
+  if(mtfTime == 0) return 0; // History not ready
+  if(mtfTime == g_mtfDir_lastCheckTime) return g_mtfDir_cachedValue;
+  g_mtfDir_lastCheckTime = mtfTime;
 
   // ⚡ Bolt: Efficiently copy only the single required value.
   double fast[1], slow[1];
@@ -182,6 +185,10 @@ int OnInit()
   gEmaFastHandle = iMA(_Symbol, LowerTF, EMAFast, 0, MODE_EMA, PRICE_CLOSE);
   gEmaSlowHandle = iMA(_Symbol, LowerTF, EMASlow, 0, MODE_EMA, PRICE_CLOSE);
 
+  // ⚡ Bolt: Cache values to avoid redundant calculations in OnCalculate
+  gDonLookback = (DonchianLookback < 2 ? 2 : DonchianLookback);
+  gSigBar = (FireOnClose ? 1 : 0);
+
   return INIT_SUCCEEDED;
 }
 
@@ -214,8 +221,6 @@ int OnCalculate(
   if(prev_calculated > 0 && currentBarTime == gLastBarTime) return rates_total;
   gLastBarTime = currentBarTime;
 
-  int donLookback = (DonchianLookback < 2 ? 2 : DonchianLookback);
-
   ArraySetAsSeries(time, true);
   ArraySetAsSeries(open, true);
   ArraySetAsSeries(high, true);
@@ -233,17 +238,14 @@ int OnCalculate(
     // Clear only newly calculated area (usually just the current bar)
     int start = rates_total - prev_calculated;
     start = ClampInt(start, 0, rates_total - 1);
-    for(int i = start; i >= 0; i--)
-    {
-      gLongBuf[i] = EMPTY_VALUE;
-      gShortBuf[i] = EMPTY_VALUE;
-    }
+    // ⚡ Bolt: Use ArrayFill for faster partial buffer clearing.
+    ArrayFill(gLongBuf, 0, start + 1, EMPTY_VALUE);
+    ArrayFill(gShortBuf, 0, start + 1, EMPTY_VALUE);
   }
 
   SafeDeleteOldObjects();
 
-  const int sigBar = (FireOnClose ? 1 : 0);
-  if(sigBar >= rates_total - 1) return rates_total;
+  if(gSigBar >= rates_total - 1) return rates_total;
 
   // Find most recent confirmed swing high/low (fractal appears 2 bars after formation)
   double lastSwingHigh = 0.0; datetime lastSwingHighT = 0;
@@ -260,7 +262,7 @@ int OnCalculate(
     if(CopyBuffer(gFractalsHandle, 0, 0, need, upFr) > 0 &&
        CopyBuffer(gFractalsHandle, 1, 0, need, dnFr) > 0)
     {
-      for(int i = sigBar + 2; i < need; i++)
+      for(int i = gSigBar + 2; i < need; i++)
       {
         // ⚡ Bolt: Fix bug where EMPTY_VALUE (DBL_MAX) was incorrectly identified as a valid fractal.
         // This avoids processing incorrect data and ensures correct signal logic.
@@ -278,8 +280,8 @@ int OnCalculate(
   if(UseDonchianBreakout)
   {
     // ⚡ Bolt: Lazy calculate Donchian bounds only if breakout features are enabled.
-    int donStart = sigBar + 1;
-    int donCount = donLookback;
+    int donStart = gSigBar + 1;
+    int donCount = gDonLookback;
     if(donStart + donCount < rates_total)
     {
       donHigh = HighestHigh(high, donStart, donCount);
@@ -299,13 +301,13 @@ int OnCalculate(
 
   if(UseSMC)
   {
-    if(lastSwingHighT!=0 && close[sigBar] > lastSwingHigh) smcLong = true;
-    if(lastSwingLowT!=0  && close[sigBar] < lastSwingLow)  smcShort = true;
+    if(lastSwingHighT!=0 && close[gSigBar] > lastSwingHigh) smcLong = true;
+    if(lastSwingLowT!=0  && close[gSigBar] < lastSwingLow)  smcShort = true;
   }
   if(UseDonchianBreakout)
   {
-    if(close[sigBar] > donHigh) donLong = true;
-    if(close[sigBar] < donLow)  donShort = true;
+    if(close[gSigBar] > donHigh) donLong = true;
+    if(close[gSigBar] < donLow)  donShort = true;
   }
 
   bool finalLong  = (smcLong || donLong) && mtfOkLong;
@@ -315,7 +317,7 @@ int OnCalculate(
   double pnt = _Point;
   if(finalLong)
   {
-    gLongBuf[sigBar] = low[sigBar] - ArrowOffsetPoints * pnt;
+    gLongBuf[gSigBar] = low[gSigBar] - ArrowOffsetPoints * pnt;
 
     color c = clrLimeGreen;
     if(smcLong && lastSwingHighT!=0 && DrawStructureLines)
@@ -323,14 +325,14 @@ int OnCalculate(
       int breakDir = 1;
       bool choch = (UseCHoCH && gTrendDir!=0 && breakDir != gTrendDir);
       string kind = (choch ? "CHoCH↑" : "BOS↑");
-      string n1 = gObjPrefix + StringFormat("SMC_%s_%I64d", kind, (long)time[sigBar]);
+      string n1 = gObjPrefix + StringFormat("SMC_%s_%I64d", kind, (long)time[gSigBar]);
       DrawHLine(n1+"_L", lastSwingHigh, c, STYLE_DOT, 1);
-      DrawText(n1+"_T", time[sigBar], lastSwingHigh, kind, c);
+      DrawText(n1+"_T", time[gSigBar], lastSwingHigh, kind, c);
       gTrendDir = breakDir;
     }
     if(donLong && DrawBreakoutLines)
     {
-      string n2 = gObjPrefix + StringFormat("DON_H_%I64d", (long)time[sigBar]);
+      string n2 = gObjPrefix + StringFormat("DON_H_%I64d", (long)time[gSigBar]);
       DrawHLine(n2, donHigh, clrDeepSkyBlue, STYLE_DASH, 1);
     }
 
@@ -338,7 +340,7 @@ int OnCalculate(
   }
   if(finalShort)
   {
-    gShortBuf[sigBar] = high[sigBar] + ArrowOffsetPoints * pnt;
+    gShortBuf[gSigBar] = high[gSigBar] + ArrowOffsetPoints * pnt;
 
     color c = clrTomato;
     if(smcShort && lastSwingLowT!=0 && DrawStructureLines)
@@ -346,14 +348,14 @@ int OnCalculate(
       int breakDir = -1;
       bool choch = (UseCHoCH && gTrendDir!=0 && breakDir != gTrendDir);
       string kind = (choch ? "CHoCH↓" : "BOS↓");
-      string n1 = gObjPrefix + StringFormat("SMC_%s_%I64d", kind, (long)time[sigBar]);
+      string n1 = gObjPrefix + StringFormat("SMC_%s_%I64d", kind, (long)time[gSigBar]);
       DrawHLine(n1+"_L", lastSwingLow, c, STYLE_DOT, 1);
-      DrawText(n1+"_T", time[sigBar], lastSwingLow, kind, c);
+      DrawText(n1+"_T", time[gSigBar], lastSwingLow, kind, c);
       gTrendDir = breakDir;
     }
     if(donShort && DrawBreakoutLines)
     {
-      string n2 = gObjPrefix + StringFormat("DON_L_%I64d", (long)time[sigBar]);
+      string n2 = gObjPrefix + StringFormat("DON_L_%I64d", (long)time[gSigBar]);
       DrawHLine(n2, donLow, clrDeepSkyBlue, STYLE_DASH, 1);
     }
 
