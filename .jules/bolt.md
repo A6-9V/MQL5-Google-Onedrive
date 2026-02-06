@@ -26,3 +26,7 @@ This journal is for CRITICAL, non-routine performance learnings ONLY.
 ## 2026-01-20 - MQL5 OnTick Execution Flow Optimization
 **Learning:** Significant performance gains in MQL5 EAs can be achieved by carefully ordering the logic in `OnTick`. Moving the `PositionSelect` check before `CopyRates` and `CopyBuffer` avoids expensive data operations when a trade is already active. Additionally, reducing the requested bar count in data fetching functions to the absolute minimum (e.g., 2 instead of 3) and using `SymbolInfoTick` for atomic, lazy price retrieval further reduces overhead.
 **Action:** Always place 'gatekeeper' checks (new bar, position existence, terminal trading allowed) at the top of `OnTick` and minimize the data payload for indicator and price fetching to only what is strictly necessary for the current bar's logic.
+
+## 2026-02-04 - Redundant AccountInfo Calls in CheckDailyLimits
+**Learning:** Calling `AccountInfoDouble(ACCOUNT_BALANCE)` and performing percentage divisions on every tick in `OnTick` is a common but expensive anti-pattern. Since account balance and daily risk limits only change when trades are closed or at the start of a day, these values should be cached in global variables.
+**Action:** Move account-based limit calculations to event-driven functions like `OnTrade` or periodic functions like `UpdateDailyStatistics`. Use cached currency limits for direct comparisons in the `OnTick` execution path.

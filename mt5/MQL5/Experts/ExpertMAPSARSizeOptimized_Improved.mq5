@@ -79,6 +79,8 @@ double   DailyLoss = 0.0;
 double   InitialBalance = 0.0;
 datetime LastTradeDate = 0;
 datetime g_todayStart = 0; // ⚡ Bolt: Cached today's start time for efficient history selection
+double   g_maxDailyLossCurrency = 0.0;   // ⚡ Bolt: Cached daily loss limit in currency
+double   g_maxDailyProfitCurrency = 0.0; // ⚡ Bolt: Cached daily profit limit in currency
 
 //+------------------------------------------------------------------+
 //| Logging Functions                                                |
@@ -171,12 +173,10 @@ bool CheckDailyLimits()
    //--- Check daily loss limit
    if(Inp_Risk_MaxDailyLoss > 0)
    {
-      double balance = AccountInfoDouble(ACCOUNT_BALANCE);
-      double maxLoss = balance * (Inp_Risk_MaxDailyLoss / 100.0);
-
-      if(DailyLoss >= maxLoss)
+      //--- ⚡ Bolt: Use cached currency limit to avoid redundant AccountInfoDouble calls and divisions.
+      if(DailyLoss >= g_maxDailyLossCurrency)
       {
-         LogError("Daily loss limit reached: ", DoubleToString(DailyLoss, 2), " (Max: ", DoubleToString(maxLoss, 2), ")");
+         LogError("Daily loss limit reached: ", DoubleToString(DailyLoss, 2), " (Max: ", DoubleToString(g_maxDailyLossCurrency, 2), ")");
          if(Expert_ShowAlerts) Alert("Daily loss limit reached!");
          return false;
       }
@@ -185,12 +185,10 @@ bool CheckDailyLimits()
    //--- Check daily profit limit
    if(Inp_Risk_MaxDailyProfit > 0)
    {
-      double balance = AccountInfoDouble(ACCOUNT_BALANCE);
-      double maxProfit = balance * (Inp_Risk_MaxDailyProfit / 100.0);
-
-      if(DailyProfit >= maxProfit)
+      //--- ⚡ Bolt: Use cached currency limit to avoid redundant AccountInfoDouble calls and divisions.
+      if(DailyProfit >= g_maxDailyProfitCurrency)
       {
-         LogInfo("Daily profit limit reached: ", DoubleToString(DailyProfit, 2), " (Max: ", DoubleToString(maxProfit, 2), ")");
+         LogInfo("Daily profit limit reached: ", DoubleToString(DailyProfit, 2), " (Max: ", DoubleToString(g_maxDailyProfitCurrency, 2), ")");
          if(Expert_ShowAlerts) Alert("Daily profit target reached!");
          return false;
       }
@@ -211,6 +209,13 @@ void UpdateDailyStatistics()
    //--- This avoids expensive TimeToStruct/StructToTime calls.
    datetime now = TimeCurrent();
    g_todayStart = (now / 86400) * 86400;
+
+   //--- ⚡ Bolt: Cache daily currency limits to avoid redundant calculations and API calls in OnTick.
+   //--- Refreshing these limits here (OnTrade, OnTimer, OnDayRollover) is sufficient as balance
+   //--- only changes on trade events or daily resets.
+   double balance = AccountInfoDouble(ACCOUNT_BALANCE);
+   g_maxDailyLossCurrency = (Inp_Risk_MaxDailyLoss > 0) ? (balance * Inp_Risk_MaxDailyLoss * 0.01) : 0;
+   g_maxDailyProfitCurrency = (Inp_Risk_MaxDailyProfit > 0) ? (balance * Inp_Risk_MaxDailyProfit * 0.01) : 0;
 
    //--- ⚡ Bolt: Consolidate history scan. Count trades and calculate profit in one pass.
    if(HistorySelect(g_todayStart, now))
