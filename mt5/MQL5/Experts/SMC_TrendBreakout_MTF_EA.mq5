@@ -83,6 +83,7 @@ double g_marginInitial;
 double g_riskMultiplier;
 double g_lotValuePerUnit;
 double g_invLotStep;
+double g_invMarginInitial;
 double g_swingSLBuffer;
 double g_fixedSL;
 double g_fixedTP;
@@ -114,6 +115,7 @@ int OnInit()
    g_riskMultiplier = RiskPercent / 100.0;
    g_lotValuePerUnit = (g_tickSize > 0) ? (g_tickValue / g_tickSize) : 0;
    g_invLotStep = (g_lotStep > 0) ? (1.0 / g_lotStep) : 0;
+   g_invMarginInitial = (g_marginInitial > 0) ? (1.0 / g_marginInitial) : 0;
    g_lotRiskFactor = (g_lotValuePerUnit > 0) ? (g_riskMultiplier / g_lotValuePerUnit) : 0;
 
    //--- ⚡ Bolt: Pre-calculate SL/TP constants for performance
@@ -451,19 +453,17 @@ double CalculateLots(double slDistance, double accountBalance, double accountEqu
    //--- Replacing division with multiplication by g_lotRiskFactor.
    double lots = (balanceOrEquity * g_lotRiskFactor) / slDistance;
    
-   //--- Normalize lot size
+   //--- ⚡ Bolt: Apply margin clamp BEFORE normalization to ensure a single execution path.
+   //--- Using pre-calculated inverse g_invMarginInitial to avoid expensive division.
+   if(RiskClampToFreeMargin && g_invMarginInitial > 0) {
+      double maxLotsByMargin = freeMargin * g_invMarginInitial;
+      if(lots > maxLotsByMargin) lots = maxLotsByMargin;
+   }
+
+   //--- ⚡ Bolt: Consolidated normalization and clamping.
+   //--- Rounding down to the nearest lot step and clamping to global limits.
    lots = MathFloor(lots * g_invLotStep) * g_lotStep;
    lots = MathMax(g_finalMinLot, MathMin(lots, g_finalMaxLot));
-   
-   //--- Check margin if needed
-   if(RiskClampToFreeMargin) {
-      double marginRequired = g_marginInitial * lots;
-      if(marginRequired > freeMargin) {
-         lots = (freeMargin / g_marginInitial);
-         lots = MathFloor(lots * g_invLotStep) * g_lotStep;
-         lots = MathMax(g_finalMinLot, MathMin(lots, g_finalMaxLot));
-      }
-   }
    
    return NormalizeDouble(lots, 2);
 }
