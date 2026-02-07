@@ -16,7 +16,7 @@ This bot allows you to deploy your MQL5 Trading Automation to Fly.io, Render, an
 **Windows (PowerShell):**
 ```powershell
 $env:TELEGRAM_BOT_TOKEN = "your_bot_token_here"
-$env:TELEGRAM_ALLOWED_USER_IDS = "123456789,987654321"  # Optional: restrict to specific user IDs
+$env:TELEGRAM_ALLOWED_USER_IDS = "123456789,987654321"  # Required: restrict to specific user IDs
 ```
 
 **Windows (CMD):**
@@ -82,7 +82,7 @@ Once the bot is running, open your bot on Telegram and send:
    $env:TELEGRAM_ALLOWED_USER_IDS = "123456789"
    ```
 
-If `TELEGRAM_ALLOWED_USER_IDS` is not set, the bot will allow all users (not recommended for production).
+If `TELEGRAM_ALLOWED_USER_IDS` is not set, the bot will deny all users for security.
 
 ## 🐳 Running as a Service
 
@@ -181,4 +181,3 @@ You can also deploy this bot to Fly.io so it runs in the cloud:
 
 **Permission denied:**
 - Verify your user ID is in `TELEGRAM_ALLOWED_USER_IDS`
-- Or remove the restriction to allow all users (development only)
