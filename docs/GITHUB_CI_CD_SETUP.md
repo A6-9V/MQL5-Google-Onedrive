@@ -34,10 +34,10 @@ If deploying to Docker Hub:
 
 #### 4. Email Credentials (For notifications)
 - **Name**: `GITHUB_EMAIL`
-- **Value**: genxapitrading@gmail.com
+- **Value**: Your GitHub email address
 - **Name**: `GITHUB_PASSWORD`
-- **Value**: Leng3A69V[@Una]
-- **Note**: ⚠️ **SECURITY WARNING** - Use GitHub Personal Access Token instead of password!
+- **Value**: ⚠️ **DO NOT USE PLAINTEXT PASSWORD** - Use GitHub Personal Access Token instead
+- **Note**: ⚠️ **SECURITY WARNING** - Never use or document plaintext passwords in repository files!
 
 #### 5. GitHub Pages Sync Token (Optional)
 - **Name**: `PAGES_SYNC_TOKEN`
