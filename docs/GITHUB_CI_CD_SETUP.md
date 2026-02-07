@@ -39,6 +39,12 @@ If deploying to Docker Hub:
 - **Value**: Leng3A69V[@Una]
 - **Note**: ⚠️ **SECURITY WARNING** - Use GitHub Personal Access Token instead of password!
 
+#### 5. GitHub Pages Sync Token (Optional)
+- **Name**: `PAGES_SYNC_TOKEN`
+- **Value**: Personal Access Token with `repo` scope
+- **Purpose**: Enables automatic sync to external GitHub Pages repository
+- **Note**: If not configured, the sync workflow will skip gracefully without failing
+
 ### Recommended: Use Personal Access Token
 
 Instead of using your password, create a GitHub Personal Access Token:
