@@ -26,3 +26,7 @@ This journal is for CRITICAL, non-routine performance learnings ONLY.
 ## 2026-01-20 - MQL5 OnTick Execution Flow Optimization
 **Learning:** Significant performance gains in MQL5 EAs can be achieved by carefully ordering the logic in `OnTick`. Moving the `PositionSelect` check before `CopyRates` and `CopyBuffer` avoids expensive data operations when a trade is already active. Additionally, reducing the requested bar count in data fetching functions to the absolute minimum (e.g., 2 instead of 3) and using `SymbolInfoTick` for atomic, lazy price retrieval further reduces overhead.
 **Action:** Always place 'gatekeeper' checks (new bar, position existence, terminal trading allowed) at the top of `OnTick` and minimize the data payload for indicator and price fetching to only what is strictly necessary for the current bar's logic.
+
+## 2026-02-04 - Optimized Lot Calculation Flow
+**Learning:** Optimizing the flow of `CalculateLots` in MQL5 involves moving margin-based clamping before the final normalization and volume limit checks (`MathFloor`, `MathMax`, `MathMin`). This ensures that the rounding and clamping logic is applied only once to the final lot value, avoiding redundant calculations if the initial lot size exceeds available margin. Additionally, replacing division by `SYMBOL_MARGIN_INITIAL` with multiplication by a cached inverse value further improves performance.
+**Action:** Always refactor lot calculation logic to follow a single-pass normalization/clamping flow and use pre-calculated inverse constants for division-heavy operations.
