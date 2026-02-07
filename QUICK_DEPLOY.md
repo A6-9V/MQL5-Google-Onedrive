@@ -94,7 +94,7 @@ Set these secrets in your cloud platform:
 
 ### Optional (for Telegram Bot)
 - `TELEGRAM_BOT_TOKEN` (from config/vault.json)
-- `TELEGRAM_ALLOWED_USER_IDS` (comma-separated user IDs)
+- `TELEGRAM_ALLOWED_USER_IDS` (comma-separated user IDs - REQUIRED for access)
 
 ### Setting Secrets
 

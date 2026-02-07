@@ -43,8 +43,8 @@ DEPLOY_COMMANDS = {
 def check_authorized(user_id: int) -> bool:
     """Check if user is authorized to use deployment commands"""
     if not ALLOWED_USER_IDS:
-        logger.warning("No ALLOWED_USER_IDS set - allowing all users")
-        return True
+        logger.warning("No ALLOWED_USER_IDS set - DENYING all users. Set TELEGRAM_ALLOWED_USER_IDS to enable access.")
+        return False
     return str(user_id) in ALLOWED_USER_IDS
 
 
