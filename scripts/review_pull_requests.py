@@ -46,14 +46,15 @@ def get_prs_via_gh_cli():
 def get_prs_via_git():
     """Get PR information via git branches."""
     # Get all branches that might be PR branches
-    result = run_command(["git", "branch", "-r", "--no-merged", "main"])
+    # Optimization: Use origin/main to compare against remote state, avoiding stale local main issues
+    result = run_command(["git", "branch", "-r", "--no-merged", "origin/main"])
     branches = []
     if result and result.returncode == 0:
         branches = [b.strip() for b in result.stdout.strip().split("\n") 
                     if b.strip() and "origin/main" not in b and "HEAD" not in b]
     
     # Get merged branches that might have been PRs
-    result_merged = run_command(["git", "branch", "-r", "--merged", "main"])
+    result_merged = run_command(["git", "branch", "-r", "--merged", "origin/main"])
     merged_branches = []
     if result_merged and result_merged.returncode == 0:
         merged_branches = [b.strip() for b in result_merged.stdout.strip().split("\n") 
@@ -133,7 +134,8 @@ def get_all_branch_details():
                     "branch": branch_short,
                     "full_name": ref,
                     "commit_count": ahead,
-                    "last_commit_date": date
+                    "last_commit_date": date,
+                    "commits": []  # Ensure compatibility with get_branch_info
                 }
     return details
 
