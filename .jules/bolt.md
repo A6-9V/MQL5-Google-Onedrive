@@ -18,3 +18,7 @@ This journal is for CRITICAL, non-routine performance learnings ONLY.
 ## 2026-01-26 - yfinance Bulk Download
 **Learning:** `yfinance` Ticker.history in a loop is significantly slower than `yf.download` with a list of tickers due to sequential HTTP requests. `yf.download` with `group_by='ticker'` provides a consistent MultiIndex structure even for single tickers, simplifying bulk processing.
 **Action:** Always prefer `yf.download(tickers)` over iterating `yf.Ticker(t)` when fetching data for multiple symbols.
+
+## 2026-02-07 - Git History Optimization in Shallow Clones
+**Learning:** In CI/CD or shallow clones, `git branch -r --no-merged main` may return 0 results because local `main` is missing or stale. This masks performance issues (since processing 0 branches is instant) but breaks functionality.
+**Action:** Always compare against `origin/main` (e.g., `git branch -r --no-merged origin/main`) and pair it with `git for-each-ref` (O(1) git call) to handle the resulting large number of branches efficiently. Ensure the optimized data structure strictly matches the fallback (e.g., include empty `commits: []`) to prevent KeyErrors.
