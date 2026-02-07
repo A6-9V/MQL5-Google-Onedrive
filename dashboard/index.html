@@ -94,6 +94,11 @@
             background: #5568d3;
         }
         
+        .btn:focus-visible {
+            outline: 2px solid #667eea;
+            outline-offset: 2px;
+        }
+
         .status {
             background: white;
             padding: 25px;
@@ -159,37 +164,37 @@
             <div class="card">
                 <h2>📊 Trading Indicators</h2>
                 <p>SMC + Trend Breakout (MTF) indicator with BOS/CHoCH and Donchian breakout signals.</p>
-                <a href="#" class="btn">View Indicators</a>
+                <a href="#" class="btn" role="button">View Indicators</a>
             </div>
             
             <div class="card">
                 <h2>🤖 Expert Advisors</h2>
                 <p>Automated trading EAs with smart risk management and multi-timeframe confirmation.</p>
-                <a href="#" class="btn">Manage EAs</a>
+                <a href="#" class="btn" role="button">Manage EAs</a>
             </div>
             
             <div class="card">
                 <h2>☁️ Cloud Deployment</h2>
                 <p>Deploy your trading automation to Fly.io, Render, Railway, or GitHub Pages.</p>
-                <a href="#" class="btn">Deploy Now</a>
+                <a href="#" class="btn" role="button">Deploy Now</a>
             </div>
             
             <div class="card">
                 <h2>📱 Telegram Bot</h2>
                 <p>Control deployments and monitor trading via @GenX_FX_bot on Telegram.</p>
-                <a href="https://t.me/GenX_FX_bot" class="btn" target="_blank">Open Bot</a>
+                <a href="https://t.me/GenX_FX_bot" class="btn" target="_blank" rel="noopener noreferrer" aria-label="Open Bot (opens in new tab)">Open Bot</a>
             </div>
             
             <div class="card">
                 <h2>📈 Exness Terminal</h2>
                 <p>Connect to Exness MT5 terminal for live trading execution.</p>
-                <a href="https://my.exness.global/webtrading/" class="btn" target="_blank">Open Terminal</a>
+                <a href="https://my.exness.global/webtrading/" class="btn" target="_blank" rel="noopener noreferrer" aria-label="Open Terminal (opens in new tab)">Open Terminal</a>
             </div>
             
             <div class="card">
                 <h2>🔧 Settings</h2>
                 <p>Configure risk parameters, notifications, and automation preferences.</p>
-                <a href="#" class="btn">Configure</a>
+                <a href="#" class="btn" role="button">Configure</a>
             </div>
 
             <div class="card">
@@ -230,10 +235,15 @@
         
         // Add interactivity
         document.querySelectorAll('.card a.btn').forEach(btn => {
-            if (!btn.href || btn.href === '#') {
+            const href = btn.getAttribute('href');
+            if (!href || href === '#') {
                 btn.addEventListener('click', (e) => {
                     e.preventDefault();
-                    alert('Feature coming soon!');
+                    const originalText = btn.textContent;
+                    btn.textContent = 'Coming Soon! 🚧';
+                    setTimeout(() => {
+                        btn.textContent = originalText;
+                    }, 2000);
                 });
             }
         });
