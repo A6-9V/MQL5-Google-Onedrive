@@ -24,14 +24,14 @@ A more structured way to store credentials, used by specific scripts like `scrip
         "domain": "your_domain.com"
     },
     "telegram_bot": {
-        "name": "t.me/GenX_FX_bot",
-        "token": "8260686409:AAHEcrZxhDve9vE1QR49ngcCmvOf_Q9NYHg",
-        "api": "8260686409:AAHEcrZxhDve9vE1QR49ngcCmvOf_Q9NYHg",
+        "name": "t.me/your_bot_name",
+        "token": "your_bot_token_here",
+        "api": "your_bot_token_here",
         "allowed_user_ids": [123456789],
         "webhook_url": "https://core.telegram.org/bots/api"
     },
     "github": {
-        "pat": "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"
+        "pat": "your_github_personal_access_token_here"
     }
 }
 ```

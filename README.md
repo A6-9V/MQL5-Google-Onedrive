@@ -44,7 +44,6 @@ python scripts/deploy_cloud.py docker --build
 
 **Deploy and manage your trading system via Telegram!**
 
-- **Bot Name**: [GenX_FX_bot](https://t.me/GenX_FX_bot)
 - **API Reference**: https://core.telegram.org/bots/api
 
 **Available Commands:**

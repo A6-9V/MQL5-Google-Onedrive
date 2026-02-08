@@ -61,8 +61,8 @@
     "email": "",
     "webhook_url": "https://core.telegram.org/bots/api",
     "telegram": {
-      "bot_name": "t.me/GenX_FX_bot",
-      "bot_token": "8260686409:AAHEcrZxhDve9vE1QR49ngcCmvOf_Q9NYHg",
+      "bot_name": "t.me/your_bot_name",
+      "bot_token": "your_bot_token_here",
       "enabled": true
     }
   }

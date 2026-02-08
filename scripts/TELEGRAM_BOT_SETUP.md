@@ -2,41 +2,41 @@
 
 This bot allows you to deploy your MQL5 Trading Automation to Fly.io, Render, and Railway via Telegram commands.
 
-**Bot Name:** [GenX_FX_bot](https://t.me/GenX_FX_bot)  
 **Bot API Reference:** https://core.telegram.org/bots/api
 
 ## 🚀 Quick Start
 
-### 1. Use the Configured Bot
+### 1. Configure the Bot Credentials
 
-This repository is pre-configured with the GenX_FX_bot. You can:
-- Contact the bot directly at: https://t.me/GenX_FX_bot
+This repository supports Telegram bot integration for deployment automation. To use it:
+- Create your own bot using @BotFather on Telegram
+- Get your bot token from @BotFather
 - Get your Telegram user ID from @userinfobot
-- Request access from the bot administrator
+- Add credentials to your vault.json file (see config/vault.json.example)
 
 ### 2. Set Environment Variables
 
 **Windows (PowerShell):**
 ```powershell
-$env:TELEGRAM_BOT_TOKEN = "8260686409:AAHEcrZxhDve9vE1QR49ngcCmvOf_Q9NYHg"
+$env:TELEGRAM_BOT_TOKEN = "your_bot_token_here"
 $env:TELEGRAM_ALLOWED_USER_IDS = "123456789,987654321"  # Required: restrict to specific user IDs
 ```
 
 **Windows (CMD):**
 ```cmd
-set TELEGRAM_BOT_TOKEN=8260686409:AAHEcrZxhDve9vE1QR49ngcCmvOf_Q9NYHg
+set TELEGRAM_BOT_TOKEN=your_bot_token_here
 set TELEGRAM_ALLOWED_USER_IDS=123456789,987654321
 ```
 
 **Linux/WSL:**
 ```bash
-export TELEGRAM_BOT_TOKEN="8260686409:AAHEcrZxhDve9vE1QR49ngcCmvOf_Q9NYHg"
+export TELEGRAM_BOT_TOKEN="your_bot_token_here"
 export TELEGRAM_ALLOWED_USER_IDS="123456789,987654321"
 ```
 
 **Permanent (Windows):**
 ```powershell
-[System.Environment]::SetEnvironmentVariable('TELEGRAM_BOT_TOKEN', '8260686409:AAHEcrZxhDve9vE1QR49ngcCmvOf_Q9NYHg', 'User')
+[System.Environment]::SetEnvironmentVariable('TELEGRAM_BOT_TOKEN', 'your_bot_token_here', 'User')
 [System.Environment]::SetEnvironmentVariable('TELEGRAM_ALLOWED_USER_IDS', '123456789', 'User')
 ```
 

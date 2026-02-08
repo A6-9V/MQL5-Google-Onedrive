@@ -11,6 +11,10 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[1]
 VAULT_PATH = REPO_ROOT / "config" / "vault.json"
 
+# Default values
+DEFAULT_TELEGRAM_BOT_NAME = "t.me/your_bot_name"
+DEFAULT_TELEGRAM_WEBHOOK_URL = "https://core.telegram.org/bots/api"
+
 
 def load_vault():
     """Load credentials from vault.json"""
@@ -31,7 +35,11 @@ def load_vault():
 
 
 def get_telegram_token():
-    """Get Telegram bot token from vault"""
+    """Get Telegram bot token from vault
+    
+    Note: Prefers 'token' field over 'api' field if both exist.
+    Both fields are supported for backward compatibility.
+    """
     vault = load_vault()
     if vault and 'telegram_bot' in vault:
         return vault['telegram_bot'].get('token') or vault['telegram_bot'].get('api')
@@ -42,16 +50,16 @@ def get_telegram_bot_name():
     """Get Telegram bot name from vault"""
     vault = load_vault()
     if vault and 'telegram_bot' in vault:
-        return vault['telegram_bot'].get('name', 't.me/GenX_FX_bot')
-    return 't.me/GenX_FX_bot'
+        return vault['telegram_bot'].get('name', DEFAULT_TELEGRAM_BOT_NAME)
+    return DEFAULT_TELEGRAM_BOT_NAME
 
 
 def get_telegram_webhook_url():
     """Get Telegram webhook URL from vault"""
     vault = load_vault()
     if vault and 'telegram_bot' in vault:
-        return vault['telegram_bot'].get('webhook_url', 'https://core.telegram.org/bots/api')
-    return 'https://core.telegram.org/bots/api'
+        return vault['telegram_bot'].get('webhook_url', DEFAULT_TELEGRAM_WEBHOOK_URL)
+    return DEFAULT_TELEGRAM_WEBHOOK_URL
 
 
 def get_telegram_allowed_users():
