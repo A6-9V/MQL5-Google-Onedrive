@@ -1,0 +1,18 @@
+{
+  "description": "Vault configuration for MQL5 Trading Automation - Copy this file to vault.json and fill in your credentials",
+  "cloudflare": {
+    "zone_id": "your_zone_id",
+    "account_id": "your_account_id",
+    "domain": "your_domain.com"
+  },
+  "telegram_bot": {
+    "name": "t.me/your_bot_name",
+    "token": "your_bot_token_here",
+    "api": "your_bot_token_here",
+    "allowed_user_ids": [],
+    "webhook_url": "https://core.telegram.org/bots/api"
+  },
+  "github": {
+    "pat": "your_github_personal_access_token_here"
+  }
+}

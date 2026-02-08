@@ -14,6 +14,7 @@ You can use a `.env` file for local development and automation.
 A more structured way to store credentials, used by specific scripts like `scripts/load_vault.py`.
 - **File**: `config/vault.json`
 - **Status**: Gitignored (never committed)
+- **Template**: See `config/vault.json.example`
 - **Structure**:
 ```json
 {
@@ -23,8 +24,14 @@ A more structured way to store credentials, used by specific scripts like `scrip
         "domain": "your_domain.com"
     },
     "telegram_bot": {
-        "token": "your_bot_token",
-        "allowed_user_ids": [123456789]
+        "name": "t.me/your_bot_name",
+        "token": "your_bot_token_here",
+        "api": "your_bot_token_here",
+        "allowed_user_ids": [123456789],
+        "webhook_url": "https://core.telegram.org/bots/api"
+    },
+    "github": {
+        "pat": "your_github_personal_access_token_here"
     }
 }
 ```

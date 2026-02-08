@@ -2,14 +2,17 @@
 
 This bot allows you to deploy your MQL5 Trading Automation to Fly.io, Render, and Railway via Telegram commands.
 
+**Bot API Reference:** https://core.telegram.org/bots/api
+
 ## 🚀 Quick Start
 
-### 1. Get Telegram Bot Token
+### 1. Configure the Bot Credentials
 
-1. Open Telegram and search for **@BotFather**
-2. Send `/newbot` command
-3. Follow instructions to create your bot
-4. Copy the **bot token** (looks like: `123456789:ABCdefGHIjklMNOpqrsTUVwxyz`)
+This repository supports Telegram bot integration for deployment automation. To use it:
+- Create your own bot using @BotFather on Telegram
+- Get your bot token from @BotFather
+- Get your Telegram user ID from @userinfobot
+- Add credentials to your vault.json file (see config/vault.json.example)
 
 ### 2. Set Environment Variables
 
