@@ -81,9 +81,12 @@ def dashboard():
                 table { border-collapse: collapse; width: 100%; margin-bottom: 1em; }
                 th, td { text-align: left; padding: 8px; border-bottom: 1px solid #ddd; }
                 th { background-color: #f8f9fa; }
+                .skip-link { position: absolute; top: -40px; left: 0; background: #42b983; color: white; padding: 8px; z-index: 100; transition: top 0.3s; text-decoration: none; border-radius: 0 0 8px 0; font-weight: 600; }
+                .skip-link:focus { top: 0; }
             </style>
         </head>
         <body>
+            <a href="#status" class="skip-link">Skip to main content</a>
             <div class="nav">
                 <a href="#status">System Status</a>
                 <a href="#docs">Documentation</a>

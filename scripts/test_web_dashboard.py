@@ -34,5 +34,11 @@ class TestWebDashboard(unittest.TestCase):
         except json.JSONDecodeError:
             self.fail("Response is not valid JSON")
 
+    def test_skip_link_present(self):
+        """Test that the skip link is present in the dashboard HTML."""
+        response = self.app.get('/')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'<a href="#status" class="skip-link">Skip to main content</a>', response.data)
+
 if __name__ == '__main__':
     unittest.main()
