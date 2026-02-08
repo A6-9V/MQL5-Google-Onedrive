@@ -193,7 +193,7 @@ After workflow completes:
 - Review deployment logs
 
 ### Release Creation Fails
-- Ensure tag follows semantic versioning (v*.*.*  )
+- Ensure tag follows semantic versioning (v*.*.*)
 - Check CHANGELOG.md format
 - Verify permissions
 
