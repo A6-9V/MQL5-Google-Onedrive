@@ -142,6 +142,7 @@ show_cli_tools_status() {
         "docker:Docker CLI:Docker_CLI_setup.md"
         "cursor-agent:Cursor CLI:Cursor_CLI_setup.md"
         "jules:Jules CLI:Jules_CLI_setup.md"
+        "vercel:Vercel CLI:Vercel_CLI_setup.md"
     )
     
     for tool_info in "${tools[@]}"; do
@@ -202,6 +203,7 @@ show_cli_docs() {
     echo "  - Docker CLI:   docs/Docker_CLI_setup.md"
     echo "  - Cursor CLI:   docs/Cursor_CLI_setup.md"
     echo "  - Jules CLI:    docs/Jules_CLI_setup.md"
+    echo "  - Vercel CLI:   docs/Vercel_CLI_setup.md"
     echo ""
     echo "You can view these files with:"
     echo "  cat docs/<filename>.md"
