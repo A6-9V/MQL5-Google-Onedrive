@@ -34,5 +34,26 @@ class TestWebDashboard(unittest.TestCase):
         except json.JSONDecodeError:
             self.fail("Response is not valid JSON")
 
+    def test_security_headers(self):
+        """Test that security headers are present."""
+        response = self.app.get('/')
+        self.assertEqual(response.status_code, 200)
+
+        # Check for Security Headers
+        self.assertIn('Content-Security-Policy', response.headers)
+        self.assertIn('X-Content-Type-Options', response.headers)
+        self.assertIn('X-Frame-Options', response.headers)
+        self.assertIn('Referrer-Policy', response.headers)
+
+        # Validate specific values
+        self.assertEqual(response.headers['X-Content-Type-Options'], 'nosniff')
+        self.assertEqual(response.headers['X-Frame-Options'], 'SAMEORIGIN')
+        self.assertEqual(response.headers['Referrer-Policy'], 'strict-origin-when-cross-origin')
+
+        # Check CSP content
+        csp = response.headers['Content-Security-Policy']
+        self.assertIn("default-src 'self'", csp)
+        self.assertIn("script-src 'self'", csp)
+
 if __name__ == '__main__':
     unittest.main()

@@ -46,6 +46,30 @@ def get_cached_markdown(filepath):
         print(f"Error reading/converting {filepath}: {e}")
         return None
 
+@app.after_request
+def add_security_headers(response):
+    """Add security headers to the response."""
+    # Content Security Policy
+    # - default-src 'self': Only allow resources from same origin by default
+    # - script-src 'self': Only allow scripts from same origin (blocks inline scripts & external)
+    # - style-src 'self' 'unsafe-inline': Allow inline styles (template uses <style>)
+    # - img-src 'self' data: https: : Allow images from same origin, data URIs, and HTTPS
+    response.headers['Content-Security-Policy'] = (
+        "default-src 'self'; "
+        "script-src 'self'; "
+        "style-src 'self' 'unsafe-inline'; "
+        "img-src 'self' data: https:; "
+        "font-src 'self' data:;"
+    )
+    # Prevent MIME sniffing
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    # Prevent clickjacking
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    # Control referrer information
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+
+    return response
+
 @app.route('/health')
 def health_check():
     """Lightweight health check for load balancers."""
