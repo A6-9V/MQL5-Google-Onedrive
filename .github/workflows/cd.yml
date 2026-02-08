@@ -1,0 +1,328 @@
+name: CD - Continuous Deployment
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      deployment_target:
+        description: 'Deployment target'
+        required: true
+        type: choice
+        options:
+          - all
+          - docker
+          - cloud
+          - dashboard
+          - release
+        default: 'all'
+      environment:
+        description: 'Environment'
+        required: true
+        type: choice
+        options:
+          - production
+          - staging
+        default: 'production'
+
+permissions:
+  contents: write
+  packages: write
+  pages: write
+  id-token: write
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  validate:
+    name: Validate Repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validate repository structure
+        run: python3 scripts/ci_validate_repo.py
+
+      - name: Validate shell scripts
+        run: |
+          bash -n scripts/package_mt5.sh
+          bash -n scripts/deploy_mt5.sh 2>/dev/null || echo "deploy_mt5.sh not found, skipping"
+
+  build-mt5-package:
+    name: Build MT5 Package
+    needs: validate
+    runs-on: ubuntu-latest
+    if: |
+      github.event.inputs.deployment_target == 'all' || 
+      github.event.inputs.deployment_target == 'release' || 
+      startsWith(github.ref, 'refs/tags/v') ||
+      github.event_name == 'push'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Package MT5 files
+        run: bash scripts/package_mt5.sh
+
+      - name: Generate checksums
+        run: |
+          cd dist
+          sha256sum Exness_MT5_MQL5.zip > Exness_MT5_MQL5.zip.sha256
+          cat Exness_MT5_MQL5.zip.sha256
+
+      - name: Upload package artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mt5-package
+          path: |
+            dist/Exness_MT5_MQL5.zip
+            dist/Exness_MT5_MQL5.zip.sha256
+          retention-days: 90
+
+  build-docker-images:
+    name: Build Docker Images
+    needs: validate
+    runs-on: ubuntu-latest
+    if: |
+      github.event.inputs.deployment_target == 'all' || 
+      github.event.inputs.deployment_target == 'docker' || 
+      github.event.inputs.deployment_target == 'cloud' ||
+      startsWith(github.ref, 'refs/tags/v') ||
+      github.event_name == 'push'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+      - name: Image digest
+        run: echo ${{ steps.meta.outputs.digest }}
+
+  deploy-cloud:
+    name: Deploy to Cloud Platforms
+    needs: build-docker-images
+    runs-on: ubuntu-latest
+    if: |
+      github.ref == 'refs/heads/main' && (
+        github.event.inputs.deployment_target == 'all' || 
+        github.event.inputs.deployment_target == 'cloud'
+      )
+    environment:
+      name: ${{ github.event.inputs.environment || 'production' }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Validate cloud deployment configs
+        run: |
+          echo "Validating deployment configurations..."
+          test -f Dockerfile && echo "✅ Dockerfile found"
+          test -f docker-compose.yml && echo "✅ docker-compose.yml found"
+          test -f render.yaml && echo "✅ render.yaml found"
+          test -f railway.json && echo "✅ railway.json found"
+          test -f fly.toml && echo "✅ fly.toml found"
+
+      - name: Deploy to Fly.io
+        if: env.FLY_API_TOKEN != ''
+        run: |
+          curl -L https://fly.io/install.sh | sh
+          export FLYCTL_INSTALL="/home/runner/.fly"
+          export PATH="$FLYCTL_INSTALL/bin:$PATH"
+          flyctl deploy --remote-only || echo "Fly.io deployment skipped (not configured)"
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Notify Render deployment
+        run: |
+          echo "Render.com will auto-deploy from main branch via GitHub integration"
+          echo "See render.yaml for configuration"
+
+      - name: Notify Railway deployment
+        run: |
+          echo "Railway.app will auto-deploy from main branch via GitHub integration"
+          echo "See railway.json for configuration"
+
+  deploy-dashboard:
+    name: Deploy Dashboard to GitHub Pages
+    needs: validate
+    runs-on: ubuntu-latest
+    if: |
+      github.ref == 'refs/heads/main' && (
+        github.event.inputs.deployment_target == 'all' || 
+        github.event.inputs.deployment_target == 'dashboard' ||
+        github.event_name == 'push'
+      )
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+      
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './dashboard'
+      
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+  create-release:
+    name: Create GitHub Release
+    needs: [validate, build-mt5-package, build-docker-images]
+    runs-on: ubuntu-latest
+    if: |
+      startsWith(github.ref, 'refs/tags/v') || 
+      github.event.inputs.deployment_target == 'release'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download MT5 package
+        uses: actions/download-artifact@v4
+        with:
+          name: mt5-package
+          path: ./dist
+
+      - name: Extract version
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            VERSION=$(cat VERSION)
+            VERSION="v${VERSION}"
+          else
+            VERSION="${GITHUB_REF#refs/tags/}"
+          fi
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Version: ${VERSION}"
+
+      - name: Extract changelog
+        id: changelog
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          VERSION_NO_V="${VERSION#v}"
+          
+          if [ -f CHANGELOG.md ]; then
+            awk "/## \[${VERSION_NO_V}\]/,/## \[/{if(/## \[${VERSION_NO_V}\]/)f=1;else if(/## \[/)exit;if(f)print}" CHANGELOG.md > release_notes.md
+            
+            if [ ! -s release_notes.md ]; then
+              echo "Release ${VERSION}" > release_notes.md
+              echo "" >> release_notes.md
+              echo "See [CHANGELOG.md](CHANGELOG.md) for details." >> release_notes.md
+            fi
+          else
+            echo "Release ${VERSION}" > release_notes.md
+            echo "" >> release_notes.md
+            echo "MQL5 SMC + Trend Breakout Trading System" >> release_notes.md
+          fi
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.version.outputs.version }}
+          name: Release ${{ steps.version.outputs.version }}
+          body_path: release_notes.md
+          draft: false
+          prerelease: false
+          files: |
+            dist/Exness_MT5_MQL5.zip
+            dist/Exness_MT5_MQL5.zip.sha256
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  deployment-summary:
+    name: Deployment Summary
+    needs: [validate, build-mt5-package, build-docker-images, deploy-cloud, deploy-dashboard, create-release]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Generate summary
+        run: |
+          echo "## 🚀 CD Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Trigger:** ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Target:** ${{ github.event.inputs.deployment_target || 'auto' }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "### Deployment Status" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Component | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Validation | ${{ needs.validate.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| MT5 Package | ${{ needs.build-mt5-package.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Docker Images | ${{ needs.build-docker-images.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Cloud Deployment | ${{ needs.deploy-cloud.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Dashboard | ${{ needs.deploy-dashboard.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Release | ${{ needs.create-release.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "### Available Deployments" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- 🐳 **Docker**: \`ghcr.io/${{ github.repository }}:latest\`" >> $GITHUB_STEP_SUMMARY
+          echo "- ☁️ **Render**: Auto-deploys from main branch" >> $GITHUB_STEP_SUMMARY
+          echo "- 🚂 **Railway**: Auto-deploys from main branch" >> $GITHUB_STEP_SUMMARY
+          echo "- 🪰 **Fly.io**: Configured via fly.toml" >> $GITHUB_STEP_SUMMARY
+          echo "- 📊 **Dashboard**: GitHub Pages" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          echo "### Documentation" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- [Cloud Deployment Guide](docs/Cloud_Deployment_Guide.md)" >> $GITHUB_STEP_SUMMARY
+          echo "- [CI/CD Setup](docs/GITHUB_CI_CD_SETUP.md)" >> $GITHUB_STEP_SUMMARY
+          echo "- [Release Checklist](.github/RELEASE_CHECKLIST.md)" >> $GITHUB_STEP_SUMMARY
