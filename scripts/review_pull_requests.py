@@ -46,14 +46,15 @@ def get_prs_via_gh_cli():
 def get_prs_via_git():
     """Get PR information via git branches."""
     # Get all branches that might be PR branches
-    result = run_command(["git", "branch", "-r", "--no-merged", "main"])
+    # Use origin/main as base for robust comparison in CI/CD
+    result = run_command(["git", "branch", "-r", "--no-merged", "origin/main"])
     branches = []
     if result and result.returncode == 0:
         branches = [b.strip() for b in result.stdout.strip().split("\n") 
                     if b.strip() and "origin/main" not in b and "HEAD" not in b]
     
     # Get merged branches that might have been PRs
-    result_merged = run_command(["git", "branch", "-r", "--merged", "main"])
+    result_merged = run_command(["git", "branch", "-r", "--merged", "origin/main"])
     merged_branches = []
     if result_merged and result_merged.returncode == 0:
         merged_branches = [b.strip() for b in result_merged.stdout.strip().split("\n") 
@@ -133,7 +134,8 @@ def get_all_branch_details():
                     "branch": branch_short,
                     "full_name": ref,
                     "commit_count": ahead,
-                    "last_commit_date": date
+                    "last_commit_date": date,
+                    "commits": []  # Empty list to match get_branch_info structure
                 }
     return details
 
@@ -142,13 +144,16 @@ def get_branch_info(branch_name):
     """Get detailed information about a branch."""
     branch = branch_name.replace("origin/", "")
     
-    # Get commit count
-    result = run_command(["git", "log", "--oneline", f"main..{branch_name}"])
+    # ⚡ Performance Optimization: Use rev-list --count instead of log --oneline
+    # This avoids fetching and parsing commit messages, which is O(N) -> O(1)
+    # Use origin/main for comparison to handle environments where local main is missing
+    result = run_command(["git", "rev-list", "--count", f"origin/main..{branch_name}"])
     commit_count = 0
-    commits = []
     if result and result.returncode == 0:
-        commits = [c.strip() for c in result.stdout.strip().split("\n") if c.strip()]
-        commit_count = len(commits)
+        try:
+            commit_count = int(result.stdout.strip())
+        except ValueError:
+            commit_count = 0
     
     # Get last commit date
     result = run_command(["git", "log", "-1", "--format=%ci", branch_name])
@@ -160,7 +165,7 @@ def get_branch_info(branch_name):
         "branch": branch,
         "full_name": branch_name,
         "commit_count": commit_count,
-        "commits": commits[:5],  # First 5 commits
+        "commits": [],  # Empty list as we don't use commit details
         "last_commit_date": last_commit
     }
 
