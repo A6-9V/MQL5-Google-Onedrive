@@ -89,6 +89,7 @@ double g_fixedTP;
 double g_finalMinLot;
 double g_finalMaxLot;
 double g_lotRiskFactor;
+double g_invMarginInitial;
 
 //+------------------------------------------------------------------+
 //| Expert initialization function                                     |
@@ -115,6 +116,7 @@ int OnInit()
    g_lotValuePerUnit = (g_tickSize > 0) ? (g_tickValue / g_tickSize) : 0;
    g_invLotStep = (g_lotStep > 0) ? (1.0 / g_lotStep) : 0;
    g_lotRiskFactor = (g_lotValuePerUnit > 0) ? (g_riskMultiplier / g_lotValuePerUnit) : 0;
+   g_invMarginInitial = (g_marginInitial > 0) ? (1.0 / g_marginInitial) : 0;
 
    //--- ⚡ Bolt: Pre-calculate SL/TP constants for performance
    g_swingSLBuffer = SwingSLBufferPoints * g_point;
@@ -448,22 +450,17 @@ double CalculateLots(double slDistance, double accountBalance, double accountEqu
    double balanceOrEquity = RiskUseEquity ? accountEquity : accountBalance;
    
    //--- ⚡ Bolt: Optimized lot calculation using pre-calculated constants.
-   //--- Replacing division with multiplication by g_lotRiskFactor.
    double lots = (balanceOrEquity * g_lotRiskFactor) / slDistance;
    
-   //--- Normalize lot size
+   //--- ⚡ Bolt: Apply margin constraints before final normalization to avoid redundant steps.
+   if(RiskClampToFreeMargin && g_invMarginInitial > 0) {
+      double maxMarginLots = freeMargin * g_invMarginInitial;
+      if(lots > maxMarginLots) lots = maxMarginLots;
+   }
+
+   //--- ⚡ Bolt: Consolidated normalization and clamping into a single execution path.
    lots = MathFloor(lots * g_invLotStep) * g_lotStep;
    lots = MathMax(g_finalMinLot, MathMin(lots, g_finalMaxLot));
-   
-   //--- Check margin if needed
-   if(RiskClampToFreeMargin) {
-      double marginRequired = g_marginInitial * lots;
-      if(marginRequired > freeMargin) {
-         lots = (freeMargin / g_marginInitial);
-         lots = MathFloor(lots * g_invLotStep) * g_lotStep;
-         lots = MathMax(g_finalMinLot, MathMin(lots, g_finalMaxLot));
-      }
-   }
    
    return NormalizeDouble(lots, 2);
 }
