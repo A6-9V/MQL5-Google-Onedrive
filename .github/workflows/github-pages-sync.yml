@@ -32,11 +32,12 @@ jobs:
 
       - name: Check GitHub Pages sync configuration
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PAGES_SYNC_TOKEN: ${{ secrets.PAGES_SYNC_TOKEN }}
         run: |
-          if [[ -z "${GITHUB_TOKEN:-}" ]]; then
+          if [[ -z "${PAGES_SYNC_TOKEN:-}" ]]; then
             echo "PAGES_SYNC_ENABLED=false" >> "$GITHUB_ENV"
-            echo "Skipping GitHub Pages sync: GITHUB_TOKEN not available."
+            echo "⚠️ Skipping GitHub Pages sync: PAGES_SYNC_TOKEN not configured."
+            echo "To enable sync, add a Personal Access Token as PAGES_SYNC_TOKEN secret with repo permissions."
             exit 0
           fi
           echo "PAGES_SYNC_ENABLED=true" >> "$GITHUB_ENV"
@@ -50,9 +51,9 @@ jobs:
       - name: Clone GitHub Pages repository
         if: env.PAGES_SYNC_ENABLED == 'true'
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PAGES_SYNC_TOKEN: ${{ secrets.PAGES_SYNC_TOKEN }}
         run: |
-          git clone https://${GITHUB_TOKEN}@github.com/${PAGES_REPO} pages-repo
+          git clone https://${PAGES_SYNC_TOKEN}@github.com/${PAGES_REPO} pages-repo
           cd pages-repo
           git checkout ${PAGES_BRANCH} || git checkout -b ${PAGES_BRANCH}
 
@@ -73,13 +74,13 @@ jobs:
       - name: Commit and push to GitHub Pages
         if: env.PAGES_SYNC_ENABLED == 'true'
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PAGES_SYNC_TOKEN: ${{ secrets.PAGES_SYNC_TOKEN }}
         run: |
           cd pages-repo
           git add -A
           git diff --staged --quiet || {
             git commit -m "Auto-sync from MQL5-Google-Onedrive: $(date +'%Y-%m-%d %H:%M:%S')"
-            git push https://${GITHUB_TOKEN}@github.com/${PAGES_REPO} ${PAGES_BRANCH}
+            git push https://${PAGES_SYNC_TOKEN}@github.com/${PAGES_REPO} ${PAGES_BRANCH}
           }
 
       - name: Summary
