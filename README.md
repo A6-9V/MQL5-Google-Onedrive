@@ -151,6 +151,13 @@ The automation system handles:
 
 This repo includes GitHub Actions workflows under `.github/workflows/`:
 
+- **CD (`CD - Continuous Deployment`)**: comprehensive deployment automation
+  - Triggered on push to main, tag creation, or manual dispatch
+  - Builds MT5 package and Docker images
+  - Deploys to cloud platforms (Render, Railway, Fly.io)
+  - Deploys dashboard to GitHub Pages
+  - Creates GitHub releases with assets
+  - 📖 See [CD Workflow Guide](docs/CD_WORKFLOW_GUIDE.md) for details
 - **CI (`CI`)**: runs on pull requests and pushes to `main/master`
   - Validates repo structure
   - Builds `dist/Exness_MT5_MQL5.zip` and uploads it as an artifact
