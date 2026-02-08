@@ -80,6 +80,7 @@ double g_lotStep;
 double g_tickValue;
 double g_tickSize;
 double g_marginInitial;
+double g_invMarginInitial;
 double g_riskMultiplier;
 double g_lotValuePerUnit;
 double g_invLotStep;
@@ -109,6 +110,7 @@ int OnInit()
    g_tickValue = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_VALUE);
    g_tickSize = SymbolInfoDouble(_Symbol, SYMBOL_TRADE_TICK_SIZE);
    g_marginInitial = SymbolInfoDouble(_Symbol, SYMBOL_MARGIN_INITIAL);
+   g_invMarginInitial = (g_marginInitial > 0) ? (1.0 / g_marginInitial) : 0;
 
    //--- ⚡ Bolt: Pre-calculate lot size constants for performance
    g_riskMultiplier = RiskPercent / 100.0;
@@ -451,21 +453,17 @@ double CalculateLots(double slDistance, double accountBalance, double accountEqu
    //--- Replacing division with multiplication by g_lotRiskFactor.
    double lots = (balanceOrEquity * g_lotRiskFactor) / slDistance;
    
-   //--- Normalize lot size
+   //--- ⚡ Bolt: Apply margin constraints before final normalization to avoid redundant calculations.
+   if(RiskClampToFreeMargin && g_invMarginInitial > 0) {
+      double maxLotsMargin = freeMargin * g_invMarginInitial;
+      if(lots > maxLotsMargin) lots = maxLotsMargin;
+   }
+
+   //--- ⚡ Bolt: Consolidated normalization and clamping into a single execution path.
    lots = MathFloor(lots * g_invLotStep) * g_lotStep;
    lots = MathMax(g_finalMinLot, MathMin(lots, g_finalMaxLot));
    
-   //--- Check margin if needed
-   if(RiskClampToFreeMargin) {
-      double marginRequired = g_marginInitial * lots;
-      if(marginRequired > freeMargin) {
-         lots = (freeMargin / g_marginInitial);
-         lots = MathFloor(lots * g_invLotStep) * g_lotStep;
-         lots = MathMax(g_finalMinLot, MathMin(lots, g_finalMaxLot));
-      }
-   }
-   
-   return NormalizeDouble(lots, 2);
+   return lots;
 }
 
 //+------------------------------------------------------------------+
