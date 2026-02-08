@@ -40,6 +40,30 @@ python scripts/deploy_cloud.py docker --build
 
 📖 **For detailed cloud deployment instructions, see [Cloud Deployment Guide](docs/Cloud_Deployment_Guide.md)**
 
+### 🤖 Telegram Bot Deployment
+
+**Deploy and manage your trading system via Telegram!**
+
+- **Bot Name**: [GenX_FX_bot](https://t.me/GenX_FX_bot)
+- **API Reference**: https://core.telegram.org/bots/api
+
+**Available Commands:**
+- `/deploy_flyio` - Deploy to Fly.io
+- `/deploy_render` - Deploy to Render.com
+- `/deploy_railway` - Deploy to Railway.app
+- `/status` - Check deployment status
+
+**Setup:**
+```bash
+# Set your Telegram user ID for access control
+export TELEGRAM_ALLOWED_USER_IDS="your_telegram_user_id"
+
+# Start the bot
+python scripts/telegram_deploy_bot.py
+```
+
+📖 **For detailed setup instructions, see [Telegram Bot Setup Guide](scripts/TELEGRAM_BOT_SETUP.md)**
+
 ### Render workspace
 
 My Blue watermelon Workspace

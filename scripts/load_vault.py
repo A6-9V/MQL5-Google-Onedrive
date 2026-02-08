@@ -34,8 +34,24 @@ def get_telegram_token():
     """Get Telegram bot token from vault"""
     vault = load_vault()
     if vault and 'telegram_bot' in vault:
-        return vault['telegram_bot'].get('token')
+        return vault['telegram_bot'].get('token') or vault['telegram_bot'].get('api')
     return None
+
+
+def get_telegram_bot_name():
+    """Get Telegram bot name from vault"""
+    vault = load_vault()
+    if vault and 'telegram_bot' in vault:
+        return vault['telegram_bot'].get('name', 't.me/GenX_FX_bot')
+    return 't.me/GenX_FX_bot'
+
+
+def get_telegram_webhook_url():
+    """Get Telegram webhook URL from vault"""
+    vault = load_vault()
+    if vault and 'telegram_bot' in vault:
+        return vault['telegram_bot'].get('webhook_url', 'https://core.telegram.org/bots/api')
+    return 'https://core.telegram.org/bots/api'
 
 
 def get_telegram_allowed_users():
@@ -46,6 +62,14 @@ def get_telegram_allowed_users():
     return []
 
 
+def get_github_pat():
+    """Get GitHub Personal Access Token from vault"""
+    vault = load_vault()
+    if vault and 'github' in vault:
+        return vault['github'].get('pat')
+    return None
+
+
 if __name__ == "__main__":
     # Set environment variables when run directly
     token = get_telegram_token()
@@ -53,6 +77,22 @@ if __name__ == "__main__":
         os.environ['TELEGRAM_BOT_TOKEN'] = token
         print("✅ Telegram bot token loaded from vault")
     
+    bot_name = get_telegram_bot_name()
+    if bot_name:
+        os.environ['TELEGRAM_BOT_NAME'] = bot_name
+        print(f"✅ Telegram bot name: {bot_name}")
+    
+    webhook_url = get_telegram_webhook_url()
+    if webhook_url:
+        os.environ['TELEGRAM_WEBHOOK_URL'] = webhook_url
+        print(f"✅ Telegram webhook URL: {webhook_url}")
+    
     allowed_users = get_telegram_allowed_users()
     if allowed_users:
         os.environ['TELEGRAM_ALLOWED_USER_IDS'] = ','.join(map(str, allowed_users))
+        print(f"✅ Allowed users loaded: {len(allowed_users)}")
+    
+    github_pat = get_github_pat()
+    if github_pat:
+        os.environ['GITHUB_PAT'] = github_pat
+        print("✅ GitHub PAT loaded from vault")
