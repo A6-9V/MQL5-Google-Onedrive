@@ -4,9 +4,10 @@
 
 **Date**: 2026-02-04 07:55:00
 **Status**: ✅ Connected and Launched
-**Location**: Singapore 10
+**Location**: Singapore 09
 **Host ID**: 6773048
 **Account**: 411534497 (Exness-MT5Real8)
+**Owner**: Kea MOUYLENG
 
 ## What is VPS for MT5?
 
@@ -44,7 +45,7 @@ Virtual Private Server (VPS) allows your MT5 terminal to run 24/7 on a remote se
 ### ⚠️ Important Considerations
 
 1. **VPS Costs**
-   - Monthly subscription fees (usually $10-30/month)
+   - Monthly subscription fees (usually 0-30/month)
    - Check your VPS provider's pricing
 
 2. **Remote Access**
@@ -61,8 +62,8 @@ Virtual Private Server (VPS) allows your MT5 terminal to run 24/7 on a remote se
 ### Current Setup
 
 Your EA is now deployed to:
-- **Local MT5**: `C:\Users\USER\AppData\Roaming\MetaQuotes\Terminal\11FA83D175E503C18ECB4DB736B2214D`
-- **VPS**: Connected (Singapore 10)
+- **Local MT5**: `C:\Users\USER\AppData\Roaming\MetaQuotes\Terminal\53785E099C927DB68A545C249CDBCE06`
+- **VPS**: Connected (Singapore 09)
 
 ### Recommendations
 
@@ -147,11 +148,13 @@ Your EA is now deployed to:
 ## Current Configuration
 
 - **Account**: 411534497
+- **Owner**: Kea MOUYLENG
 - **Server**: Exness-MT5Real8
-- **VPS Location**: Singapore 10
+- **VPS Location**: Singapore 09
 - **VPS Host ID**: 6773048
 - **Status**: ✅ Connected and Active
-- **Migration Date**: 2026-02-04 07:55:00 (Launched to Singapore 10)
+- **Migration Date**: 2026-02-04 07:55:00 (Launched to Singapore 09)
+- **Payment Date**: 2026-01-18 (Tariff #4)
 
 ## Next Steps
 
