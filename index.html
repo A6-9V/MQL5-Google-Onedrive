@@ -151,16 +151,37 @@
             margin-top: 40px;
             opacity: 0.9;
         }
+
+        .skip-link {
+            position: absolute;
+            top: -40px;
+            left: 0;
+            background: #667eea;
+            color: white;
+            padding: 8px;
+            z-index: 100;
+            transition: top 0.3s;
+            text-decoration: none;
+            border-radius: 0 0 8px 0;
+            font-weight: 600;
+        }
+
+        .skip-link:focus {
+            top: 0;
+            outline: 2px solid white;
+            outline-offset: -2px;
+        }
     </style>
 </head>
 <body>
+    <a href="#main-content" class="skip-link">Skip to content</a>
     <div class="container">
         <div class="header">
             <h1>🚀 MQL5 Trading Automation</h1>
             <p>GenX FX Trading System Dashboard</p>
         </div>
 
-        <div class="grid">
+        <div class="grid" id="main-content">
             <div class="card">
                 <h2>📊 Trading Indicators</h2>
                 <p>SMC + Trend Breakout (MTF) indicator with BOS/CHoCH and Donchian breakout signals.</p>

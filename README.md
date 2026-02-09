@@ -40,6 +40,29 @@ python scripts/deploy_cloud.py docker --build
 
 📖 **For detailed cloud deployment instructions, see [Cloud Deployment Guide](docs/Cloud_Deployment_Guide.md)**
 
+### 🤖 Telegram Bot Deployment
+
+**Deploy and manage your trading system via Telegram!**
+
+- **API Reference**: https://core.telegram.org/bots/api
+
+**Available Commands:**
+- `/deploy_flyio` - Deploy to Fly.io
+- `/deploy_render` - Deploy to Render.com
+- `/deploy_railway` - Deploy to Railway.app
+- `/status` - Check deployment status
+
+**Setup:**
+```bash
+# Set your Telegram user ID for access control
+export TELEGRAM_ALLOWED_USER_IDS="your_telegram_user_id"
+
+# Start the bot
+python scripts/telegram_deploy_bot.py
+```
+
+📖 **For detailed setup instructions, see [Telegram Bot Setup Guide](scripts/TELEGRAM_BOT_SETUP.md)**
+
 ### Render workspace
 
 My Blue watermelon Workspace
@@ -128,6 +151,13 @@ The automation system handles:
 
 This repo includes GitHub Actions workflows under `.github/workflows/`:
 
+- **CD (`CD - Continuous Deployment`)**: comprehensive deployment automation
+  - Triggered on push to main, tag creation, or manual dispatch
+  - Builds MT5 package and Docker images
+  - Deploys to cloud platforms (Render, Railway, Fly.io)
+  - Deploys dashboard to GitHub Pages
+  - Creates GitHub releases with assets
+  - 📖 See [CD Workflow Guide](docs/CD_WORKFLOW_GUIDE.md) for details
 - **CI (`CI`)**: runs on pull requests and pushes to `main/master`
   - Validates repo structure
   - Builds `dist/Exness_MT5_MQL5.zip` and uploads it as an artifact

@@ -56,17 +56,24 @@ def get_market_data():
                 logger.error(f"Bulk download failed: {e}")
                 tickers_data = None
 
-            if tickers_data is not None:
-                for sym in symbols:
+            if tickers_data is not None and not tickers_data.empty:
+                # ⚡ Performance Optimization: Move structural checks outside the loop
+                is_multi = isinstance(tickers_data.columns, pd.MultiIndex)
+
+                # Determine which symbols are actually available in the downloaded data
+                if is_multi:
+                    available_symbols = [s for s in symbols if s in tickers_data.columns.levels[0]]
+                elif len(symbols) == 1:
+                    # If not MultiIndex and only 1 symbol requested, it's that symbol
+                    available_symbols = symbols
+                else:
+                    # Logic Error Fix: If structure is flat but multiple symbols requested,
+                    # we can't safely assign it to any/all symbols.
+                    available_symbols = []
+
+                for sym in available_symbols:
                     try:
-                        hist = None
-                        # Extract data for specific symbol
-                        if isinstance(tickers_data.columns, pd.MultiIndex):
-                            if sym in tickers_data.columns.levels[0]:
-                                hist = tickers_data[sym]
-                        else:
-                            # Fallback if structure is not MultiIndex (unlikely with group_by='ticker')
-                            hist = tickers_data
+                        hist = tickers_data[sym] if is_multi else tickers_data
 
                         if hist is not None and not hist.empty:
                             # Clean up data
