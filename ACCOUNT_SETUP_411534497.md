@@ -2,6 +2,7 @@
 
 **Setup Date**: 2026-02-04
 **Account**: [ACCOUNT_NUMBER]
+**Owner**: Kea MOUYLENG
 **Server**: Exness-MT5Real8
 **Type**: REAL ACCOUNT
 
@@ -15,7 +16,7 @@
 - **Network Status**: ✅ Scanned (2026.02.04 07:55:00)
 
 ### VPS Status
-- **Location**: Singapore 10
+- **Location**: Singapore 09
 - **Host ID**: 6773048
 - **Ping**: 2.73 ms (Excellent)
 - **Status**: ✅ Connected
@@ -78,7 +79,7 @@ RR: 2.0
 - [x] Server: Exness-MT5Real8
 - [x] Account type: REAL
 - [x] Balance: [BALANCE] USD
-- [x] VPS connected: Singapore 10
+- [x] VPS connected: Singapore 09
 - [x] Network scan completed
 - [x] EA deployed and active
 - [x] Files organized and cleaned

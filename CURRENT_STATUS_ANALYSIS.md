@@ -7,13 +7,14 @@
 
 ### Account Information
 - **Account Number**: [ACCOUNT_NUMBER]
+**Owner**: Kea MOUYLENG
 - **Server**: Exness-MT5Real8
 - **Account Type**: Hedge
 - **Current Balance**: **[BALANCE] USD** ✅
 - **Status**: Active and Funded
 
 ### VPS Status
-- **Location**: Singapore 10
+- **Location**: Singapore 09
 - **Host ID**: 6773048
 - **Connection**: ✅ Connected
 - **Ping**: 2.73 ms (Excellent - very low latency)

@@ -41,3 +41,21 @@ This file serves as a central location for your personal notes, ideas, and exter
   - **Jules**: Connection Failed (NameResolutionError). The API URL `https://api.jules.ai/v1/completion` is unreachable. Check if `JULES_API_URL` in `.env` matches the correct endpoint (possibly the ZOLO Bridge IP or a different service) or if the CLI tool (`@google/jules`) should be used instead.
 - **Scheduler**: Running (PID verified)
 - **Verification**: Market research script executes but analysis fails due to above issues.
+
+## 💳 Payment & Account Information
+
+### Owner Details
+- **Owner Name**: Kea MOUYLENG (MOUYLENG KEA)
+- **MQL5 Account**: LengKundee
+- **MQL5 Internal ID**: mql5_internal
+
+### VPS Hosting History
+| Date | Transaction ID | Service | Details | Amount |
+|------|----------------|---------|---------|--------|
+| 2026.01.18 | 15740072 | Virtual Hosting | VPS Singapore 09 (#6773048), tariff #4 | 15.00 |
+| 2026.01.18 | 15740071 | MQL5 Services | Transfer to LengKundee | - |
+
+### Current Environment
+- **Terminal Path**: `C:\Users\USER\AppData\Roaming\MetaQuotes\Terminal\53785E099C927DB68A545C249CDBCE06`
+- **VPS Server**: VPS Singapore 09
+- **Host ID**: 6773048
