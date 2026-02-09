@@ -54,6 +54,30 @@ def health_check():
         "timestamp": time.time()
     })
 
+@app.after_request
+def add_security_headers(response):
+    """
+    Add security headers to every response to protect against
+    XSS, Clickjacking, and other web vulnerabilities.
+    """
+    # Content-Security-Policy: restrict sources of content
+    # default-src 'self': only allow content from own origin
+    # style-src 'self' 'unsafe-inline': allow inline styles (needed for template)
+    # script-src 'self': only allow scripts from own origin (blocks inline scripts in markdown)
+    csp = "default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'"
+    response.headers['Content-Security-Policy'] = csp
+
+    # X-Content-Type-Options: prevent MIME-sniffing
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+
+    # X-Frame-Options: prevent clickjacking
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+
+    # Referrer-Policy: control referrer information
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+
+    return response
+
 @app.route('/')
 def dashboard():
     try:

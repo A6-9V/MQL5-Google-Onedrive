@@ -40,5 +40,14 @@ class TestWebDashboard(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'<a href="#status" class="skip-link">Skip to main content</a>', response.data)
 
+    def test_security_headers(self):
+        """Test that security headers are present."""
+        response = self.app.get('/')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Content-Security-Policy', response.headers)
+        self.assertIn('X-Content-Type-Options', response.headers)
+        self.assertIn('X-Frame-Options', response.headers)
+        self.assertIn('Referrer-Policy', response.headers)
+
 if __name__ == '__main__':
     unittest.main()
