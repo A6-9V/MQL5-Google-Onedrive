@@ -30,3 +30,7 @@ This journal is for CRITICAL, non-routine performance learnings ONLY.
 ## 2026-02-04 - Single-Path Lot Normalization and Margin Clamping
 **Learning:** Redundant calculations in `CalculateLots()` can be eliminated by applying margin constraints to the raw lot size before any rounding or volume limit checks. This ensures that `MathFloor`, `MathMax`, `MathMin`, and `NormalizeDouble` are executed exactly once. Additionally, pre-calculating the inverse of `SYMBOL_MARGIN_INITIAL` in `OnInit` allows replacing an expensive division with a fast multiplication in the margin clamping path.
 **Action:** Always refactor lot calculation functions to follow a "raw-calculate -> clamp-by-margin -> normalize-and-limit" flow, using cached inverse constants for any divisions by fixed symbol properties.
+
+## 2026-02-05 - Optimization of EA Execution Flow and Log Throttling
+**Learning:** Major performance gains in high-frequency trading EAs can be achieved by reordering gatekeeper logic in `OnTick`. Placing cheap local math (like time filters) before expensive cross-process API calls (`TerminalInfoInteger`, `MQLInfoInteger`) saves significant overhead. Additionally, throttling repetitive error logs (like "AutoTrading disabled") using `static datetime` timers prevents log flooding, which is a common performance bottleneck during market volatility.
+**Action:** Always prioritize internal state and arithmetic checks over environment API calls in `OnTick` and implement time-based throttling for any logs that could be triggered repeatedly on every price tick.
