@@ -22,10 +22,25 @@ jobs:
           name: "Say hello"
           command: "echo Hello, World!"
 
+  validate:
+    docker:
+      - image: cimg/python:3.12
+    steps:
+      - checkout
+      - run:
+          name: "Install dependencies"
+          command: pip install -r requirements.txt
+      - run:
+          name: "Run repository validation"
+          command: python scripts/ci_validate_repo.py
+      - run:
+          name: "Run automation tests"
+          command: python scripts/test_automation.py
+
 # Orchestrate jobs using workflows
 # See: https://circleci.com/docs/guides/orchestrate/workflows/ & https://circleci.com/docs/reference/configuration-reference/#workflows
 workflows:
-  say-hello-workflow: # This is the name of the workflow, feel free to change it to better match your workflow.
-    # Inside the workflow, you define the jobs you want to run.
+  main-workflow:
     jobs:
       - say-hello
+      - validate
