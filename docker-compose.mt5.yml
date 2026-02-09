@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  mql5-ea-container:
+    build:
+      context: .
+      dockerfile: Dockerfile.mt5
+    image: mql5-ea-container:latest
+    container_name: mql5-ea-container
+    restart: always
+    environment:
+      - TZ=UTC
+      - DISPLAY=:99
+      - WINEPREFIX=/app/.wine
+      - WINEDEBUG=-all
+    volumes:
+      - ./config:/app/config
+      - ./logs:/app/logs
+      - ./mt5:/app/mt5
+    networks:
+      - mql5-network
+    # Use healthcheck to ensure Xvfb/Orchestrator is running
+    healthcheck:
+      test: ["CMD", "ps", "-ef", "|", "grep", "Xvfb"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  mql5-network:
+    driver: bridge
