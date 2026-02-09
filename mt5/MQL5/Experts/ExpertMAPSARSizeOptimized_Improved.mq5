@@ -430,6 +430,7 @@ void OnTick(void)
    //--- ⚡ Bolt: Optimized Day-Rollover check.
    //--- This happens at the top to ensure daily stats are reset exactly at midnight.
    //--- Using integer division is extremely cheap and avoids expensive TimeToStruct/StructToTime calls on every tick.
+   //--- Explicitly cast to long to ensure consistent behavior across MQL5 versions.
    datetime currentTickTime = TimeCurrent();
    long currentDay = (long)currentTickTime / 86400;
    if(currentDay != (long)LastTradeDate / 86400)
