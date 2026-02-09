@@ -81,6 +81,8 @@ datetime LastTradeDate = 0;
 datetime g_todayStart = 0; // ⚡ Bolt: Cached today's start time for efficient history selection
 double   g_maxDailyLossCurrency = 0;   // ⚡ Bolt: Cached daily loss limit in currency
 double   g_maxDailyProfitCurrency = 0; // ⚡ Bolt: Cached daily profit limit in currency
+double   g_lossFactor = 0;             // ⚡ Bolt: Cached loss factor (Inp_Risk_MaxDailyLoss / 100.0)
+double   g_profitFactor = 0;           // ⚡ Bolt: Cached profit factor (Inp_Risk_MaxDailyProfit / 100.0)
 
 //+------------------------------------------------------------------+
 //| Logging Functions                                                |
@@ -115,20 +117,8 @@ bool IsTradingAllowed(datetime now)
       return false;
    }
 
-   //--- Check if AutoTrading is enabled
-   if(!TerminalInfoInteger(TERMINAL_TRADE_ALLOWED))
-   {
-      LogError("AutoTrading is disabled in terminal settings");
-      return false;
-   }
-
-   if(!MQLInfoInteger(MQL_TRADE_ALLOWED))
-   {
-      LogError("AutoTrading is disabled in EA settings");
-      return false;
-   }
-
-   //--- Check time filter
+   //--- ⚡ Bolt: Check time filter BEFORE expensive terminal/MQL state checks.
+   //--- This avoids redundant API calls if we are already outside trading hours.
    if(Inp_Risk_EnableTimeFilter)
    {
       //--- ⚡ Bolt: Use fast integer math for hour extraction instead of TimeToStruct.
@@ -138,7 +128,7 @@ bool IsTradingAllowed(datetime now)
       {
          if(currentHour < Inp_Risk_StartHour || currentHour > Inp_Risk_EndHour)
          {
-            LogDebug("Outside trading hours: ", currentHour);
+            LogDebug("Outside trading hours: " + IntegerToString(currentHour));
             return false;
          }
       }
@@ -146,11 +136,45 @@ bool IsTradingAllowed(datetime now)
       {
          if(currentHour < Inp_Risk_StartHour && currentHour > Inp_Risk_EndHour)
          {
-            LogDebug("Outside trading hours: ", currentHour);
+            LogDebug("Outside trading hours: " + IntegerToString(currentHour));
             return false;
          }
       }
    }
+
+   //--- ⚡ Bolt: Implement log throttling for terminal/MQL trade status.
+   //--- Printing and Alerting on every tick is a major performance bottleneck.
+   static datetime lastTerminalLog = 0;
+   static datetime lastMQLLog = 0;
+   static bool lastTerminalState = true;
+   static bool lastMQLState = true;
+
+   //--- Check if AutoTrading is enabled
+   bool terminalAllowed = (bool)TerminalInfoInteger(TERMINAL_TRADE_ALLOWED);
+   if(!terminalAllowed)
+   {
+      if(lastTerminalState || now > lastTerminalLog + 3600)
+      {
+         LogError("AutoTrading is disabled in terminal settings");
+         lastTerminalLog = now;
+      }
+      lastTerminalState = false;
+      return false;
+   }
+   lastTerminalState = true;
+
+   bool mqlAllowed = (bool)MQLInfoInteger(MQL_TRADE_ALLOWED);
+   if(!mqlAllowed)
+   {
+      if(lastMQLState || now > lastMQLLog + 3600)
+      {
+         LogError("AutoTrading is disabled in EA settings");
+         lastMQLLog = now;
+      }
+      lastMQLState = false;
+      return false;
+   }
+   lastMQLState = true;
 
    return true;
 }
@@ -166,7 +190,7 @@ bool CheckDailyLimits()
    //--- Check max trades per day
    if(Inp_Risk_MaxTradesPerDay > 0 && TradesToday >= Inp_Risk_MaxTradesPerDay)
    {
-      LogInfo("Maximum trades per day reached: ", Inp_Risk_MaxTradesPerDay);
+      LogInfo("Maximum trades per day reached: " + IntegerToString(Inp_Risk_MaxTradesPerDay));
       return false;
    }
 
@@ -238,9 +262,10 @@ void UpdateDailyStatistics(datetime now = 0)
    }
 
    //--- ⚡ Bolt: Cache daily currency limits to avoid redundant calculations and API calls in OnTick.
+   //--- Use pre-calculated factors to replace divisions with multiplications.
    double balance = AccountInfoDouble(ACCOUNT_BALANCE);
-   g_maxDailyLossCurrency = (Inp_Risk_MaxDailyLoss > 0) ? balance * (Inp_Risk_MaxDailyLoss / 100.0) : 0;
-   g_maxDailyProfitCurrency = (Inp_Risk_MaxDailyProfit > 0) ? balance * (Inp_Risk_MaxDailyProfit / 100.0) : 0;
+   g_maxDailyLossCurrency = (Inp_Risk_MaxDailyLoss > 0) ? balance * g_lossFactor : 0;
+   g_maxDailyProfitCurrency = (Inp_Risk_MaxDailyProfit > 0) ? balance * g_profitFactor : 0;
 }
 
 //+------------------------------------------------------------------+
@@ -248,6 +273,10 @@ void UpdateDailyStatistics(datetime now = 0)
 //+------------------------------------------------------------------+
 int OnInit(void)
 {
+   //--- ⚡ Bolt: Pre-calculate risk factors to avoid redundant divisions in hot paths.
+   g_lossFactor = Inp_Risk_MaxDailyLoss / 100.0;
+   g_profitFactor = Inp_Risk_MaxDailyProfit / 100.0;
+
    //--- Set trade parameters
    ExtTrade.SetExpertMagicNumber(Expert_MagicNumber);
    ExtTrade.SetDeviationInPoints(30);
@@ -372,11 +401,11 @@ int OnInit(void)
 
    //--- Success message
    LogInfo("Expert Advisor initialized successfully");
-   LogInfo("Account: ", IntegerToString(AccountInfoInteger(ACCOUNT_LOGIN)));
-   LogInfo("Symbol: ", Symbol());
-   LogInfo("Period: ", EnumToString(Period()));
-   LogInfo("Magic Number: ", IntegerToString(Expert_MagicNumber));
-   LogInfo("Initial Balance: ", DoubleToString(InitialBalance, 2));
+   LogInfo("Account: " + IntegerToString(AccountInfoInteger(ACCOUNT_LOGIN)));
+   LogInfo("Symbol: " + Symbol());
+   LogInfo("Period: " + EnumToString(Period()));
+   LogInfo("Magic Number: " + IntegerToString(Expert_MagicNumber));
+   LogInfo("Initial Balance: " + DoubleToString(InitialBalance, 2));
 
    return(INIT_SUCCEEDED);
 }
@@ -394,10 +423,10 @@ void OnDeinit(const int reason)
    double totalProfit = finalBalance - InitialBalance;
    double profitPercent = (totalProfit / InitialBalance) * 100.0;
 
-   LogInfo("Expert Advisor deinitialized. Reason: ", IntegerToString(reason));
-   LogInfo("Final Balance: ", DoubleToString(finalBalance, 2));
-   LogInfo("Total Profit: ", DoubleToString(totalProfit, 2), " (", DoubleToString(profitPercent, 2), "%)");
-   LogInfo("Trades Today: ", IntegerToString(TradesToday));
+   LogInfo("Expert Advisor deinitialized. Reason: " + IntegerToString(reason));
+   LogInfo("Final Balance: " + DoubleToString(finalBalance, 2));
+   LogInfo("Total Profit: " + DoubleToString(totalProfit, 2) + " (" + DoubleToString(profitPercent, 2) + "%)");
+   LogInfo("Trades Today: " + IntegerToString(TradesToday));
 
    ExtExpert.Deinit();
 }
@@ -419,12 +448,13 @@ void OnTick(void)
       LogInfo("New trading day started. Resetting daily statistics.");
    }
 
-   //--- Check if trading is allowed
-   if(!IsTradingAllowed(currentTickTime))
+   //--- ⚡ Bolt: Check daily limits before expensive IsTradingAllowed() API calls.
+   //--- Daily limits use global variables and are much cheaper to check.
+   if(!CheckDailyLimits())
       return;
 
-   //--- Check daily limits
-   if(!CheckDailyLimits())
+   //--- Check if trading is allowed
+   if(!IsTradingAllowed(currentTickTime))
       return;
 
    //--- ⚡ Bolt: Moved UpdateDailyStatistics() from OnTick to OnTrade and OnTimer
@@ -458,7 +488,7 @@ void OnTrade(void)
 
    if(TradesToday > prevTrades)
    {
-      LogInfo("Trade executed. Total trades today: ", IntegerToString(TradesToday));
+      LogInfo("Trade executed. Total trades today: " + IntegerToString(TradesToday));
    }
 }
 
