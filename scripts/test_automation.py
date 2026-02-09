@@ -195,9 +195,9 @@ def main():
                 # So output is "Testing...\n✓ ... OK\n"
 
             if not result["success"]:
-                msg, type_ = result["error_info"]
-                print(f"✗ {result['func_name']} {type_}: {msg}")
-                failed.append((result['func_name'], msg))
+                error_message, error_type = result["error_info"]
+                print(f"✗ {result['func_name']} {error_type}: {error_message}")
+                failed.append((result['func_name'], error_message))
 
             print() # Spacer between tests
 

@@ -75,10 +75,10 @@ class StartupOrchestrator:
             self.components = self.get_default_components()
             self.config_data = None
         else:
-            with open(self.config_file, 'r') as f:
-                self.config_data = json.load(f)
+            with open(self.config_file, 'r') as config_file:
+                self.config_data = json.load(config_file)
                 self.components = [
-                    ComponentConfig(**comp) for comp in self.config_data.get('components', [])
+                    ComponentConfig(**component_config) for component_config in self.config_data.get('components', [])
                 ]
             self.logger.info(f"Loaded configuration from {self.config_file}")
             max_retries = self.config_data.get('settings', {}).get('max_startup_retries', 1)
@@ -165,12 +165,12 @@ class StartupOrchestrator:
         ]
         
         # Remove preferred path from fallback list to avoid duplicate check
-        fallback_paths = [p for p in fallback_paths if p != preferred_path]
+        fallback_paths = [fallback_path for fallback_path in fallback_paths if fallback_path != preferred_path]
         
-        for path in fallback_paths:
-            if Path(path).exists():
-                self.logger.info(f"Using fallback MT5 path: {path}")
-                return path
+        for fallback_path in fallback_paths:
+            if Path(fallback_path).exists():
+                self.logger.info(f"Using fallback MT5 path: {fallback_path}")
+                return fallback_path
         
         self.logger.error("No MT5 Terminal found in any of the checked paths")
         return None
