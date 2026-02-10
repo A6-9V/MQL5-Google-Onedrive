@@ -18,3 +18,7 @@ This journal is for CRITICAL, non-routine performance learnings ONLY.
 ## 2026-01-26 - yfinance Bulk Download
 **Learning:** `yfinance` Ticker.history in a loop is significantly slower than `yf.download` with a list of tickers due to sequential HTTP requests. `yf.download` with `group_by='ticker'` provides a consistent MultiIndex structure even for single tickers, simplifying bulk processing.
 **Action:** Always prefer `yf.download(tickers)` over iterating `yf.Ticker(t)` when fetching data for multiple symbols.
+
+## 2026-02-09 - Git Command Performance
+**Learning:** `git for-each-ref` is a powerful tool for batch data retrieval, but without filtering, it processes *all* refs, including thousands of stale merged branches in older repositories. Calculating `ahead-behind` counts for these stale branches is O(N) where N is total branches, which can be significantly slower than O(M) where M is active branches.
+**Action:** Always filter `git for-each-ref` with `--no-merged` (or `--merged` depending on use case) when only interested in a subset of branches, especially when expensive formatting options like `ahead-behind` are used.

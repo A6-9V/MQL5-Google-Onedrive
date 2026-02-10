@@ -102,10 +102,11 @@ def analyze_branch_name(branch_name):
 
 
 def get_all_branch_details():
-    """Get detailed information about all branches using a single git command."""
+    """Get detailed information about unmerged branches using a single git command."""
     # We use git for-each-ref to get commit date and ahead/behind counts relative to origin/main
     # Note: %(ahead-behind:origin/main) requires git 2.41+
-    cmd = ["git", "for-each-ref", "--format=%(refname:short)|%(committerdate:iso8601)|%(ahead-behind:origin/main)", "refs/remotes/origin"]
+    # ⚡ Performance Optimization: Only fetch details for unmerged branches to avoid overhead on old merged branches
+    cmd = ["git", "for-each-ref", "--no-merged", "origin/main", "--format=%(refname:short)|%(committerdate:iso8601)|%(ahead-behind:origin/main)", "refs/remotes/origin"]
     result = run_command(cmd)
 
     details = {}
