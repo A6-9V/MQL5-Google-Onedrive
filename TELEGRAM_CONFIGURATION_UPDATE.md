@@ -25,9 +25,9 @@ The repository has been updated to support Telegram bot integration for deployme
 - Set webhook URL to Telegram Bot API reference
 
 #### `config/vault.json` (gitignored)
-- Created actual vault file with real credentials
-- This file is never committed to version control
-- Contains the actual Telegram bot credentials and GitHub PAT
+- Create a local vault file with your credentials
+- This file is never committed to version control (see `.gitignore`)
+- Contains your Telegram bot credentials and (optionally) a GitHub PAT
 
 ### 2. Documentation Updates
 
@@ -57,44 +57,44 @@ The repository has been updated to support Telegram bot integration for deployme
 - Enhanced `get_telegram_token()` to support both 'token' and 'api' fields
 - Updated main block to export all new environment variables
 
-## Actual Credentials
+## Credentials (Example / Template)
 
-The actual credentials provided have been stored securely in `config/vault.json`:
+Store your real credentials in `config/vault.json` (gitignored). Example structure:
 
 ```json
 {
   "telegram_bot": {
-    "name": "t.me/GenX_FX_bot",
-    "token": "8260686409:AAHEcrZxhDve9vE1QR49ngcCmvOf_Q9NYHg",
+    "name": "t.me/your_bot_name",
+    "token": "your_bot_token_here",
     "webhook_url": "https://core.telegram.org/bots/api"
   },
   "github": {
-    "pat": "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"
+    "pat": "your_github_personal_access_token_here"
   }
 }
 ```
 
-**Note:** The `vault.json` file is in `.gitignore` and will never be committed to the repository.
+**Note:** If you accidentally committed a real token, rotate it immediately.
 
 ## Usage
 
 ### Loading Credentials
 
 ```bash
-# Run load_vault.py to export credentials to environment
-python scripts/load_vault.py
+# (Optional) Verify vault.json is readable by Python
+python3 scripts/load_vault.py
 ```
 
 ### Starting the Telegram Bot
 
 ```bash
 # With credentials from vault.json
-python scripts/telegram_deploy_bot.py
+python3 scripts/telegram_deploy_bot.py
 
 # Or with environment variables
-export TELEGRAM_BOT_TOKEN="8260686409:AAHEcrZxhDve9vE1QR49ngcCmvOf_Q9NYHg"
+export TELEGRAM_BOT_TOKEN="your_bot_token_here"
 export TELEGRAM_ALLOWED_USER_IDS="your_user_id"
-python scripts/telegram_deploy_bot.py
+python3 scripts/telegram_deploy_bot.py
 ```
 
 ## Security

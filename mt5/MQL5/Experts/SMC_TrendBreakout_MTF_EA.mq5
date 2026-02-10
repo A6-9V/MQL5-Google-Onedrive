@@ -103,8 +103,8 @@ input bool   PopupAlerts           = true;
 input bool   PushNotifications     = true;
 
 input group "ZOLO Integration"
-input bool   EnableWebRequest      = true;
-input string WebRequestURL         = "http://203.147.134.90";
+input bool   EnableWebRequest      = false; // off by default for safety
+input string WebRequestURL         = "";    // set to your bridge URL (and allow it in MT5)
 input string ZoloEncryptionKey     = ""; // Leave empty for no encryption
 
 CTrade gTrade;
@@ -205,8 +205,8 @@ static bool HasOpenPosition(const string sym, const long magic)
   for(int i=PositionsTotal()-1;i>=0;i--)
   {
     if(!PositionSelectByIndex(i)) continue;
-    string ps = PositionGetString(POSITION_SYMBOL);
-    if(ps != sym) continue;
+    string positionSymbol = PositionGetString(POSITION_SYMBOL);
+    if(positionSymbol != sym) continue;
     if((long)PositionGetInteger(POSITION_MAGIC) != magic) continue;
     return true;
   }
@@ -218,10 +218,10 @@ static double NormalizeLots(const string sym, double lots)
   // Use cached properties
   lots = MathMax(G_VOL_MIN, MathMin(G_VOL_MAX, lots));
   lots = MathFloor(lots/G_VOL_STEP) * G_VOL_STEP;
-  int volDigits = (int)MathRound(-MathLog10(G_VOL_STEP));
-  if(volDigits < 0) volDigits = 2;
-  if(volDigits > 8) volDigits = 8;
-  return NormalizeDouble(lots, volDigits);
+  int volumeDecimalPlaces = (int)MathRound(-MathLog10(G_VOL_STEP));
+  if(volumeDecimalPlaces < 0) volumeDecimalPlaces = 2;
+  if(volumeDecimalPlaces > 8) volumeDecimalPlaces = 8;
+  return NormalizeDouble(lots, volumeDecimalPlaces);
 }
 
 static double LotsFromRisk(const string sym, const double riskPct, const double slPoints, const bool useEquity)
@@ -229,8 +229,8 @@ static double LotsFromRisk(const string sym, const double riskPct, const double 
   if(riskPct <= 0.0) return 0.0;
   if(slPoints <= 0.0) return 0.0;
 
-  double base = (useEquity ? AccountInfoDouble(ACCOUNT_EQUITY) : AccountInfoDouble(ACCOUNT_BALANCE));
-  double riskMoney = base * (riskPct/100.0);
+  double accountRiskBase = (useEquity ? AccountInfoDouble(ACCOUNT_EQUITY) : AccountInfoDouble(ACCOUNT_BALANCE));
+  double riskMoney = accountRiskBase * (riskPct/100.0);
 
   if(G_TICK_VALUE <= 0 || G_TICK_SIZE <= 0) return 0.0;
   double valuePerPointPerLot = G_TICK_VALUE * (G_POINT / G_TICK_SIZE);
@@ -261,11 +261,11 @@ static double ClampLotsToMargin(const string sym, const ENUM_ORDER_TYPE type, do
   if(margin <= freeMargin) return lots;
 
   // Estimate from 1-lot margin, then clamp down.
-  double margin1=0.0;
-  if(!OrderCalcMargin(type, sym, 1.0, price, margin1)) return lots;
-  if(margin1 <= 0.0) return lots;
+  double marginPerLot=0.0;
+  if(!OrderCalcMargin(type, sym, 1.0, price, marginPerLot)) return lots;
+  if(marginPerLot <= 0.0) return lots;
 
-  double maxLots = (freeMargin / margin1) * 0.95; // small cushion
+  double maxLots = (freeMargin / marginPerLot) * 0.95; // small cushion
   return MathMin(lots, maxLots);
 }
 
@@ -374,17 +374,17 @@ void OnTick()
     closeSig = iClose(_Symbol, gSignalTf, sigBar); // Get close directly.
 
     // Get fractals (for structure break)
-    int frNeed = MathMin(300, needBars);
-    double upFr[300], dnFr[300];
-    ArraySetAsSeries(upFr, true);
-    ArraySetAsSeries(dnFr, true);
-    if(CopyBuffer(gFractalsHandle, 0, 0, frNeed, upFr) <= 0) return;
-    if(CopyBuffer(gFractalsHandle, 1, 0, frNeed, dnFr) <= 0) return;
+    int fractalBarsNeeded = MathMin(300, needBars);
+    double upwardFractals[300], downwardFractals[300];
+    ArraySetAsSeries(upwardFractals, true);
+    ArraySetAsSeries(downwardFractals, true);
+    if(CopyBuffer(gFractalsHandle, 0, 0, fractalBarsNeeded, upwardFractals) <= 0) return;
+    if(CopyBuffer(gFractalsHandle, 1, 0, fractalBarsNeeded, downwardFractals) <= 0) return;
 
-    for(int i=sigBar+2; i<frNeed; i++)
+    for(int i=sigBar+2; i<fractalBarsNeeded; i++)
     {
-      if(lastSwingHighT==0 && upFr[i] != 0.0) { lastSwingHigh = upFr[i]; lastSwingHighT = times[i]; }
-      if(lastSwingLowT==0  && dnFr[i] != 0.0) { lastSwingLow  = dnFr[i]; lastSwingLowT  = times[i]; }
+      if(lastSwingHighT==0 && upwardFractals[i] != 0.0) { lastSwingHigh = upwardFractals[i]; lastSwingHighT = times[i]; }
+      if(lastSwingLowT==0  && downwardFractals[i] != 0.0) { lastSwingLow  = downwardFractals[i]; lastSwingLowT  = times[i]; }
       if(lastSwingHighT!=0 && lastSwingLowT!=0) break;
     }
   }
@@ -472,26 +472,26 @@ void OnTick()
   // PERF: Use SymbolInfoTick to get both Ask and Bid efficiently.
   MqlTick tick;
   if(!SymbolInfoTick(_Symbol, tick)) return;
-  double ask = tick.ask;
-  double bid = tick.bid;
+  double currentAsk = tick.ask;
+  double currentBid = tick.bid;
 
-  double entry = (finalLong ? ask : bid);
+  double entry = (finalLong ? currentAsk : currentBid);
   double sl = 0.0, tp = 0.0;
 
   // --- AI Filter ---
   if(UseGeminiFilter)
   {
-    double rsiVal = 50.0;
-    double atrVal = 0.0;
+    double rsiValue = 50.0;
+    double atrValue = 0.0;
 
     // Get RSI
-    double rsiBuff[1];
-    if(CopyBuffer(gRsiHandle, 0, sigBar, 1, rsiBuff) == 1) rsiVal = rsiBuff[0];
+    double rsiBuffer[1];
+    if(CopyBuffer(gRsiHandle, 0, sigBar, 1, rsiBuffer) == 1) rsiValue = rsiBuffer[0];
 
     // Get ATR (using existing helper logic or direct copy)
-    atrVal = GetATR(sigBar, sigTime);
+    atrValue = GetATR(sigBar, sigTime);
 
-    string prompt = Ai_ConstructPrompt(_Symbol, (finalLong ? "BUY" : "SELL"), entry, gTrendDir, rsiVal, atrVal, PerplexityUrl);
+    string prompt = Ai_ConstructPrompt(_Symbol, (finalLong ? "BUY" : "SELL"), entry, gTrendDir, rsiValue, atrValue, PerplexityUrl);
     bool aiConfirmed = false;
 
     if (AiProvider == PROVIDER_GEMINI)
@@ -524,11 +524,11 @@ void OnTick()
     if((finalLong && (sl <= 0.0 || sl >= entry)) || (finalShort && (sl <= 0.0 || sl <= entry)))
     {
       // PERF: ATR is lazy-loaded only for this fallback case.
-      double atrVal = GetATR(sigBar, sigTime);
-      if(atrVal > 0.0)
+      double atrValue = GetATR(sigBar, sigTime);
+      if(atrValue > 0.0)
       {
-        if(finalLong) sl = entry - (ATR_SL_Mult * atrVal);
-        else sl = entry + (ATR_SL_Mult * atrVal);
+        if(finalLong) sl = entry - (ATR_SL_Mult * atrValue);
+        else sl = entry + (ATR_SL_Mult * atrValue);
       }
     }
   }
@@ -540,10 +540,10 @@ void OnTick()
   else // SL_ATR
   {
     // PERF: ATR is lazy-loaded only when this SL mode is active.
-    double atrVal = GetATR(sigBar, sigTime);
-    if(atrVal > 0.0)
+    double atrValue = GetATR(sigBar, sigTime);
+    if(atrValue > 0.0)
     {
-      sl = (finalLong ? entry - (ATR_SL_Mult * atrVal) : entry + (ATR_SL_Mult * atrVal));
+      sl = (finalLong ? entry - (ATR_SL_Mult * atrValue) : entry + (ATR_SL_Mult * atrValue));
     }
   }
 
@@ -568,8 +568,8 @@ void OnTick()
     if(width <= 0.0)
     {
       // PERF: ATR is lazy-loaded only for this fallback case.
-      double atrVal = GetATR(sigBar, sigTime);
-      if(atrVal > 0.0) width = ATR_SL_Mult * atrVal; // fallback
+      double atrValue = GetATR(sigBar, sigTime);
+      if(atrValue > 0.0) width = ATR_SL_Mult * atrValue; // fallback
     }
     double dist = DonchianTP_Mult * width;
     tp = (finalLong ? entry + dist : entry - dist);

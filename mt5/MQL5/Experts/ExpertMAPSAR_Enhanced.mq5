@@ -34,8 +34,8 @@ input double             Inp_Money_SizeOptimized_DecreaseFactor=3.0;         // 
 input double             Inp_Money_SizeOptimized_Percent       =3.0;         // Money Percent
 //--- inputs for ZOLO Integration
 input group              "ZOLO Integration"
-input bool               EnableWebRequest                      =true;
-input string             WebRequestURL                         = "https://genx-fx.com/api/signal"; // ZOLO Bridge URL (Secure)
+input bool               EnableWebRequest                      =false; // off by default for safety
+input string             WebRequestURL                         = "";    // set to your bridge URL (and allow it in MT5)
 
 //+------------------------------------------------------------------+
 //| Global expert object                                             |

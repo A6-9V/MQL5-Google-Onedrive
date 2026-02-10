@@ -242,11 +242,12 @@ bash scripts/set_github_secrets.sh vault
   - MT5 → **Tools → Options → Notifications**
   - enable push notifications and set your MetaQuotes ID.
 - For web request integrations (ZOLO-A6-9V-NUNA- plugin):
-  - Enable `EnableWebRequest` parameter
-  - Add `http://203.147.134.90` to MT5's allowed URLs list:
+  - Set the EA input `WebRequestURL` to your bridge endpoint (example: `https://your-bridge.example/api/signal`)
+  - Enable the EA input `EnableWebRequest`
+  - Add your bridge URL to MT5's allowed URLs list:
     - MT5 → **Tools → Options → Expert Advisors**
     - Check "Allow WebRequest for listed URL"
-    - Add the URL: `http://203.147.134.90`
+    - Add the URL: `https://your-bridge.example`
 
 ### 🤖 AI Integration (Gemini & Jules)
 
@@ -324,7 +325,7 @@ In `SMC_TrendBreakout_MTF_EA`:
 - Samurai All Branch Structure: [OneDrive Folder](https://1drv.ms/f/c/8F247B1B46E82304/IgDpUzdplXkDTpiyCkdNDZpXASUMJEccVuNGxAaY3MxB1sA)
 - Plugin Integration: [ZOLO-A6-9V-NUNA-](https://1drv.ms/f/c/8F247B1B46E82304/IgBYRTEjjPv-SKHi70WnmmU8AZb3Mr5X1o3a0QNU_mKgAZg)
 - GitHub Pages: https://github.com/Mouy-leng/-LengKundee-mql5.github.io.git
-- ZOLO Bridge Endpoint: http://203.147.134.90
+- ZOLO Bridge Endpoint: (set this privately in EA inputs / vault)
 
 ### Contact
 

@@ -8,10 +8,10 @@ Successfully completed the configuration of Telegram bot defaults and webhook se
 
 The task was to:
 1. Update Telegram bot configuration with:
-   - TELEGRAM_BOT_NAME = t.me/GenX_FX_bot
-   - TELEGRAM_BOT_API = 8260686409:AAHEcrZxhDve9vE1QR49ngcCmvOf_Q9NYHg
+   - TELEGRAM_BOT_NAME = t.me/your_bot_name
+   - TELEGRAM_BOT_TOKEN = your_bot_token_here
    - Reference: https://core.telegram.org/bots/api
-2. Configure GitHub PAT for automation: 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
+2. Configure GitHub PAT for automation (optional): your_github_personal_access_token_here
 3. Handle 118 issues and merge commits
 
 ## What Was Done
@@ -90,30 +90,30 @@ The task was to:
 ### Actual Credentials (Stored in vault.json)
 
 The following credentials are stored in `config/vault.json` (gitignored):
-- Telegram Bot Name: t.me/GenX_FX_bot
-- Telegram Bot Token: 8260686409:AAHEcrZxhDve9vE1QR49ngcCmvOf_Q9NYHg
+- Telegram Bot Name: t.me/your_bot_name
+- Telegram Bot Token: your_bot_token_here
 - Telegram Webhook URL: https://core.telegram.org/bots/api
-- GitHub PAT: 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
+- GitHub PAT: your_github_personal_access_token_here
 
 ### GitHub Actions Secrets
 
 For CI/CD workflows, the following secrets should be set in repository settings:
 ```bash
-gh secret set TELEGRAM_BOT_TOKEN --body "8260686409:AAHEcrZxhDve9vE1QR49ngcCmvOf_Q9NYHg"
-gh secret set GITHUB_PAT --body "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"
+gh secret set TELEGRAM_BOT_TOKEN --body "your_bot_token_here"
+gh secret set GITHUB_PAT --body "your_github_personal_access_token_here"
 ```
 
 ## How to Use
 
 ### Load Credentials
 ```bash
-python scripts/load_vault.py
+python3 scripts/load_vault.py
 ```
 
 ### Start Telegram Bot
 ```bash
 # Credentials will be loaded from vault.json automatically
-python scripts/telegram_deploy_bot.py
+python3 scripts/telegram_deploy_bot.py
 ```
 
 ### Available Bot Commands
