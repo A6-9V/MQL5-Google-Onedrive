@@ -135,6 +135,7 @@ Quick start:
 📖 **GitHub Features**:
 - [GitHub Profile README Guide](docs/GitHub_Profile_README_Guide.md) - Create an impressive profile page
 - [GitHub Gists Guide](docs/GitHub_Gists_Guide.md) - Share code snippets easily
+- [GitHub MCP Server Guide](docs/GITHUB_MCP_SERVER_GUIDE.md) - Connect AI tools to GitHub
 
 The automation system handles:
 - MT5 Terminal startup
