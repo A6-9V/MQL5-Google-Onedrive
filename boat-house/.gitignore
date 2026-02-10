@@ -1,0 +1,18 @@
+﻿################################################################################
+# 此 .gitignore 文件已由 Microsoft(R) Visual Studio 自动创建。
+################################################################################
+
+/.vs
+/statistics-service/worker/src/Worker/bin/Debug/netcoreapp2.1
+/statistics-service/worker/src/Worker/.vs
+/statistics-service/worker/src/Worker/obj
+.idea/workspace.xml
+/statistics-service/worker
+*.exe
+.vscode/
+selenium/dotnet-uitest/UITest/.vs/
+selenium/dotnet-uitest/UITest/bin/
+selenium/dotnet-uitest/UITest/obj/
+selenium/dotnet-uitest/UITest/TestResults
+selenium/dotnet-uitest/UITest/.vs/
+.DS_Store

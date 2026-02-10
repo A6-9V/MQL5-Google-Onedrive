@@ -31,6 +31,7 @@ Instructions for deploying the application to various platforms.
 - [Kubernetes Introduction](KUBERNETES_INTRODUCTION.md) - Introduction to container orchestration with Kubernetes.
 - [Secrets Management](Secrets_Management.md) - Handling API keys and credentials secureley.
 - [Release Process](RELEASE_PROCESS.md) - Creating and managing releases.
+- [Boat House Integration](Boat_House_Integration.md) - Microservices restaurant management system integration.
 
 ## 🤖 Automation & Operations
 
