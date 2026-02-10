@@ -132,6 +132,10 @@ Quick start:
 - [Release Process](docs/RELEASE_PROCESS.md) - Creating and managing releases
 - [Changelog](CHANGELOG.md) - Version history and changes
 
+📖 **GitHub Features**:
+- [GitHub Profile README Guide](docs/GitHub_Profile_README_Guide.md) - Create an impressive profile page
+- [GitHub Gists Guide](docs/GitHub_Gists_Guide.md) - Share code snippets easily
+
 The automation system handles:
 - MT5 Terminal startup
 - Python scripts execution
