@@ -34,3 +34,7 @@ This journal is for CRITICAL, non-routine performance learnings ONLY.
 ## 2026-02-05 - Optimization of EA Execution Flow and Log Throttling
 **Learning:** Major performance gains in high-frequency trading EAs can be achieved by reordering gatekeeper logic in `OnTick`. Placing cheap local math (like time filters) before expensive cross-process API calls (`TerminalInfoInteger`, `MQLInfoInteger`) saves significant overhead. Additionally, throttling repetitive error logs (like "AutoTrading disabled") using `static datetime` timers prevents log flooding, which is a common performance bottleneck during market volatility.
 **Action:** Always prioritize internal state and arithmetic checks over environment API calls in `OnTick` and implement time-based throttling for any logs that could be triggered repeatedly on every price tick.
+
+## 2026-02-05 - Local Fixed-Size Arrays and Lazy Account Metric Retrieval
+**Learning:** Significant micro-optimizations in MQL5 can be achieved by using local fixed-size arrays (e.g., `double buffer[2]`) for `CopyBuffer` instead of `static` dynamic arrays for small datasets. This avoids dynamic memory management and `ArraySetAsSeries` overhead. Furthermore, fetching only the specific account metrics needed (`ACCOUNT_EQUITY` vs `ACCOUNT_BALANCE`) based on risk settings reduces the number of terminal API calls in the confirmed signal path.
+**Action:** Use local fixed-size arrays for fetching small indicator data sets and refactor trade functions to lazily retrieve only the required account metrics.

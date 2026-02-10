@@ -218,9 +218,9 @@ void OnTick()
    lastBarTime = currentBarTime;
 
    //--- ⚡ Bolt: Consolidate CopyRates calls and use static buffer for performance.
-   //--- Fetch 2 bars at once to avoid fetching unused data (index 2 was never used).
+   //--- Fetch 2 bars at once to avoid fetching unused data.
    static MqlRates rates[];
-   static double upperBand[], lowerBand[], emaFast[], emaSlow[], atr[];
+   static double upperBand[], lowerBand[];
    static bool firstTick = true;
 
    if(firstTick)
@@ -228,9 +228,6 @@ void OnTick()
       ArraySetAsSeries(rates, true);
       ArraySetAsSeries(upperBand, true);
       ArraySetAsSeries(lowerBand, true);
-      ArraySetAsSeries(emaFast, true);
-      ArraySetAsSeries(emaSlow, true);
-      ArraySetAsSeries(atr, true);
       firstTick = false;
    }
 
@@ -252,13 +249,15 @@ void OnTick()
    if(buyBreakout || sellBreakout)
    {
       //--- Get Lower TF Confirmation indicator values
-      // ⚡ Bolt: Only fetch 2 bars instead of 3 to improve efficiency.
-      if(CopyBuffer(emaFastHandle, 0, 0, 2, emaFast) <= 0) return;
-      if(CopyBuffer(emaSlowHandle, 0, 0, 2, emaSlow) <= 0) return;
+      // ⚡ Bolt: Use local fixed-size arrays for better performance.
+      // Index 0: newest bar, Index 1: previous bar
+      double emaFastLoc[2], emaSlowLoc[2];
+      if(CopyBuffer(emaFastHandle, 0, 0, 2, emaFastLoc) <= 0) return;
+      if(CopyBuffer(emaSlowHandle, 0, 0, 2, emaSlowLoc) <= 0) return;
 
       //--- Lower TF Confirmation: Check EMA direction
-      bool bullishConfirmation = (emaFast[0] > emaSlow[0] && emaFast[1] > emaSlow[1]);
-      bool bearishConfirmation = (emaFast[0] < emaSlow[0] && emaFast[1] < emaSlow[1]);
+      bool bullishConfirmation = (emaFastLoc[0] > emaSlowLoc[0] && emaFastLoc[1] > emaSlowLoc[1]);
+      bool bearishConfirmation = (emaFastLoc[0] < emaSlowLoc[0] && emaFastLoc[1] < emaSlowLoc[1]);
 
       //--- Final Signal Calculation
       buySignal = buyBreakout && bullishConfirmation;
@@ -280,18 +279,19 @@ void OnTick()
      double latestLowerBand = lowerBand[0];
 
      //--- ⚡ Bolt: Defer ATR calculation until a signal is confirmed to avoid unnecessary calls.
-     if(CopyBuffer(atrHandle, 0, 0, 1, atr) <= 0) return;
+     //--- Use local fixed-size array for better performance.
+     double atrLoc[1];
+     if(CopyBuffer(atrHandle, 0, 0, 1, atrLoc) <= 0) return;
 
-     //--- ⚡ Bolt: Performance optimization - fetch account info once before trade execution.
-     double accountBalance = AccountInfoDouble(ACCOUNT_BALANCE);
-     double accountEquity = AccountInfoDouble(ACCOUNT_EQUITY);
-     double freeMargin = AccountInfoDouble(ACCOUNT_MARGIN_FREE);
+     //--- ⚡ Bolt: Performance optimization - fetch account info lazily only when a signal is confirmed.
+     double balanceOrEquity = (RiskUseEquity) ? AccountInfoDouble(ACCOUNT_EQUITY) : AccountInfoDouble(ACCOUNT_BALANCE);
+     double freeMargin = (RiskClampToFreeMargin) ? AccountInfoDouble(ACCOUNT_MARGIN_FREE) : 0;
 
      if(buySignal) {
-       OpenBuyTrade(ask, atr[0], latestUpperBand, latestLowerBand, accountBalance, accountEquity, freeMargin);
+       OpenBuyTrade(ask, atrLoc[0], latestUpperBand, latestLowerBand, balanceOrEquity, freeMargin);
      }
      else { // sellSignal must be true
-       OpenSellTrade(bid, atr[0], latestUpperBand, latestLowerBand, accountBalance, accountEquity, freeMargin);
+       OpenSellTrade(bid, atrLoc[0], latestUpperBand, latestLowerBand, balanceOrEquity, freeMargin);
      }
    }
 }
@@ -299,14 +299,17 @@ void OnTick()
 //+------------------------------------------------------------------+
 //| Open Buy Trade                                                     |
 //+------------------------------------------------------------------+
-void OpenBuyTrade(double ask, double latestAtr, double latestUpperBand, double latestLowerBand, double accountBalance, double accountEquity, double freeMargin)
+void OpenBuyTrade(double ask, double latestAtr, double latestUpperBand, double latestLowerBand, double balanceOrEquity, double freeMargin)
 {
    //--- Calculate Stop Loss
    double sl = CalculateSL(ask, false, latestAtr);
    if(sl <= 0) return;
    
+   //--- Calculate slDistance for reuse
+   double slDistance = MathAbs(ask - sl);
+
    //--- Calculate Take Profit
-   double tp = CalculateTP(ask, sl, false, latestUpperBand, latestLowerBand);
+   double tp = CalculateTP(ask, slDistance, false, latestUpperBand, latestLowerBand);
    if(tp <= 0) return;
    
    //--- Normalize prices
@@ -314,7 +317,7 @@ void OpenBuyTrade(double ask, double latestAtr, double latestUpperBand, double l
    tp = NormalizeDouble(tp, g_digits);
    
    //--- Calculate lot size
-   double lots = CalculateLots(ask - sl, accountBalance, accountEquity, freeMargin);
+   double lots = CalculateLots(slDistance, balanceOrEquity, freeMargin);
    if(lots <= 0) return;
    
    //--- Open buy position
@@ -330,14 +333,17 @@ void OpenBuyTrade(double ask, double latestAtr, double latestUpperBand, double l
 //+------------------------------------------------------------------+
 //| Open Sell Trade                                                    |
 //+------------------------------------------------------------------+
-void OpenSellTrade(double bid, double latestAtr, double latestUpperBand, double latestLowerBand, double accountBalance, double accountEquity, double freeMargin)
+void OpenSellTrade(double bid, double latestAtr, double latestUpperBand, double latestLowerBand, double balanceOrEquity, double freeMargin)
 {
    //--- Calculate Stop Loss
    double sl = CalculateSL(bid, true, latestAtr);
    if(sl <= 0) return;
    
+   //--- Calculate slDistance for reuse
+   double slDistance = MathAbs(sl - bid);
+
    //--- Calculate Take Profit
-   double tp = CalculateTP(bid, sl, true, latestUpperBand, latestLowerBand);
+   double tp = CalculateTP(bid, slDistance, true, latestUpperBand, latestLowerBand);
    if(tp <= 0) return;
    
    //--- Normalize prices
@@ -345,7 +351,7 @@ void OpenSellTrade(double bid, double latestAtr, double latestUpperBand, double 
    tp = NormalizeDouble(tp, g_digits);
    
    //--- Calculate lot size
-   double lots = CalculateLots(sl - bid, accountBalance, accountEquity, freeMargin);
+   double lots = CalculateLots(slDistance, balanceOrEquity, freeMargin);
    if(lots <= 0) return;
    
    //--- Open sell position
@@ -395,10 +401,9 @@ double CalculateSL(double price, bool isSell, double latestAtr)
 //+------------------------------------------------------------------+
 //| Calculate Take Profit                                               |
 //+------------------------------------------------------------------+
-double CalculateTP(double price, double sl, bool isSell, double latestUpperBand, double latestLowerBand)
+double CalculateTP(double price, double slDistance, bool isSell, double latestUpperBand, double latestLowerBand)
 {
    double tp = 0;
-   double slDistance = MathAbs(price - sl);
    
    if(TPMode == TP_RR) {
       if(isSell) {
@@ -442,12 +447,9 @@ double CalculateTP(double price, double sl, bool isSell, double latestUpperBand,
 //+------------------------------------------------------------------+
 //| Calculate Lot Size                                                  |
 //+------------------------------------------------------------------+
-double CalculateLots(double slDistance, double accountBalance, double accountEquity, double freeMargin)
+double CalculateLots(double slDistance, double balanceOrEquity, double freeMargin)
 {
    if(slDistance <= 0 || g_lotRiskFactor <= 0) return 0;
-   
-   //--- Get account balance/equity from parameters
-   double balanceOrEquity = RiskUseEquity ? accountEquity : accountBalance;
    
    //--- ⚡ Bolt: Optimized lot calculation using pre-calculated constants.
    //--- Replacing division with multiplication by g_lotRiskFactor.
