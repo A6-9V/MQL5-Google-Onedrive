@@ -8,7 +8,7 @@
 #property strict
 #property copyright "LengKundee"
 #property link      "https://forge.mql5.io/LengKundee/mql5.git"
-#property version   "1.21"
+#property version   "1.22"
 
 #include <Trade/Trade.mqh>
 #include <ZoloBridge.mqh>
