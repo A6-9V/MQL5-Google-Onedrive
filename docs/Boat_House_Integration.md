@@ -46,6 +46,8 @@ boat-house/
 
 ## Quick Start
 
+📖 **For detailed quick start instructions, see [Boat House Quick Start Guide](Boat_House_Quick_Start.md)**
+
 ### Running with Docker Compose
 
 The easiest way to run the entire boat-house system is using Docker Compose:
@@ -56,6 +58,13 @@ docker-compose up -d
 ```
 
 This will start all services and their dependencies.
+
+Access the applications at:
+- Customer Website: http://localhost:5000
+- Management Dashboard: http://localhost:5001
+- Statistics API: http://localhost:6001
+- Product API: http://localhost:7001
+- Account API: http://localhost:7002
 
 ### Individual Service Development
 
