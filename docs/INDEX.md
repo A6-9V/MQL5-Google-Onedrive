@@ -7,6 +7,7 @@ This document provides a structured overview of the documentation available in t
 Guides for setting up your development and execution environment.
 
 - [Quick Start Automation](Quick_Start_Automation.md) - Rapid setup guide for automation.
+- [Networking & IP Guide](NETWORKING_AND_IP_GUIDE.md) - Troubleshooting private IPs and connectivity.
 - [Jules Execution Guide](Jules_Execution_Guide.md) - Guide for running the Jules CLI.
 - [Cursor CLI Setup](Cursor_CLI_setup.md) - Setting up Cursor IDE CLI.
 - [Docker CLI Setup](Docker_CLI_setup.md) - Setting up Docker.

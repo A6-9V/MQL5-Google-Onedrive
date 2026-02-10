@@ -12,6 +12,12 @@ NC='\033[0m' # No Color
 
 echo -e "${BLUE}=== Cloudflare Tunnel Setup ===${NC}"
 
+# Run networking check
+if [ -f "scripts/check_networking.py" ]; then
+    python3 scripts/check_networking.py
+    echo ""
+fi
+
 # Check if running as root
 if [ "$EUID" -ne 0 ]; then
   echo "Please run as root (sudo)."

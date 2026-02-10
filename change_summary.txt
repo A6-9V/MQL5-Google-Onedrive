@@ -1,0 +1,4 @@
+Created a new Networking & IP Troubleshooting Guide in docs/NETWORKING_AND_IP_GUIDE.md.
+Added links to this guide in README.md and docs/INDEX.md.
+Created scripts/check_networking.py to help users diagnose their local network.
+Improved scripts/setup_cloudflare_tunnel.sh and scripts/manage_cloudflare.py to detect private IPs and provide helpful warnings.

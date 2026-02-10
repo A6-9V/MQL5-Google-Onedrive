@@ -129,6 +129,7 @@ Quick start:
 - [**Full Documentation Index**](docs/INDEX.md) - 👈 Start here for all guides
 - [**Setup & Deployment (Comprehensive)**](docs/SETUP_AND_DEPLOY.md) - 🛠️ Start here for manual setup & GCP
 - [WSL & VPS Guide](docs/WSL_AND_VPS_DEPLOYMENT.md) - Windows/Linux setup guide
+- [Networking & IP Guide](docs/NETWORKING_AND_IP_GUIDE.md) - Troubleshooting private IPs and connectivity.
 - [Quick Reference Guide](QUICK_REFERENCE.md) - Command cheat sheet
 - [Verification Report](VERIFICATION.md) - System status and test results
 - [Startup Automation Guide](docs/Startup_Automation_Guide.md) - Complete guide

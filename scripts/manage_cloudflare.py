@@ -107,6 +107,19 @@ def main():
         sys.exit(1)
 
     if args.status:
+        # Network check
+        try:
+            import socket
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            local_ip = s.getsockname()[0]
+            s.close()
+            print(f"Local IP: {local_ip}")
+            if local_ip.startswith("192.168.") or local_ip.startswith("10.") or local_ip.startswith("172.16."):
+                print("Note: You are on a private network. See docs/NETWORKING_AND_IP_GUIDE.md for external access help.")
+        except Exception:
+            pass
+
         level = get_security_level(config["zone_id"], config["api_token"])
         if level:
             print(f"Current Security Level: {level}")
