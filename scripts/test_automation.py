@@ -67,6 +67,51 @@ def test_example_script():
     print("✓ Example script OK")
 
 
+def test_echo_hello():
+    """Test echo and hello window scripts."""
+    print("Testing echo and hello window scripts...")
+    
+    # Test Python version
+    result = subprocess.run(
+        [sys.executable, str(SCRIPTS_DIR / "echo_hello.py"), "--help"],
+        capture_output=True,
+        text=True
+    )
+    assert result.returncode == 0, "Echo hello help failed"
+    
+    result = subprocess.run(
+        [sys.executable, str(SCRIPTS_DIR / "echo_hello.py")],
+        capture_output=True,
+        text=True
+    )
+    assert result.returncode == 0, "Echo hello execution failed"
+    output = (result.stdout + result.stderr).lower()
+    assert "hello window" in output, "Hello window not displayed"
+    assert "echo" in output, "Echo not working"
+    
+    # Test shell version
+    script = SCRIPTS_DIR / "echo_hello.sh"
+    assert script.exists(), "Shell echo_hello script not found"
+    
+    result = subprocess.run(
+        ["bash", "-n", str(script)],
+        capture_output=True,
+        text=True
+    )
+    assert result.returncode == 0, f"Shell script syntax error: {result.stderr}"
+    
+    result = subprocess.run(
+        ["bash", str(script)],
+        capture_output=True,
+        text=True
+    )
+    assert result.returncode == 0, "Shell echo hello execution failed"
+    output = (result.stdout + result.stderr).lower()
+    assert "hello window" in output, "Hello window not displayed in shell version"
+    
+    print("✓ Echo and hello window scripts OK")
+
+
 def test_config_file():
     """Test configuration file."""
     print("Testing configuration file...")
@@ -159,6 +204,7 @@ def main():
         test_config_file,
         test_python_orchestrator,
         test_example_script,
+        test_echo_hello,
         test_shell_script,
         test_validator,
     ]
