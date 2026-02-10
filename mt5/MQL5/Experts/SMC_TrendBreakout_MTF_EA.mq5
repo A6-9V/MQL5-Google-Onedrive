@@ -70,6 +70,11 @@ int emaSlowHandle = INVALID_HANDLE;
 datetime lastBarTime = 0;
 bool positionOpen = false;
 
+//--- Function Prototypes
+double CalculateSL(double price, bool isSell, double latestAtr);
+double CalculateTP(double price, double slDistance, bool isSell, double latestUpperBand, double latestLowerBand);
+double CalculateLots(double slDistance, double accountBalance, double accountEquity, double freeMargin);
+
 //--- Cached Symbol Properties (for performance)
 // These are initialized once in OnInit() to avoid repeated calls to SymbolInfo...() functions in hot paths.
 double g_point;
@@ -220,7 +225,7 @@ void OnTick()
    //--- ⚡ Bolt: Consolidate CopyRates calls and use static buffer for performance.
    //--- Fetch 2 bars at once to avoid fetching unused data (index 2 was never used).
    static MqlRates rates[];
-   static double upperBand[], lowerBand[], emaFast[], emaSlow[], atr[];
+   static double upperBand[], lowerBand[], emaFast[], emaSlow[];
    static bool firstTick = true;
 
    if(firstTick)
@@ -230,7 +235,6 @@ void OnTick()
       ArraySetAsSeries(lowerBand, true);
       ArraySetAsSeries(emaFast, true);
       ArraySetAsSeries(emaSlow, true);
-      ArraySetAsSeries(atr, true);
       firstTick = false;
    }
 
@@ -280,6 +284,8 @@ void OnTick()
      double latestLowerBand = lowerBand[0];
 
      //--- ⚡ Bolt: Defer ATR calculation until a signal is confirmed to avoid unnecessary calls.
+     //--- Use a local fixed-size array to avoid dynamic memory overhead for a single value.
+     double atr[1];
      if(CopyBuffer(atrHandle, 0, 0, 1, atr) <= 0) return;
 
      //--- ⚡ Bolt: Performance optimization - fetch account info once before trade execution.
@@ -305,8 +311,11 @@ void OpenBuyTrade(double ask, double latestAtr, double latestUpperBand, double l
    double sl = CalculateSL(ask, false, latestAtr);
    if(sl <= 0) return;
    
+   //--- ⚡ Bolt: Calculate slDistance once and reuse it for TP and Lots calculations.
+   double slDistance = ask - sl;
+
    //--- Calculate Take Profit
-   double tp = CalculateTP(ask, sl, false, latestUpperBand, latestLowerBand);
+   double tp = CalculateTP(ask, slDistance, false, latestUpperBand, latestLowerBand);
    if(tp <= 0) return;
    
    //--- Normalize prices
@@ -314,7 +323,7 @@ void OpenBuyTrade(double ask, double latestAtr, double latestUpperBand, double l
    tp = NormalizeDouble(tp, g_digits);
    
    //--- Calculate lot size
-   double lots = CalculateLots(ask - sl, accountBalance, accountEquity, freeMargin);
+   double lots = CalculateLots(slDistance, accountBalance, accountEquity, freeMargin);
    if(lots <= 0) return;
    
    //--- Open buy position
@@ -336,8 +345,11 @@ void OpenSellTrade(double bid, double latestAtr, double latestUpperBand, double 
    double sl = CalculateSL(bid, true, latestAtr);
    if(sl <= 0) return;
    
+   //--- ⚡ Bolt: Calculate slDistance once and reuse it for TP and Lots calculations.
+   double slDistance = sl - bid;
+
    //--- Calculate Take Profit
-   double tp = CalculateTP(bid, sl, true, latestUpperBand, latestLowerBand);
+   double tp = CalculateTP(bid, slDistance, true, latestUpperBand, latestLowerBand);
    if(tp <= 0) return;
    
    //--- Normalize prices
@@ -345,7 +357,7 @@ void OpenSellTrade(double bid, double latestAtr, double latestUpperBand, double 
    tp = NormalizeDouble(tp, g_digits);
    
    //--- Calculate lot size
-   double lots = CalculateLots(sl - bid, accountBalance, accountEquity, freeMargin);
+   double lots = CalculateLots(slDistance, accountBalance, accountEquity, freeMargin);
    if(lots <= 0) return;
    
    //--- Open sell position
@@ -395,10 +407,9 @@ double CalculateSL(double price, bool isSell, double latestAtr)
 //+------------------------------------------------------------------+
 //| Calculate Take Profit                                               |
 //+------------------------------------------------------------------+
-double CalculateTP(double price, double sl, bool isSell, double latestUpperBand, double latestLowerBand)
+double CalculateTP(double price, double slDistance, bool isSell, double latestUpperBand, double latestLowerBand)
 {
    double tp = 0;
-   double slDistance = MathAbs(price - sl);
    
    if(TPMode == TP_RR) {
       if(isSell) {
