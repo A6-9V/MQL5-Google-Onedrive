@@ -1,0 +1,26 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "scripts/web_dashboard.py",
+      "use": "@vercel/python"
+    },
+    {
+      "src": "dashboard/**",
+      "use": "@vercel/static"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/dashboard/(.*)",
+      "dest": "/dashboard/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "scripts/web_dashboard.py"
+    }
+  ],
+  "env": {
+    "FLASK_ENV": "production"
+  }
+}
