@@ -96,7 +96,7 @@ def dashboard():
                 .card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
                 h1, h2 { color: #050505; border-bottom: 1px solid #ddd; padding-bottom: 10px; }
                 pre { background: #f8f9fa; padding: 15px; border-radius: 5px; overflow-x: auto; border: 1px solid #eee; }
-                .status-badge { display: inline-block; padding: 4px 12px; border-radius: 15px; font-weight: bold; background: #42b983; color: white; }
+                .status-badge { display: inline-block; padding: 4px 12px; border-radius: 15px; font-weight: bold; background: #047857; color: white; }
                 .nav { margin-bottom: 20px; background: #fff; padding: 10px 20px; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
                 .nav a { margin-right: 15px; color: #1877f2; text-decoration: none; font-weight: bold; }
                 .nav a:hover { text-decoration: underline; }
@@ -105,7 +105,7 @@ def dashboard():
                 table { border-collapse: collapse; width: 100%; margin-bottom: 1em; }
                 th, td { text-align: left; padding: 8px; border-bottom: 1px solid #ddd; }
                 th { background-color: #f8f9fa; }
-                .skip-link { position: absolute; top: -40px; left: 0; background: #42b983; color: white; padding: 8px; z-index: 100; transition: top 0.3s; text-decoration: none; border-radius: 0 0 8px 0; font-weight: 600; }
+                .skip-link { position: absolute; top: -40px; left: 0; background: #047857; color: white; padding: 8px; z-index: 100; transition: top 0.3s; text-decoration: none; border-radius: 0 0 8px 0; font-weight: 600; }
                 .skip-link:focus { top: 0; }
             </style>
         </head>
