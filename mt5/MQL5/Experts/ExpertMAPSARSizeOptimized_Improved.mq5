@@ -177,27 +177,46 @@ bool CheckDailyLimits()
 {
    //--- ⚡ Bolt: Rollover reset logic moved to OnTick() for better performance and
    //--- to ensure it runs even when EveryTick is disabled.
+   static datetime lastTradeLimitLog = 0;
+   static datetime lastLossLimitLog = 0;
+   static datetime lastProfitLimitLog = 0;
+   datetime now = TimeCurrent();
 
    //--- Check max trades per day
    if(Inp_Risk_MaxTradesPerDay > 0 && TradesToday >= Inp_Risk_MaxTradesPerDay)
    {
-      LogInfo("Maximum trades per day reached: " + IntegerToString(Inp_Risk_MaxTradesPerDay));
+      // ⚡ Bolt: Implement log throttling to avoid flooding on every price tick.
+      if(now - lastTradeLimitLog > 3600)
+      {
+         LogInfo("Maximum trades per day reached: " + IntegerToString(Inp_Risk_MaxTradesPerDay));
+         lastTradeLimitLog = now;
+      }
       return false;
    }
 
    //--- Check daily loss limit
    if(Inp_Risk_MaxDailyLoss > 0 && DailyLoss >= g_maxDailyLossCurrency)
    {
-      LogError("Daily loss limit reached: " + DoubleToString(DailyLoss, 2) + " (Max: " + DoubleToString(g_maxDailyLossCurrency, 2) + ")");
-      if(Expert_ShowAlerts) Alert("Daily loss limit reached!");
+      // ⚡ Bolt: Implement log throttling to avoid flooding on every price tick.
+      if(now - lastLossLimitLog > 3600)
+      {
+         LogError("Daily loss limit reached: " + DoubleToString(DailyLoss, 2) + " (Max: " + DoubleToString(g_maxDailyLossCurrency, 2) + ")");
+         if(Expert_ShowAlerts) Alert("Daily loss limit reached!");
+         lastLossLimitLog = now;
+      }
       return false;
    }
 
    //--- Check daily profit limit
    if(Inp_Risk_MaxDailyProfit > 0 && DailyProfit >= g_maxDailyProfitCurrency)
    {
-      LogInfo("Daily profit limit reached: " + DoubleToString(DailyProfit, 2) + " (Max: " + DoubleToString(g_maxDailyProfitCurrency, 2) + ")");
-      if(Expert_ShowAlerts) Alert("Daily profit target reached!");
+      // ⚡ Bolt: Implement log throttling to avoid flooding on every price tick.
+      if(now - lastProfitLimitLog > 3600)
+      {
+         LogInfo("Daily profit limit reached: " + DoubleToString(DailyProfit, 2) + " (Max: " + DoubleToString(g_maxDailyProfitCurrency, 2) + ")");
+         if(Expert_ShowAlerts) Alert("Daily profit target reached!");
+         lastProfitLimitLog = now;
+      }
       return false;
    }
 
