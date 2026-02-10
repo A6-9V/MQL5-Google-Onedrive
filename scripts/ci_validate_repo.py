@@ -92,6 +92,7 @@ def scan_for_secrets() -> None:
         "dist", "logs", "data",
         "__pycache__", "venv", "env", ".venv",
         "node_modules",
+        "boat-house",  # Third-party integrated project with demo API keys
     }
 
     findings: list[tuple[str, Path, int]] = []

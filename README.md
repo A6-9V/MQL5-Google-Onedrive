@@ -8,6 +8,16 @@ This repo contains:
 
 - `mt5/MQL5/Indicators/SMC_TrendBreakout_MTF.mq5`: visual indicator (BOS/CHoCH + Donchian breakout + lower-timeframe confirmation).
 - `mt5/MQL5/Experts/SMC_TrendBreakout_MTF_EA.mq5`: Expert Advisor (alerts + optional auto-trading).
+- `boat-house/`: Microservices-based restaurant management system (integrated project).
+
+### 🏠 Boat House Integration
+
+This repository now includes the **Boat House** restaurant management system, a complete microservices application with:
+- Customer-facing website
+- Backend management system
+- Statistics, Product, Account, Order, and Payment services
+
+📖 **See [Boat House Integration Guide](docs/Boat_House_Integration.md) for details**
 
 ### ☁️ Cloud Deployment
 

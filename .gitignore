@@ -46,3 +46,12 @@ Desktop.ini
 # Personal vault - sensitive credentials
 config/vault.json
 data/
+
+# boat-house project artifacts
+boat-house/*/node_modules/
+boat-house/*/target/
+boat-house/*/.gradle/
+boat-house/*/build/
+boat-house/*/*.jar
+boat-house/*/*.war
+boat-house/*/dist/
