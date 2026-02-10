@@ -8,6 +8,7 @@ import os
 import logging
 import requests
 import warnings
+import concurrent.futures
 # TODO: google.generativeai is deprecated, migrate to google.genai in future
 # import google.genai as genai
 import google.generativeai as genai
@@ -125,8 +126,13 @@ def main():
     1. [File Name]: [Suggestion] - [Reasoning]
     """
 
-    gemini_suggestions = ask_gemini(prompt)
-    jules_suggestions = ask_jules(prompt)
+    # ⚡ Optimization: Parallelize AI requests (~2x speedup)
+    with concurrent.futures.ThreadPoolExecutor() as executor:
+        future_gemini = executor.submit(ask_gemini, prompt)
+        future_jules = executor.submit(ask_jules, prompt)
+
+        gemini_suggestions = future_gemini.result()
+        jules_suggestions = future_jules.result()
 
     if not gemini_suggestions and not jules_suggestions:
         logger.warning("Both AI providers failed or keys missing.")
