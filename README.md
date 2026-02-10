@@ -147,6 +147,19 @@ The automation system handles:
 - Copy directly into your MT5 Data Folder (run this on the machine that has MT5 installed):
   - `bash scripts/deploy_mt5.sh "/path/from/MT5/File->Open Data Folder"`
 
+### 📺 Demo Scripts
+
+**Echo and Hello Window Demo:**
+- `python3 scripts/echo_hello.py` - Run echo and hello window demo (Python version)
+- `bash scripts/echo_hello.sh` - Run echo and hello window demo (Shell version)
+
+These simple demonstration scripts showcase basic functionality:
+- Echo messages to console
+- Display formatted hello window
+- Cross-platform support
+
+📖 **See [Echo and Hello Window Guide](docs/Echo_Hello_Guide.md) for details**
+
 ### GitHub automation (reviews, CI, auto-merge, OneDrive sync)
 
 This repo includes GitHub Actions workflows under `.github/workflows/`:
