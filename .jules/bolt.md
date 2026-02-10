@@ -34,3 +34,7 @@ This journal is for CRITICAL, non-routine performance learnings ONLY.
 ## 2026-02-05 - Optimization of EA Execution Flow and Log Throttling
 **Learning:** Major performance gains in high-frequency trading EAs can be achieved by reordering gatekeeper logic in `OnTick`. Placing cheap local math (like time filters) before expensive cross-process API calls (`TerminalInfoInteger`, `MQLInfoInteger`) saves significant overhead. Additionally, throttling repetitive error logs (like "AutoTrading disabled") using `static datetime` timers prevents log flooding, which is a common performance bottleneck during market volatility.
 **Action:** Always prioritize internal state and arithmetic checks over environment API calls in `OnTick` and implement time-based throttling for any logs that could be triggered repeatedly on every price tick.
+
+## 2026-02-05 - Hot Path Optimization and Local Array Efficiency in MQL5
+**Learning:** Consolidating redundant calculations like stop-loss distance (`slDistance`) in the trade execution path and passing them to sub-functions (`CalculateLots`, `CalculateTP`) reduces mathematical overhead. Additionally, replacing dynamic static arrays with local fixed-size arrays for small, single-value data fetches (like ATR) avoids dynamic memory management costs and `ArraySetAsSeries` calls, which are unnecessary for non-indexed lookups.
+**Action:** Always identify shared calculations in hot paths and refactor them to be performed once. Use local fixed-size arrays for minor `CopyBuffer` operations to minimize memory overhead and execution time.
