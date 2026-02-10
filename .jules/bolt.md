@@ -34,3 +34,7 @@ This journal is for CRITICAL, non-routine performance learnings ONLY.
 ## 2026-02-05 - Optimization of EA Execution Flow and Log Throttling
 **Learning:** Major performance gains in high-frequency trading EAs can be achieved by reordering gatekeeper logic in `OnTick`. Placing cheap local math (like time filters) before expensive cross-process API calls (`TerminalInfoInteger`, `MQLInfoInteger`) saves significant overhead. Additionally, throttling repetitive error logs (like "AutoTrading disabled") using `static datetime` timers prevents log flooding, which is a common performance bottleneck during market volatility.
 **Action:** Always prioritize internal state and arithmetic checks over environment API calls in `OnTick` and implement time-based throttling for any logs that could be triggered repeatedly on every price tick.
+
+## 2026-02-06 - Log Throttling for Limit Checks and Environment States
+**Learning:** Redundant logging in MQL5 'hot paths' (like `OnTick` or functions called every tick) is a major performance bottleneck. When a trading limit (daily loss, max trades) is reached or AutoTrading is disabled, the EA may attempt to log or alert on every single price tick, flooding the terminal and slowing down execution.
+**Action:** Always implement log throttling using `static datetime` variables to restrict repeated messages to once per hour or bar, especially for environment state checks and limit violations that occur outside of "new bar" gates.

@@ -194,13 +194,26 @@ void OnTick()
    //--- ⚡ Bolt: Defer terminal state checks until AFTER the new bar check.
    //--- TerminalInfoInteger and MQLInfoInteger are relatively expensive API calls.
    //--- Moving them here avoids thousands of redundant calls per hour on every price tick.
+   static datetime lastTerminalTradeLog = 0;
+   static datetime lastMqlTradeLog = 0;
+
    if(!TerminalInfoInteger(TERMINAL_TRADE_ALLOWED)) {
-      Print("AutoTrading is disabled in terminal settings");
+      // ⚡ Bolt: Implement log throttling to avoid redundant messages every bar.
+      if(currentBarTime - lastTerminalTradeLog > 3600)
+      {
+         Print("AutoTrading is disabled in terminal settings");
+         lastTerminalTradeLog = currentBarTime;
+      }
       return;
    }
    
    if(!MQLInfoInteger(MQL_TRADE_ALLOWED)) {
-      Print("AutoTrading is disabled in EA settings");
+      // ⚡ Bolt: Implement log throttling to avoid redundant messages every bar.
+      if(currentBarTime - lastMqlTradeLog > 3600)
+      {
+         Print("AutoTrading is disabled in EA settings");
+         lastMqlTradeLog = currentBarTime;
+      }
       return;
    }
 
