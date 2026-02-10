@@ -31,7 +31,7 @@ This file serves as a central location for your personal notes, ideas, and exter
 
 ### 📍 Locations
 - **Battambang, Cambodia**: [Google Maps Link](https://goo.gl/maps/VSnv4avE8pHZxBzd9) (Approx: 13.126164, 103.189738)
-- **ZOLO Bridge Server**: Phnom Penh, Cambodia (IP: 203.147.134.90)
+- **ZOLO Bridge Server**: (private) (IP: your_bridge_ip_here)
 
 ### Research Schedule Setup
 - **Date**: 2026-01-27 19:58:56

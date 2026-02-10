@@ -39,8 +39,8 @@ input double             Inp_Money_SizeOptimized_DecreaseFactor=3.0;         // 
 input double             Inp_Money_SizeOptimized_Percent       =1.0;         // Risk Percent
 //--- inputs for ZOLO Integration
 input group              "ZOLO Integration"
-input bool               EnableWebRequest                      =true;
-input string             WebRequestURL                         = "http://203.147.134.90";
+input bool               EnableWebRequest                      =false; // off by default for safety
+input string             WebRequestURL                         = "";    // set to your bridge URL (and allow it in MT5)
 input string             ZoloEncryptionKey                     = ""; // Leave empty for no encryption
 
 //+------------------------------------------------------------------+
