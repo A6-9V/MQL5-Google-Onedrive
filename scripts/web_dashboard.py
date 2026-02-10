@@ -1,8 +1,16 @@
 import os
 import sys
+import logging
 from flask import Flask, render_template_string, jsonify
 import markdown
 import time
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
@@ -43,7 +51,7 @@ def get_cached_markdown(filepath):
         _content_cache[filepath] = (mtime, html_content)
         return html_content
     except Exception as e:
-        print(f"Error reading/converting {filepath}: {e}")
+        logger.error(f"Error reading/converting {filepath}: {e}")
         return None
 
 @app.route('/health')
@@ -134,9 +142,10 @@ def dashboard():
         </html>
         """, html_readme=html_readme, html_verification=html_verification, year=2026)
     except Exception as e:
-        return f"Error: {str(e)}", 500
+        logger.error("Dashboard error: %s", str(e), exc_info=True)
+        return "<h1>500 Internal Server Error</h1><p>An unexpected error occurred. Please check the logs.</p>", 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
-    print(f"Starting web dashboard on port {port}...")
+    logger.info(f"Starting web dashboard on port {port}...")
     app.run(host='0.0.0.0', port=port)
