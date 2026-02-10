@@ -21,6 +21,7 @@ Learn how to use GitHub features to showcase your work and share code.
 
 - [GitHub Profile README Guide](GitHub_Profile_README_Guide.md) - Create an impressive GitHub profile page.
 - [GitHub Gists Guide](GitHub_Gists_Guide.md) - Share code snippets and notes easily.
+- [GitHub MCP Server Guide](GITHUB_MCP_SERVER_GUIDE.md) - Connect AI tools to GitHub.
 
 ## ☁️ Deployment
 
