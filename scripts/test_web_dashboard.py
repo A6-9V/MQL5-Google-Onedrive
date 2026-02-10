@@ -2,6 +2,7 @@ import unittest
 import sys
 import os
 import json
+from unittest.mock import patch
 
 # Add scripts directory to path so we can import web_dashboard
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -48,6 +49,26 @@ class TestWebDashboard(unittest.TestCase):
         self.assertIn('X-Content-Type-Options', response.headers)
         self.assertIn('X-Frame-Options', response.headers)
         self.assertIn('Referrer-Policy', response.headers)
+
+    @patch('web_dashboard.get_cached_markdown')
+    def test_error_leakage(self, mock_get_markdown):
+        """Test that exceptions are not leaked to the user."""
+        # Simulate a sensitive error
+        sensitive_info = "CRITICAL_DATABASE_PASSWORD_LEAK"
+        mock_get_markdown.side_effect = Exception(sensitive_info)
+
+        response = self.app.get('/')
+
+        # Verify status code is 500
+        self.assertEqual(response.status_code, 500)
+
+        # Verify that the sensitive info is NOT leaked in the response
+        self.assertNotIn(sensitive_info.encode(), response.data,
+                         "VULNERABILITY: Exception message leaked in response!")
+
+        # Verify that a generic error message IS present
+        self.assertIn(b"Internal Server Error", response.data,
+                      "Generic error message not found in response.")
 
 if __name__ == '__main__':
     unittest.main()
