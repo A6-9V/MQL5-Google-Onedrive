@@ -1,9 +1,12 @@
 version: '3.8'
 
 services:
+  # Light version (Python only)
   mql5-automation:
+    build:
+      context: .
+      dockerfile: Dockerfile
     image: mouyleng/mql5-trading-automation:latest
-    build: .
     container_name: mql5-trading-automation
     restart: always
     volumes:
@@ -15,12 +18,25 @@ services:
       - TZ=UTC
     networks:
       - mql5-network
-    healthcheck:
-      test: ["CMD", "python", "-c", "import sys; sys.exit(0)"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
+
+  # Full version (MT5 + Wine + Python)
+  # Use: docker-compose up mql5-ea-full
+  mql5-ea-full:
+    build:
+      context: .
+      dockerfile: Dockerfile.mt5
+    image: mouyleng/mql5-ea-container:latest
+    container_name: mql5-ea-full
+    restart: always
+    environment:
+      - TZ=UTC
+      - DISPLAY=:99
+    volumes:
+      - ./config:/app/config
+      - ./logs:/app/logs
+      - ./mt5:/app/mt5
+    networks:
+      - mql5-network
 
 networks:
   mql5-network:
