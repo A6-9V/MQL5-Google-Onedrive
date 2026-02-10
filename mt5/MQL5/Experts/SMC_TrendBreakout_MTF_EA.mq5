@@ -103,8 +103,8 @@ input bool   PopupAlerts           = true;
 input bool   PushNotifications     = true;
 
 input group "ZOLO Integration"
-input bool   EnableWebRequest      = true;
-input string WebRequestURL         = "http://203.147.134.90";
+input bool   EnableWebRequest      = false; // off by default for safety
+input string WebRequestURL         = "";    // set to your bridge URL (and allow it in MT5)
 input string ZoloEncryptionKey     = ""; // Leave empty for no encryption
 
 CTrade gTrade;
