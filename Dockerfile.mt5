@@ -1,0 +1,73 @@
+# ============================================================================
+# Dockerfile for MQL5 Trading Automation (MetaTrader 5 + Wine + Python)
+# ============================================================================
+FROM ubuntu:24.04
+
+# Prevent interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=UTC
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    curl \
+    wget \
+    gnupg2 \
+    software-properties-common \
+    git \
+    python3 \
+    python3-pip \
+    python3-venv \
+    xvfb \
+    xauth \
+    unzip psmisc \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Wine (Stable)
+RUN dpkg --add-architecture i386 && \
+    mkdir -pm755 /etc/apt/keyrings && \
+    wget -O /etc/apt/keyrings/winehq-archive.key https://dl.winehq.org/wine-builds/winehq.key && \
+    wget -NP /etc/apt/sources.list.d/ https://dl.winehq.org/wine-builds/ubuntu/dists/noble/winehq-noble.sources && \
+    apt-get update && \
+    apt-get install -y --install-recommends winehq-stable && \
+    rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# Create a virtual environment for Python
+RUN python3 -m venv /app/venv
+ENV PATH="/app/venv/bin:$PATH"
+
+# Copy and install Python dependencies
+COPY requirements.txt .
+COPY scripts/requirements_bot.txt* ./scripts/
+RUN pip install --no-cache-dir --upgrade pip && \
+    if [ -f requirements.txt ]; then pip install --no-cache-dir -r requirements.txt; fi && \
+    if [ -f scripts/requirements_bot.txt ]; then pip install --no-cache-dir -r scripts/requirements_bot.txt; fi
+
+# Copy application files
+COPY . .
+
+# Create necessary directories
+RUN mkdir -p logs config mt5/MQL5/Experts mt5/MQL5/Indicators
+
+# Set environment variables
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+ENV DISPLAY=:99
+ENV WINEPREFIX=/app/.wine
+ENV WINEDEBUG=-all
+
+# Initialize Wine (this can take a while and might need Xvfb)
+# We'll do a minimal initialization
+RUN Xvfb :99 -screen 0 1024x768x16 & \
+    sleep 5 && \
+    wineboot --init && \
+    sleep 5 && \
+    killall Xvfb || true
+
+# Make scripts executable
+RUN chmod +x scripts/*.py scripts/*.sh 2>/dev/null || true
+
+# Default command
+CMD ["bash", "scripts/container_entrypoint.sh"]

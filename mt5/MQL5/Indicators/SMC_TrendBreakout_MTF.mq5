@@ -63,7 +63,7 @@ string gObjPrefix;
 
 datetime gLastBarTime = 0;
 
-static int   ClampInt(const int v, const int lo, const int hi) { return (v<lo?lo:(v>hi?hi:v)); }
+static int   ClampInt(const int value, const int lowerBound, const int upperBound) { return (value<lowerBound?lowerBound:(value>upperBound?upperBound:value)); }
 static bool  IsNewBar(const datetime t0) { if(t0==gLastBarTime) return false; gLastBarTime=t0; return true; }
 
 static void Notify(const string msg)
@@ -77,37 +77,37 @@ static void  SafeDeleteOldObjects()
   // keep last MaxObjects objects with prefix, delete oldest (by time suffix)
   // simple cap: if too many, delete all (fast & safe for indicator)
   int total = ObjectsTotal(0, 0, -1);
-  int cnt = 0;
-  for(int i=total-1;i>=0;i--)
+  int objectCount = 0;
+  for(int objectIndex=total-1;objectIndex>=0;objectIndex--)
   {
-    string name = ObjectName(0, i, 0, -1);
-    if(StringFind(name, gObjPrefix) == 0) cnt++;
+    string name = ObjectName(0, objectIndex, 0, -1);
+    if(StringFind(name, gObjPrefix) == 0) objectCount++;
   }
-  if(cnt <= MaxObjects) return;
-  for(int i=total-1;i>=0;i--)
+  if(objectCount <= MaxObjects) return;
+  for(int objectIndex=total-1;objectIndex>=0;objectIndex--)
   {
-    string name = ObjectName(0, i, 0, -1);
+    string name = ObjectName(0, objectIndex, 0, -1);
     if(StringFind(name, gObjPrefix) == 0) ObjectDelete(0, name);
   }
 }
 
-static void DrawHLine(const string name, const double price, const color c, const ENUM_LINE_STYLE st, const int w)
+static void DrawHLine(const string name, const double price, const color lineColor, const ENUM_LINE_STYLE lineStyle, const int lineWidth)
 {
   if(!DrawStructureLines && !DrawBreakoutLines) return;
   if(ObjectFind(0, name) >= 0) return;
   ObjectCreate(0, name, OBJ_HLINE, 0, 0, price);
-  ObjectSetInteger(0, name, OBJPROP_COLOR, c);
-  ObjectSetInteger(0, name, OBJPROP_STYLE, st);
-  ObjectSetInteger(0, name, OBJPROP_WIDTH, w);
+  ObjectSetInteger(0, name, OBJPROP_COLOR, lineColor);
+  ObjectSetInteger(0, name, OBJPROP_STYLE, lineStyle);
+  ObjectSetInteger(0, name, OBJPROP_WIDTH, lineWidth);
   ObjectSetInteger(0, name, OBJPROP_BACK, true);
 }
 
-static void DrawText(const string name, const datetime t, const double price, const string txt, const color c)
+static void DrawText(const string name, const datetime timeValue, const double price, const string text, const color textColor)
 {
   if(ObjectFind(0, name) >= 0) return;
-  ObjectCreate(0, name, OBJ_TEXT, 0, t, price);
-  ObjectSetString(0, name, OBJPROP_TEXT, txt);
-  ObjectSetInteger(0, name, OBJPROP_COLOR, c);
+  ObjectCreate(0, name, OBJ_TEXT, 0, timeValue, price);
+  ObjectSetString(0, name, OBJPROP_TEXT, text);
+  ObjectSetInteger(0, name, OBJPROP_COLOR, textColor);
   ObjectSetInteger(0, name, OBJPROP_ANCHOR, ANCHOR_LEFT);
   ObjectSetInteger(0, name, OBJPROP_FONTSIZE, 9);
   ObjectSetInteger(0, name, OBJPROP_BACK, true);
@@ -115,16 +115,16 @@ static void DrawText(const string name, const datetime t, const double price, co
 
 static double HighestHigh(const double &high[], const int start, const int count)
 {
-  int idx = ArrayMaximum(high, start, count);
-  if(idx == -1) return -DBL_MAX;
-  return high[idx];
+  int maxIndex = ArrayMaximum(high, start, count);
+  if(maxIndex == -1) return -DBL_MAX;
+  return high[maxIndex];
 }
 
 static double LowestLow(const double &low[], const int start, const int count)
 {
-  int idx = ArrayMinimum(low, start, count);
-  if(idx == -1) return DBL_MAX;
-  return low[idx];
+  int minIndex = ArrayMinimum(low, start, count);
+  if(minIndex == -1) return DBL_MAX;
+  return low[minIndex];
 }
 
 // --- Cached MTF direction (performance)
@@ -276,49 +276,49 @@ int OnCalculate(
   bool finalShort = (smcShort || donShort) && mtfOkShort;
 
   // --- Plot & draw
-  double pnt = _Point;
+  double pointValue = _Point;
   if(finalLong)
   {
-    gLongBuf[sigBar] = low[sigBar] - ArrowOffsetPoints * pnt;
+    gLongBuf[sigBar] = low[sigBar] - ArrowOffsetPoints * pointValue;
 
-    color c = clrLimeGreen;
+    color lineColor = clrLimeGreen;
     if(smcLong && lastSwingHighT!=0 && DrawStructureLines)
     {
       int breakDir = 1;
       bool choch = (UseCHoCH && gTrendDir!=0 && breakDir != gTrendDir);
       string kind = (choch ? "CHoCH↑" : "BOS↑");
-      string n1 = gObjPrefix + StringFormat("SMC_%s_%I64d", kind, (long)time[sigBar]);
-      DrawHLine(n1+"_L", lastSwingHigh, c, STYLE_DOT, 1);
-      DrawText(n1+"_T", time[sigBar], lastSwingHigh, kind, c);
+      string structureObjectName = gObjPrefix + StringFormat("SMC_%s_%I64d", kind, (long)time[sigBar]);
+      DrawHLine(structureObjectName+"_L", lastSwingHigh, lineColor, STYLE_DOT, 1);
+      DrawText(structureObjectName+"_T", time[sigBar], lastSwingHigh, kind, lineColor);
       gTrendDir = breakDir;
     }
     if(donLong && DrawBreakoutLines)
     {
-      string n2 = gObjPrefix + StringFormat("DON_H_%I64d", (long)time[sigBar]);
-      DrawHLine(n2, donHigh, clrDeepSkyBlue, STYLE_DASH, 1);
+      string breakoutObjectName = gObjPrefix + StringFormat("DON_H_%I64d", (long)time[sigBar]);
+      DrawHLine(breakoutObjectName, donHigh, clrDeepSkyBlue, STYLE_DASH, 1);
     }
 
     Notify(StringFormat("%s LONG | TF=%s | MTF=%s", _Symbol, EnumToString(_Period), EnumToString(LowerTF)));
   }
   if(finalShort)
   {
-    gShortBuf[sigBar] = high[sigBar] + ArrowOffsetPoints * pnt;
+    gShortBuf[sigBar] = high[sigBar] + ArrowOffsetPoints * pointValue;
 
-    color c = clrTomato;
+    color lineColor = clrTomato;
     if(smcShort && lastSwingLowT!=0 && DrawStructureLines)
     {
       int breakDir = -1;
       bool choch = (UseCHoCH && gTrendDir!=0 && breakDir != gTrendDir);
       string kind = (choch ? "CHoCH↓" : "BOS↓");
-      string n1 = gObjPrefix + StringFormat("SMC_%s_%I64d", kind, (long)time[sigBar]);
-      DrawHLine(n1+"_L", lastSwingLow, c, STYLE_DOT, 1);
-      DrawText(n1+"_T", time[sigBar], lastSwingLow, kind, c);
+      string structureObjectName = gObjPrefix + StringFormat("SMC_%s_%I64d", kind, (long)time[sigBar]);
+      DrawHLine(structureObjectName+"_L", lastSwingLow, lineColor, STYLE_DOT, 1);
+      DrawText(structureObjectName+"_T", time[sigBar], lastSwingLow, kind, lineColor);
       gTrendDir = breakDir;
     }
     if(donShort && DrawBreakoutLines)
     {
-      string n2 = gObjPrefix + StringFormat("DON_L_%I64d", (long)time[sigBar]);
-      DrawHLine(n2, donLow, clrDeepSkyBlue, STYLE_DASH, 1);
+      string breakoutObjectName = gObjPrefix + StringFormat("DON_L_%I64d", (long)time[sigBar]);
+      DrawHLine(breakoutObjectName, donLow, clrDeepSkyBlue, STYLE_DASH, 1);
     }
 
     Notify(StringFormat("%s SHORT | TF=%s | MTF=%s", _Symbol, EnumToString(_Period), EnumToString(LowerTF)));
