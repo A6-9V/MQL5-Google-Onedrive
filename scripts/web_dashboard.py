@@ -67,6 +67,12 @@ def health_check():
             <footer>
                 <p>&copy; {{ year }} MQL5 Trading Automation | Dashboard v1.0.0</p>
             </footer>
+            
+            <!-- Vercel Web Analytics -->
+            <script>
+                window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+            </script>
+            <script defer src="/_vercel/insights/script.js"></script>
         </body>
         </html>
         """, html_readme=html_readme, html_verification=html_verification, year=2026)
