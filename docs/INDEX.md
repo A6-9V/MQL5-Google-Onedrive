@@ -15,6 +15,13 @@ Guides for setting up your development and execution environment.
 - [Jules CLI Setup](Jules_CLI_setup.md) - Installing the Jules agent tools.
 - [Mouy-leng Request Guide](Mouy-leng_Request_Guide.md) - Procedures for requests.
 
+## 📚 GitHub Features & Best Practices
+
+Learn how to use GitHub features to showcase your work and share code.
+
+- [GitHub Profile README Guide](GitHub_Profile_README_Guide.md) - Create an impressive GitHub profile page.
+- [GitHub Gists Guide](GitHub_Gists_Guide.md) - Share code snippets and notes easily.
+
 ## ☁️ Deployment
 
 Instructions for deploying the application to various platforms.
