@@ -175,21 +175,26 @@ bool IsTradingAllowed(datetime now)
 //+------------------------------------------------------------------+
 bool CheckDailyLimits()
 {
-   //--- ⚡ Bolt: Rollover reset logic moved to OnTick() for better performance and
-   //--- to ensure it runs even when EveryTick is disabled.
+   //--- ⚡ Bolt: Implement log throttling using a static flag.
+   //--- Once a daily limit is reached, we skip all checks and logging for the rest of the day.
+   //--- This prevents log flooding and redundant API calls/string formatting on every tick.
+   static datetime lastLimitReachedDay = 0;
+   if(lastLimitReachedDay != 0 && lastLimitReachedDay == g_todayStart) return false;
 
    //--- Check max trades per day
    if(Inp_Risk_MaxTradesPerDay > 0 && TradesToday >= Inp_Risk_MaxTradesPerDay)
    {
       LogInfo("Maximum trades per day reached: " + IntegerToString(Inp_Risk_MaxTradesPerDay));
+      lastLimitReachedDay = g_todayStart;
       return false;
    }
 
    //--- Check daily loss limit
    if(Inp_Risk_MaxDailyLoss > 0 && DailyLoss >= g_maxDailyLossCurrency)
    {
+      // ⚡ Bolt: Redundant Alert() removed as LogError() already handles it.
       LogError("Daily loss limit reached: " + DoubleToString(DailyLoss, 2) + " (Max: " + DoubleToString(g_maxDailyLossCurrency, 2) + ")");
-      if(Expert_ShowAlerts) Alert("Daily loss limit reached!");
+      lastLimitReachedDay = g_todayStart;
       return false;
    }
 
@@ -198,6 +203,7 @@ bool CheckDailyLimits()
    {
       LogInfo("Daily profit limit reached: " + DoubleToString(DailyProfit, 2) + " (Max: " + DoubleToString(g_maxDailyProfitCurrency, 2) + ")");
       if(Expert_ShowAlerts) Alert("Daily profit target reached!");
+      lastLimitReachedDay = g_todayStart;
       return false;
    }
 
