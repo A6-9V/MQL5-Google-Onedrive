@@ -9,7 +9,7 @@ The following secrets should be configured in your GitHub repository settings:
 ### Telegram Bot Configuration
 
 - **`TELEGRAM_BOT_TOKEN`** or **`TELEGRAM_BOT_API`**
-  - Value: `8260686409:AAHEcrZxhDve9vE1QR49ngcCmvOf_Q9NYHg`
+  - Value: `your_bot_token_here`
   - Used by: Telegram bot deployment scripts
   - Reference: https://core.telegram.org/bots/api
 
@@ -21,7 +21,7 @@ The following secrets should be configured in your GitHub repository settings:
 ### GitHub Automation
 
 - **`GITHUB_PAT`** (Optional)
-  - Value: `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`
+  - Value: `your_github_personal_access_token_here`
   - Used by: Scripts that need enhanced GitHub API access
   - Scopes required: `repo`, `workflow`, `write:packages`
 
@@ -41,10 +41,10 @@ If you have the GitHub CLI installed, you can set secrets using:
 
 ```bash
 # Set Telegram bot token
-gh secret set TELEGRAM_BOT_TOKEN --body "8260686409:AAHEcrZxhDve9vE1QR49ngcCmvOf_Q9NYHg"
+gh secret set TELEGRAM_BOT_TOKEN --body "your_bot_token_here"
 
 # Set GitHub PAT
-gh secret set GITHUB_PAT --body "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"
+gh secret set GITHUB_PAT --body "your_github_personal_access_token_here"
 
 # Set allowed users (replace with your actual Telegram user ID)
 gh secret set TELEGRAM_ALLOWED_USER_IDS --body "your_telegram_user_id"
@@ -83,6 +83,9 @@ After setting secrets, you can verify they're available in your workflows:
 - Rotate secrets regularly for security
 - Use the minimum required scopes for tokens
 - Store the actual values in a secure password manager
+
+> If a real token was ever committed to git, treat it as compromised:
+> rotate/revoke it immediately (BotFather for Telegram, GitHub settings for PATs).
 
 ## Troubleshooting
 
