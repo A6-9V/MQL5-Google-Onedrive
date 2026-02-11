@@ -136,13 +136,70 @@
         }
 
         .badge-success {
-            background: #10b981;
+            background: #047857;
             color: white;
         }
 
         .badge-warning {
-            background: #f59e0b;
+            background: #b45309;
             color: white;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #333;
+            color: white;
+            padding: 16px 24px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            z-index: 1000;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: transform 0.3s, opacity 0.3s;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast-content {
+            font-size: 0.95em;
+        }
+
+        .toast-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .toast-btn {
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.3);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85em;
+            transition: background 0.2s;
+        }
+
+        .toast-btn:hover {
+            background: rgba(255,255,255,0.1);
+        }
+
+        .toast-btn.primary {
+            background: #667eea;
+            border-color: #667eea;
+            font-weight: 600;
+        }
+
+        .toast-btn.primary:hover {
+            background: #5a6fd6;
         }
 
         .footer {
@@ -269,6 +326,33 @@
             }
         });
 
+        function showUpdateToast(worker) {
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerHTML = `
+                <div class="toast-content">New version available!</div>
+                <div class="toast-actions">
+                    <button class="toast-btn" id="toast-dismiss">Dismiss</button>
+                    <button class="toast-btn primary" id="toast-reload">Reload</button>
+                </div>
+            `;
+            document.body.appendChild(toast);
+
+            // Trigger reflow
+            toast.offsetHeight;
+            toast.classList.add('show');
+
+            document.getElementById('toast-dismiss').addEventListener('click', () => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+            });
+
+            document.getElementById('toast-reload').addEventListener('click', () => {
+                worker.postMessage({ type: 'SKIP_WAITING' });
+                window.location.reload();
+            });
+        }
+
         // Register Service Worker for PWA functionality
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
@@ -284,10 +368,7 @@
                             newWorker.addEventListener('statechange', () => {
                                 if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
                                     // New service worker available, prompt user
-                                    if (confirm('New version available! Reload to update?')) {
-                                        newWorker.postMessage({ type: 'SKIP_WAITING' });
-                                        window.location.reload();
-                                    }
+                                    showUpdateToast(newWorker);
                                 }
                             });
                         });
