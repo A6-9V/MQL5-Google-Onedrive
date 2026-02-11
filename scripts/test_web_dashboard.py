@@ -1,4 +1,5 @@
 import unittest
+import unittest.mock
 import sys
 import os
 import json
@@ -48,6 +49,23 @@ class TestWebDashboard(unittest.TestCase):
         self.assertIn('X-Content-Type-Options', response.headers)
         self.assertIn('X-Frame-Options', response.headers)
         self.assertIn('Referrer-Policy', response.headers)
+
+    @unittest.mock.patch('web_dashboard.render_template_string')
+    def test_error_leakage(self, mock_render):
+        """Test that exceptions do not leak stack traces."""
+        # Force an error
+        mock_render.side_effect = Exception("Sensitive internal info")
+
+        response = self.app.get('/')
+
+        # Verify status code is 500
+        self.assertEqual(response.status_code, 500)
+
+        # Verify we don't see the sensitive info
+        self.assertNotIn(b"Sensitive internal info", response.data)
+
+        # Verify we see a generic error
+        self.assertIn(b"Internal Server Error", response.data)
 
 if __name__ == '__main__':
     unittest.main()
