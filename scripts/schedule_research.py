@@ -7,29 +7,21 @@ Runs market research and upgrade suggestions on a schedule.
 import schedule
 import time
 import subprocess
-import logging
 import sys
-import os
-from pathlib import Path
 from datetime import datetime, timedelta
-from dotenv import load_dotenv
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
-LOGS_DIR = REPO_ROOT / "logs"
+# Use shared utilities to reduce code duplication
+from common.logger_config import setup_logger
+from common.paths import REPO_ROOT, LOGS_DIR, ensure_dirs
+from common.config_loader import load_env
 
-# Setup logging
-LOGS_DIR.mkdir(exist_ok=True)
+# Setup logging with file output
+ensure_dirs(LOGS_DIR)
 log_file = LOGS_DIR / "scheduler.log"
+logger = setup_logger(__name__, log_file=log_file, console=True)
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler(log_file),
-        logging.StreamHandler(sys.stdout)
-    ]
-)
-logger = logging.getLogger(__name__)
+# Load environment variables
+load_env()
 
 def job():
     logger.info("Running scheduled research task...")

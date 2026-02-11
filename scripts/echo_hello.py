@@ -7,18 +7,14 @@ Demonstrates simple echo output and hello window display functionality.
 from __future__ import annotations
 
 import argparse
-import logging
 import sys
 from datetime import datetime
-from pathlib import Path
 
+# Use shared utilities to reduce code duplication
+from common.logger_config import setup_basic_logging
 
-# Setup logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+# Setup logging using shared config
+logger = setup_basic_logging()
 
 
 def print_echo(message: str) -> None:
@@ -79,6 +75,7 @@ def main() -> int:
     args = parser.parse_args()
     
     if args.verbose:
+        import logging
         logger.setLevel(logging.DEBUG)
     
     try:

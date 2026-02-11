@@ -7,19 +7,15 @@ This is a template you can customize for your own trading logic.
 from __future__ import annotations
 
 import argparse
-import logging
 import sys
 import time
 from datetime import datetime
-from pathlib import Path
 
+# Use shared utilities to reduce code duplication
+from common.logger_config import setup_basic_logging
 
-# Setup logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+# Setup logging using shared config
+logger = setup_basic_logging()
 
 
 def example_task_1():
@@ -68,6 +64,7 @@ def main() -> int:
     args = parser.parse_args()
     
     if args.verbose:
+        import logging
         logger.setLevel(logging.DEBUG)
     
     logger.info("=" * 60)
