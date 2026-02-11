@@ -175,6 +175,15 @@ bool IsTradingAllowed(datetime now)
 //+------------------------------------------------------------------+
 bool CheckDailyLimits()
 {
+   //--- ⚡ Bolt: Use a static flag to throttle logs and alerts.
+   //--- Once a limit is reached, we stop logging/alerting for the rest of the day.
+   //--- This avoids redundant string formatting and API calls on every tick.
+   static datetime lastLimitLogDay = 0;
+
+   //--- If we already logged a limit reached today, exit silently.
+   if(lastLimitLogDay == g_todayStart)
+      return false;
+
    //--- ⚡ Bolt: Rollover reset logic moved to OnTick() for better performance and
    //--- to ensure it runs even when EveryTick is disabled.
 
@@ -182,6 +191,7 @@ bool CheckDailyLimits()
    if(Inp_Risk_MaxTradesPerDay > 0 && TradesToday >= Inp_Risk_MaxTradesPerDay)
    {
       LogInfo("Maximum trades per day reached: " + IntegerToString(Inp_Risk_MaxTradesPerDay));
+      lastLimitLogDay = g_todayStart;
       return false;
    }
 
@@ -190,6 +200,7 @@ bool CheckDailyLimits()
    {
       LogError("Daily loss limit reached: " + DoubleToString(DailyLoss, 2) + " (Max: " + DoubleToString(g_maxDailyLossCurrency, 2) + ")");
       if(Expert_ShowAlerts) Alert("Daily loss limit reached!");
+      lastLimitLogDay = g_todayStart;
       return false;
    }
 
@@ -198,6 +209,7 @@ bool CheckDailyLimits()
    {
       LogInfo("Daily profit limit reached: " + DoubleToString(DailyProfit, 2) + " (Max: " + DoubleToString(g_maxDailyProfitCurrency, 2) + ")");
       if(Expert_ShowAlerts) Alert("Daily profit target reached!");
+      lastLimitLogDay = g_todayStart;
       return false;
    }
 
@@ -441,12 +453,13 @@ void OnTick(void)
       LogInfo("New trading day started. Resetting daily statistics.");
    }
 
-   //--- Check if trading is allowed
-   if(!IsTradingAllowed(currentTickTime))
+   //--- ⚡ Bolt: Prioritize cheap, internal logic checks before expensive terminal API calls.
+   //--- Check daily limits (fast) before IsTradingAllowed (contains multiple API calls).
+   if(!CheckDailyLimits())
       return;
 
-   //--- Check daily limits
-   if(!CheckDailyLimits())
+   //--- Check if trading is allowed (terminal/mql state)
+   if(!IsTradingAllowed(currentTickTime))
       return;
 
    //--- ⚡ Bolt: Moved UpdateDailyStatistics() from OnTick to OnTrade and OnTimer
