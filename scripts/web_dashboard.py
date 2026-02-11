@@ -5,25 +5,48 @@ import markdown
 
 app = Flask(__name__)
 
+# ⚡ Bolt: Define file paths as constants to avoid redundant os.path.join calls.
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+README_PATH = os.path.join(BASE_DIR, '..', 'README.md')
+VERIFICATION_PATH = os.path.join(BASE_DIR, '..', 'VERIFICATION.md')
+
+class MarkdownCache:
+    """
+    ⚡ Bolt: Performance optimization class for caching rendered Markdown.
+    Only re-renders if the file's modification time (mtime) has changed.
+    """
+    def __init__(self, filepath):
+        self.filepath = filepath
+        self.cached_html = ""
+        self.last_mtime = 0
+
+    def get_html(self):
+        if not os.path.exists(self.filepath):
+            return f"<p>{os.path.basename(self.filepath)} not found.</p>"
+
+        try:
+            current_mtime = os.path.getmtime(self.filepath)
+            # Only re-render if the file has been modified
+            if current_mtime != self.last_mtime:
+                with open(self.filepath, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                self.cached_html = markdown.markdown(content)
+                self.last_mtime = current_mtime
+            return self.cached_html
+        except Exception as e:
+            return f"<p>Error rendering {os.path.basename(self.filepath)}: {str(e)}</p>"
+
+# Initialize caches
+readme_cache = MarkdownCache(README_PATH)
+verification_cache = MarkdownCache(VERIFICATION_PATH)
+
 @app.route('/')
 @app.route('/health')
 def health_check():
     try:
-        readme_path = os.path.join(os.path.dirname(__file__), '..', 'README.md')
-        verification_path = os.path.join(os.path.dirname(__file__), '..', 'VERIFICATION.md')
-
-        readme_content = ""
-        if os.path.exists(readme_path):
-            with open(readme_path, 'r', encoding='utf-8') as f:
-                readme_content = f.read()
-
-        verification_content = ""
-        if os.path.exists(verification_path):
-            with open(verification_path, 'r', encoding='utf-8') as f:
-                verification_content = f.read()
-
-        html_readme = markdown.markdown(readme_content) if readme_content else "<p>README.md not found.</p>"
-        html_verification = markdown.markdown(verification_content) if verification_content else "<p>VERIFICATION.md not found.</p>"
+        # ⚡ Bolt: Use pre-initialized caches to avoid redundant I/O and CPU-intensive parsing.
+        html_readme = readme_cache.get_html()
+        html_verification = verification_cache.get_html()
 
         return render_template_string("""
         <!DOCTYPE html>
