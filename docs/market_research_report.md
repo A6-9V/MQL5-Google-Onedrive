@@ -1,61 +1,7 @@
 # Market Research Report
 
-Generated: 2026-01-27 20:03:42
+Generated: 2026-02-11 06:09:27
 
-## Gemini Analysis
+## Analysis Failed
 
-Gemini analysis failed: 429 You exceeded your current quota, please check your plan and billing details. For more information on this error, head to: https://ai.google.dev/gemini-api/docs/rate-limits. To monitor your current usage, head to: https://ai.dev/rate-limit.
-* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 0, model: gemini-2.0-flash
-* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_requests, limit: 0, model: gemini-2.0-flash
-* Quota exceeded for metric: generativelanguage.googleapis.com/generate_content_free_tier_input_token_count, limit: 0, model: gemini-2.0-flash
-Please retry in 17.329816566s. [links {
-  description: "Learn more about Gemini API quotas"
-  url: "https://ai.google.dev/gemini-api/docs/rate-limits"
-}
-, violations {
-  quota_metric: "generativelanguage.googleapis.com/generate_content_free_tier_requests"
-  quota_id: "GenerateRequestsPerDayPerProjectPerModel-FreeTier"
-  quota_dimensions {
-    key: "model"
-    value: "gemini-2.0-flash"
-  }
-  quota_dimensions {
-    key: "location"
-    value: "global"
-  }
-}
-violations {
-  quota_metric: "generativelanguage.googleapis.com/generate_content_free_tier_requests"
-  quota_id: "GenerateRequestsPerMinutePerProjectPerModel-FreeTier"
-  quota_dimensions {
-    key: "model"
-    value: "gemini-2.0-flash"
-  }
-  quota_dimensions {
-    key: "location"
-    value: "global"
-  }
-}
-violations {
-  quota_metric: "generativelanguage.googleapis.com/generate_content_free_tier_input_token_count"
-  quota_id: "GenerateContentInputTokensPerModelPerMinute-FreeTier"
-  quota_dimensions {
-    key: "model"
-    value: "gemini-2.0-flash"
-  }
-  quota_dimensions {
-    key: "location"
-    value: "global"
-  }
-}
-, retry_delay {
-  seconds: 17
-}
-]
-
-## Jules Analysis
-
-Jules analysis failed: HTTPSConnectionPool(host='api.jules.ai', port=443): Max retries exceeded with url: /v1/completion (Caused by NameResolutionError("HTTPSConnection(host='api.jules.ai', port=443): Failed to resolve 'api.jules.ai' ([Errno -2] Name or service not known)"))
-
-**Hint:** The Jules API URL might be incorrect. Please check `JULES_API_URL` in `.env`. If you intended to use the Jules CLI tool, note that this script attempts a REST API call.
-
+No AI providers were available or both failed.
