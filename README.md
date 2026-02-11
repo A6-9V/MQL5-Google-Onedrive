@@ -322,7 +322,7 @@ In `SMC_TrendBreakout_MTF_EA`:
 
 - [**User Notes & References**](docs/USER_NOTES.md) - 📝 Personal notes and external links
 - **OneDrive Vault Password**: `[ACCESS_CODE_REQUIRED]` (Access Code)
-- **NotebookLM Context**: [NotebookLM](https://notebooklm.google.com/notebook/0e4dfc9b-d57d-4cfc-812d-905d37d67402)
+- **NotebookLM Context**: [NotebookLM](https://notebooklm.google.com/notebook/e8f4c29d-9aec-4d5f-8f51-2ca168687616)
 - **Cursor Connect**: [Join Session](https://prod.liveshare.vsengsaas.visualstudio.com/join?9C5AED55D7D6624FE2E1B50AD9F14D1339A5)
 - Developer tip window project: https://chatgpt.com/g/g-p-691e9c0ace5c8191a1b409c09251cc2b-window-for-developer-tip/project
 - GenX Workspace (VSCode): [OneDrive Folder](https://1drv.ms/f/c/8F247B1B46E82304/IgCPaN4jwMKZTar1XBwn8W9zAYFz0tYoNz7alcAhiiI9oIQ)
