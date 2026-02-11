@@ -4,85 +4,20 @@ Upgrade Repo Script
 Reads market research and suggests code upgrades using Gemini and Jules.
 """
 
-import os
-import logging
-import requests
-import warnings
 import concurrent.futures
-# TODO: google.generativeai is deprecated, migrate to google.genai in future
-# import google.genai as genai
-import google.generativeai as genai
-from pathlib import Path
 from datetime import datetime
-from dotenv import load_dotenv
 
-# Setup logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+# Use shared utilities to reduce code duplication
+from common.logger_config import setup_basic_logging
+from common.paths import REPO_ROOT, DOCS_DIR
+from common.config_loader import load_env
+from common.ai_client import ask_gemini, ask_jules
 
-# Suppress deprecation warnings
-warnings.filterwarnings("ignore", category=UserWarning, module="google.generativeai")
+# Setup logging using shared config
+logger = setup_basic_logging()
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
-DOCS_DIR = REPO_ROOT / "docs"
-
-# Load env vars
-load_dotenv()
-
-def ask_jules(prompt):
-    api_key = os.environ.get("JULES_API_KEY")
-    api_url = os.environ.get("JULES_API_URL")
-    model = os.environ.get("JULES_MODEL", "jules-v1")
-
-    if not api_key:
-        logger.warning("Skipping Jules (Key missing)")
-        return None
-
-    if not api_url:
-        logger.warning("Skipping Jules (URL missing)")
-        return None
-
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {api_key}"
-    }
-    payload = {
-        "model": model,
-        "prompt": prompt
-    }
-
-    try:
-        response = requests.post(api_url, json=payload, headers=headers, timeout=60)
-        response.raise_for_status()
-        try:
-            resp_json = response.json()
-            if "response" in resp_json:
-                return resp_json["response"]
-            elif "choices" in resp_json and len(resp_json["choices"]) > 0:
-                return resp_json["choices"][0].get("text", str(resp_json))
-            else:
-                return str(resp_json)
-        except ValueError:
-            return response.text
-    except Exception as e:
-        logger.error(f"Jules request failed: {e}")
-        return None
-
-def ask_gemini(prompt):
-    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
-    if not api_key:
-        logger.warning("Skipping Gemini (Key missing)")
-        return None
-
-    try:
-        genai.configure(api_key=api_key)
-        model_name = os.environ.get("GEMINI_MODEL", 'gemini-2.0-flash')
-        model = genai.GenerativeModel(model_name)
-        response = model.generate_content(prompt)
-        return response.text
-    except Exception as e:
-        logger.error(f"Gemini request failed: {e}")
-        return None
+# Load environment variables
+load_env()
 
 def main():
     logger.info("Starting Code Upgrade Analysis...")
