@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import logging
 import os
 import platform
 import subprocess
@@ -20,12 +19,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Optional
 
-
-# Configuration paths
-REPO_ROOT = Path(__file__).resolve().parents[1]
-CONFIG_DIR = REPO_ROOT / "config"
-LOGS_DIR = REPO_ROOT / "logs"
-MT5_DIR = REPO_ROOT / "mt5" / "MQL5"
+# Use shared utilities to reduce code duplication
+from common.paths import REPO_ROOT, CONFIG_DIR, LOGS_DIR, MT5_DIR, ensure_dirs
+from common.config_loader import load_json_config
+from common.logger_config import setup_logger
 
 
 @dataclass
@@ -53,31 +50,24 @@ class StartupOrchestrator:
 
     def setup_logging(self) -> None:
         """Setup logging configuration."""
-        LOGS_DIR.mkdir(parents=True, exist_ok=True)
+        ensure_dirs(LOGS_DIR)
         log_file = LOGS_DIR / f"startup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
         
-        logging.basicConfig(
-            level=logging.INFO,
-            format='%(asctime)s - %(levelname)s - %(message)s',
-            handlers=[
-                logging.FileHandler(log_file),
-                logging.StreamHandler(sys.stdout)
-            ]
-        )
-        self.logger = logging.getLogger(__name__)
+        # Use shared logger config
+        self.logger = setup_logger(__name__, log_file=log_file, console=True)
         self.logger.info(f"Startup orchestrator initialized. Log file: {log_file}")
 
     def load_config(self) -> None:
         """Load configuration from JSON file."""
-        if not self.config_file.exists():
+        # Use shared config loader
+        self.config_data = load_json_config(self.config_file)
+        
+        if not self.config_data:
             self.logger.warning(f"Config file not found: {self.config_file}")
             self.logger.info("Using default configuration")
             self.components = self.get_default_components()
-            self.config_data = None
         else:
-            with open(self.config_file, 'r') as config_file:
-                self.config_data = json.load(config_file)
-                self.components = [
+            self.components = [
                     ComponentConfig(**component_config) for component_config in self.config_data.get('components', [])
                 ]
             self.logger.info(f"Loaded configuration from {self.config_file}")
