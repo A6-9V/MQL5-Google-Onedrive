@@ -75,19 +75,32 @@ static void Notify(const string msg)
 static void  SafeDeleteOldObjects()
 {
   // keep last MaxObjects objects with prefix, delete oldest (by time suffix)
-  // simple cap: if too many, delete all (fast & safe for indicator)
+  // OPTIMIZATION: Single-pass algorithm instead of double-loop
   int total = ObjectsTotal(0, 0, -1);
   int objectCount = 0;
+  
+  // Single pass: count and store object names
+  string objectNames[];
+  ArrayResize(objectNames, 0);
+  
   for(int objectIndex=total-1;objectIndex>=0;objectIndex--)
   {
     string name = ObjectName(0, objectIndex, 0, -1);
-    if(StringFind(name, gObjPrefix) == 0) objectCount++;
+    if(StringFind(name, gObjPrefix) == 0)
+    {
+      objectCount++;
+      ArrayResize(objectNames, ArraySize(objectNames) + 1);
+      objectNames[ArraySize(objectNames) - 1] = name;
+    }
   }
+  
+  // If within limit, no deletion needed
   if(objectCount <= MaxObjects) return;
-  for(int objectIndex=total-1;objectIndex>=0;objectIndex--)
+  
+  // Delete all objects with prefix (fast & safe for indicator)
+  for(int i = 0; i < ArraySize(objectNames); i++)
   {
-    string name = ObjectName(0, objectIndex, 0, -1);
-    if(StringFind(name, gObjPrefix) == 0) ObjectDelete(0, name);
+    ObjectDelete(0, objectNames[i]);
   }
 }
 
@@ -198,6 +211,10 @@ int OnCalculate(
   const long &volume[],
   const int &spread[])
 {
+  // OPTIMIZATION: Early exit if no new bars to calculate
+  if(prev_calculated > 0 && prev_calculated == rates_total) 
+    return rates_total;
+  
   if(rates_total < 100) return 0;
   int donLookback = (DonchianLookback < 2 ? 2 : DonchianLookback);
 
