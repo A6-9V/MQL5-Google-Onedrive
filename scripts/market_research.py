@@ -4,29 +4,21 @@ Market Research Script
 Connects to Gemini and Jules to analyze market data and generate research reports.
 """
 
-import os
 import json
-import logging
-import requests
 import concurrent.futures
-import warnings
 from datetime import datetime
-from pathlib import Path
-from dotenv import load_dotenv
 
-# Setup logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
+# Use shared utilities to reduce code duplication
+from common.logger_config import setup_basic_logging
+from common.paths import DOCS_DIR, DATA_DIR
+from common.config_loader import load_env
+from common.ai_client import GeminiClient, JulesClient
 
-# Suppress deprecation warnings from google.generativeai if present
-warnings.filterwarnings("ignore", category=UserWarning, module="google.generativeai")
-
-REPO_ROOT = Path(__file__).resolve().parents[1]
-DOCS_DIR = REPO_ROOT / "docs"
-DATA_DIR = REPO_ROOT / "data"
+# Setup logging using shared config
+logger = setup_basic_logging()
 
 # Load environment variables
-load_dotenv()
+load_env()
 
 def get_market_data():
     """
@@ -126,53 +118,37 @@ def get_market_data():
 
 def analyze_with_gemini(data):
     """
-    Send data to Gemini for analysis.
+    Send data to Gemini for analysis using shared AI client.
     """
-    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY")
-    if not api_key:
+    gemini = GeminiClient()
+    if not gemini.is_available():
         logger.warning("GEMINI_API_KEY/GOOGLE_API_KEY not found. Skipping Gemini analysis.")
         return None
 
+    prompt = f"""
+    Analyze the following market data and provide a research report for a trading bot.
+    Focus on:
+    1. Current market regime (Trending, Ranging, Volatile).
+    2. Potential trade setups based on Price Action and Trend.
+    3. Risk management suggestions.
+
+    Data:
+    {json.dumps(data, indent=2)}
+    """
+
     try:
-        # ⚡ Optimization: Lazy import google.generativeai
-        import google.generativeai as genai
-
-        genai.configure(api_key=api_key)
-        # Fallback models if one isn't available
-        model_name = os.environ.get("GEMINI_MODEL", 'gemini-2.0-flash')
-        model = genai.GenerativeModel(model_name)
-
-        prompt = f"""
-        Analyze the following market data and provide a research report for a trading bot.
-        Focus on:
-        1. Current market regime (Trending, Ranging, Volatile).
-        2. Potential trade setups based on Price Action and Trend.
-        3. Risk management suggestions.
-
-        Data:
-        {json.dumps(data, indent=2)}
-        """
-
-        response = model.generate_content(prompt)
-        return response.text
+        response = gemini.generate(prompt)
+        return response if response else f"Gemini analysis failed"
     except Exception as e:
         logger.error(f"Gemini analysis failed: {e}")
         return f"Gemini analysis failed: {e}"
 
 def analyze_with_jules(data):
     """
-    Send data to Jules for analysis.
+    Send data to Jules for analysis using shared AI client.
     """
-    api_key = os.environ.get("JULES_API_KEY")
-    api_url = os.environ.get("JULES_API_URL")
-    model = os.environ.get("JULES_MODEL", "jules-v1")
-
-    if not api_key:
-        logger.warning("JULES_API_KEY not found. Skipping Jules analysis.")
-        return None
-
-    if not api_url:
-        logger.warning("JULES_API_URL not found. Skipping Jules analysis.")
+    jules = JulesClient()
+    if not jules.is_available():
         return None
 
     prompt = f"""
@@ -186,34 +162,9 @@ def analyze_with_jules(data):
     {json.dumps(data, indent=2)}
     """
 
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {api_key}"
-    }
-
-    # Matches the structure in AiAssistant.mqh: {"model": "...", "prompt": "..."}
-    payload = {
-        "model": model,
-        "prompt": prompt
-    }
-
     try:
-        response = requests.post(api_url, json=payload, headers=headers, timeout=60)
-        response.raise_for_status()
-
-        # Try to parse JSON response if applicable, or return text
-        try:
-            resp_json = response.json()
-            # Adjust based on actual API response structure
-            if "response" in resp_json:
-                return resp_json["response"]
-            elif "choices" in resp_json and len(resp_json["choices"]) > 0:
-                return resp_json["choices"][0].get("text", str(resp_json))
-            else:
-                return str(resp_json)
-        except ValueError:
-            return response.text
-
+        response = jules.generate(prompt)
+        return response if response else "Jules analysis failed"
     except Exception as e:
         logger.error(f"Jules analysis failed: {e}")
         error_msg = f"Jules analysis failed: {e}"

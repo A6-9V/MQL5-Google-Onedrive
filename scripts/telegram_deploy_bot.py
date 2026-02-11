@@ -4,13 +4,15 @@ Telegram Bot for Cloud Deployment Automation
 Allows deploying to Fly.io, Render, Railway via Telegram commands
 """
 
-import os
 import sys
 import subprocess
-import logging
 import asyncio
-from pathlib import Path
 from typing import Optional, Tuple
+
+# Use shared utilities to reduce code duplication
+from common.logger_config import setup_basic_logging
+from common.paths import REPO_ROOT
+from common.config_loader import get_env_var
 
 try:
     from telegram import Update
@@ -19,16 +21,11 @@ except ImportError:
     print("python-telegram-bot not installed. Install with: pip install python-telegram-bot")
     sys.exit(1)
 
-# Setup logging
-logging.basicConfig(
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    level=logging.INFO
-)
-logger = logging.getLogger(__name__)
+# Setup logging using shared config
+logger = setup_basic_logging()
 
-# Repository root (assuming script is in scripts/ directory)
-REPO_ROOT = Path(__file__).resolve().parents[1]
-ALLOWED_USER_IDS = os.getenv('TELEGRAM_ALLOWED_USER_IDS', '').split(',')
+# Get allowed user IDs from environment
+ALLOWED_USER_IDS = get_env_var('TELEGRAM_ALLOWED_USER_IDS', default='').split(',')
 ALLOWED_USER_IDS = [uid.strip() for uid in ALLOWED_USER_IDS if uid.strip()]
 
 # Deployment commands mapping

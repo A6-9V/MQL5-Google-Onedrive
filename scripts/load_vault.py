@@ -4,12 +4,11 @@ Load credentials from personal vault (config/vault.json)
 Used by Python scripts to securely access credentials
 """
 
-import json
-import os
-from pathlib import Path
+# Use shared utilities to reduce code duplication
+from common.paths import CONFIG_DIR
+from common.config_loader import load_json_config
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
-VAULT_PATH = REPO_ROOT / "config" / "vault.json"
+VAULT_PATH = CONFIG_DIR / "vault.json"
 
 # Default values
 DEFAULT_TELEGRAM_BOT_NAME = "t.me/your_bot_name"
@@ -18,20 +17,7 @@ DEFAULT_TELEGRAM_WEBHOOK_URL = "https://core.telegram.org/bots/api"
 
 def load_vault():
     """Load credentials from vault.json"""
-    if not VAULT_PATH.exists():
-        print(f"⚠️ Vault file not found at: {VAULT_PATH}")
-        return None
-    
-    try:
-        with open(VAULT_PATH, 'r') as f:
-            vault = json.load(f)
-        return vault
-    except json.JSONDecodeError as e:
-        print(f"❌ Error parsing vault.json: {e}")
-        return None
-    except Exception as e:
-        print(f"❌ Error loading vault: {e}")
-        return None
+    return load_json_config(VAULT_PATH)
 
 
 def get_telegram_token():
