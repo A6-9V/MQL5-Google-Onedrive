@@ -8,6 +8,7 @@ logging, and error handling.
 from __future__ import annotations
 
 import argparse
+import functools
 import json
 import logging
 import os
@@ -26,6 +27,20 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 CONFIG_DIR = REPO_ROOT / "config"
 LOGS_DIR = REPO_ROOT / "logs"
 MT5_DIR = REPO_ROOT / "mt5" / "MQL5"
+
+
+# OPTIMIZATION: Cache config file reads to avoid redundant I/O
+# Note: Cache persists across multiple orchestrator instantiations within the same process.
+# This is intentional for performance, as config changes during runtime are not expected.
+# To force reload after config change, restart the process or call _load_cached_config.cache_clear()
+@functools.lru_cache(maxsize=1)
+def _load_cached_config(config_file_path: str) -> Optional[dict]:
+    """Load and cache configuration from JSON file."""
+    config_path = Path(config_file_path)
+    if not config_path.exists():
+        return None
+    with open(config_path, 'r') as f:
+        return json.load(f)
 
 
 @dataclass
@@ -69,17 +84,17 @@ class StartupOrchestrator:
 
     def load_config(self) -> None:
         """Load configuration from JSON file."""
-        if not self.config_file.exists():
+        # OPTIMIZATION: Use cached config loader
+        self.config_data = _load_cached_config(str(self.config_file))
+        
+        if self.config_data is None:
             self.logger.warning(f"Config file not found: {self.config_file}")
             self.logger.info("Using default configuration")
             self.components = self.get_default_components()
-            self.config_data = None
         else:
-            with open(self.config_file, 'r') as config_file:
-                self.config_data = json.load(config_file)
-                self.components = [
-                    ComponentConfig(**component_config) for component_config in self.config_data.get('components', [])
-                ]
+            self.components = [
+                ComponentConfig(**component_config) for component_config in self.config_data.get('components', [])
+            ]
             self.logger.info(f"Loaded configuration from {self.config_file}")
             max_retries = self.config_data.get('settings', {}).get('max_startup_retries', 1)
             if max_retries > 1:

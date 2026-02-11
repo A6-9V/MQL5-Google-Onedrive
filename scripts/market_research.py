@@ -101,7 +101,8 @@ def get_market_data():
                                 "price": round(current_price, 4),
                                 "trend": trend,
                                 "volatility": volatility,
-                                "history_last_5_closes": [round(x, 4) for x in hist['Close'].tail(5).tolist()]
+                                # OPTIMIZATION: Use NumPy vectorized operations instead of list comprehension
+                                "history_last_5_closes": hist['Close'].tail(5).round(4).tolist()
                             }
                     except Exception as e:
                         logger.warning(f"Failed to process {sym}: {e}")
