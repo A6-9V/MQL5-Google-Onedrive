@@ -30,6 +30,9 @@ MT5_DIR = REPO_ROOT / "mt5" / "MQL5"
 
 
 # OPTIMIZATION: Cache config file reads to avoid redundant I/O
+# Note: Cache persists across multiple orchestrator instantiations within the same process.
+# This is intentional for performance, as config changes during runtime are not expected.
+# To force reload after config change, restart the process or call _load_cached_config.cache_clear()
 @functools.lru_cache(maxsize=1)
 def _load_cached_config(config_file_path: str) -> Optional[dict]:
     """Load and cache configuration from JSON file."""

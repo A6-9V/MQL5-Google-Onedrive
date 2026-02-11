@@ -88,9 +88,11 @@ static void  SafeDeleteOldObjects()
     string name = ObjectName(0, objectIndex, 0, -1);
     if(StringFind(name, gObjPrefix) == 0)
     {
+      // OPTIMIZATION: Store size to avoid repeated ArraySize() calls
+      int currentSize = ArraySize(objectNames);
+      ArrayResize(objectNames, currentSize + 1);
+      objectNames[currentSize] = name;
       objectCount++;
-      ArrayResize(objectNames, ArraySize(objectNames) + 1);
-      objectNames[ArraySize(objectNames) - 1] = name;
     }
   }
   
