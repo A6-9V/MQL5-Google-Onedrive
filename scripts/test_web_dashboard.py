@@ -49,5 +49,21 @@ class TestWebDashboard(unittest.TestCase):
         self.assertIn('X-Frame-Options', response.headers)
         self.assertIn('Referrer-Policy', response.headers)
 
+    def test_error_handling_no_leak(self):
+        """Test that exceptions do not leak internal details."""
+        from unittest.mock import patch
+        # Patch get_cached_markdown to raise an exception with sensitive info
+        with patch('web_dashboard.get_cached_markdown', side_effect=Exception("SENSITIVE_INTERNAL_INFO")):
+            response = self.app.get('/')
+
+            # Should return 500
+            self.assertEqual(response.status_code, 500)
+
+            # Should NOT contain the sensitive info
+            self.assertNotIn(b'SENSITIVE_INTERNAL_INFO', response.data)
+
+            # Should contain generic error message
+            self.assertIn(b'Internal Server Error', response.data)
+
 if __name__ == '__main__':
     unittest.main()
