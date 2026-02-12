@@ -1,4 +1,4 @@
-NotebookLM URL: https://notebooklm.google.com/notebook/0e4dfc9b-d57d-4cfc-812d-905d37d67402
+NotebookLM URL: https://notebooklm.google.com/notebook/793f6880-e84c-4521-88ce-528a3aada979
 
 INSTRUCTIONS:
 This file contains context for the AI agents (Gemini and Jules) to use when researching repository upgrades.
