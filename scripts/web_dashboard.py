@@ -1,29 +1,54 @@
 import os
 import sys
+import time
 from flask import Flask, render_template_string
 import markdown
 
 app = Flask(__name__)
 
+# ⚡ Bolt: Pre-calculate absolute paths once to avoid redundant os.path.join calls on every request.
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+README_PATH = os.path.join(BASE_DIR, 'README.md')
+VERIFICATION_PATH = os.path.join(BASE_DIR, 'VERIFICATION.md')
+
+# ⚡ Bolt: MarkdownCache class to optimize rendering performance.
+# Caches the rendered HTML and only re-renders if the file's modification time (mtime) changes.
+# This eliminates redundant I/O and CPU-intensive markdown processing for static content.
+class MarkdownCache:
+    def __init__(self, filepath, fallback_text):
+        self.filepath = filepath
+        self.fallback_text = fallback_text
+        self.cached_html = None
+        self.last_mtime = 0
+
+    def get_html(self):
+        try:
+            if not os.path.exists(self.filepath):
+                return self.fallback_text
+
+            current_mtime = os.path.getmtime(self.filepath)
+            if self.cached_html is None or current_mtime > self.last_mtime:
+                with open(self.filepath, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                self.cached_html = markdown.markdown(content)
+                self.last_mtime = current_mtime
+                # print(f"DEBUG: Cache refreshed for {self.filepath}")
+
+            return self.cached_html
+        except Exception as e:
+            return f"<p>Error loading content: {str(e)}</p>"
+
+# Initialize caches
+readme_cache = MarkdownCache(README_PATH, "<p>README.md not found.</p>")
+verification_cache = MarkdownCache(VERIFICATION_PATH, "<p>VERIFICATION.md not found.</p>")
+
 @app.route('/')
 @app.route('/health')
 def health_check():
     try:
-        readme_path = os.path.join(os.path.dirname(__file__), '..', 'README.md')
-        verification_path = os.path.join(os.path.dirname(__file__), '..', 'VERIFICATION.md')
-
-        readme_content = ""
-        if os.path.exists(readme_path):
-            with open(readme_path, 'r', encoding='utf-8') as f:
-                readme_content = f.read()
-
-        verification_content = ""
-        if os.path.exists(verification_path):
-            with open(verification_path, 'r', encoding='utf-8') as f:
-                verification_content = f.read()
-
-        html_readme = markdown.markdown(readme_content) if readme_content else "<p>README.md not found.</p>"
-        html_verification = markdown.markdown(verification_content) if verification_content else "<p>VERIFICATION.md not found.</p>"
+        # ⚡ Bolt: Use cached HTML instead of reading and rendering on every request.
+        html_readme = readme_cache.get_html()
+        html_verification = verification_cache.get_html()
 
         return render_template_string("""
         <!DOCTYPE html>
@@ -75,7 +100,7 @@ def health_check():
             <script defer src="/_vercel/insights/script.js"></script>
         </body>
         </html>
-        """, html_readme=html_readme, html_verification=html_verification, year=2026)
+        """, html_readme=html_readme, html_verification=html_verification, year=time.strftime("%Y"))
     except Exception as e:
         return f"Error: {str(e)}", 500
 
