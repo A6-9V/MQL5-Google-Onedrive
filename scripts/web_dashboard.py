@@ -22,10 +22,11 @@ class MarkdownCache:
     def get_html(self):
         """Returns cached HTML or re-renders if the file has changed."""
         try:
-            if not os.path.exists(self.filepath):
-                return f"<p>{self.name} not found.</p>"
+            # ⚡ Bolt: Use os.stat to get both existence and mtime in one system call.
+            # This is more efficient than calling os.path.exists() and os.path.getmtime() separately.
+            st = os.stat(self.filepath)
+            current_mtime = st.st_mtime
 
-            current_mtime = os.path.getmtime(self.filepath)
             if current_mtime > self.last_mtime:
                 # File has changed or was never loaded
                 with open(self.filepath, 'r', encoding='utf-8') as f:
@@ -35,12 +36,67 @@ class MarkdownCache:
                 # Use a logging system in production, but here we just keep it efficient.
 
             return self.cached_html
+        except FileNotFoundError:
+            return f"<p>{self.name} not found.</p>"
         except Exception as e:
             return f"<p>Error loading {self.name}: {str(e)}</p>"
 
 # Initialize caches
 readme_cache = MarkdownCache(README_PATH, "README.md")
 verification_cache = MarkdownCache(VERIFICATION_PATH, "VERIFICATION.md")
+
+# --- ⚡ Bolt: Store HTML layout as a module-level constant to eliminate redundant string allocations.
+DASHBOARD_TEMPLATE = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MQL5 Trading Automation Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; max-width: 1000px; margin: 0 auto; padding: 20px; background: #f0f2f5; color: #1c1e21; }
+        .card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        h1, h2 { color: #050505; border-bottom: 1px solid #ddd; padding-bottom: 10px; }
+        pre { background: #f8f9fa; padding: 15px; border-radius: 5px; overflow-x: auto; border: 1px solid #eee; }
+        .status-badge { display: inline-block; padding: 4px 12px; border-radius: 15px; font-weight: bold; background: #42b983; color: white; }
+        .nav { margin-bottom: 20px; background: #fff; padding: 10px 20px; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .nav a { margin-right: 15px; color: #1877f2; text-decoration: none; font-weight: bold; }
+        .nav a:hover { text-decoration: underline; }
+        footer { text-align: center; margin-top: 40px; color: #65676b; font-size: 0.9em; }
+        img { max-width: 100%; height: auto; }
+        table { border-collapse: collapse; width: 100%; margin-bottom: 1em; }
+        th, td { text-align: left; padding: 8px; border-bottom: 1px solid #ddd; }
+        th { background-color: #f8f9fa; }
+    </style>
+</head>
+<body>
+    <div class="nav">
+        <a href="#status">System Status</a>
+        <a href="#docs">Documentation</a>
+    </div>
+
+    <div id="status" class="card">
+        <h1>System Status <span class="status-badge">ONLINE</span></h1>
+        <p>MQL5 Trading Automation is running.</p>
+        {{ html_verification|safe }}
+    </div>
+
+    <div id="docs" class="card">
+        <h2>Project Documentation</h2>
+        {{ html_readme|safe }}
+    </div>
+
+    <footer>
+        <p>&copy; {{ year }} MQL5 Trading Automation | Dashboard v1.0.0</p>
+    </footer>
+
+    <!-- Vercel Web Analytics -->
+    <script>
+        window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+    </script>
+    <script defer src="/_vercel/insights/script.js"></script>
+</body>
+</html>
+"""
 
 @app.route('/')
 @app.route('/health')
@@ -50,57 +106,7 @@ def health_check():
         html_readme = readme_cache.get_html()
         html_verification = verification_cache.get_html()
 
-        return render_template_string("""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>MQL5 Trading Automation Dashboard</title>
-            <meta name="viewport" content="width=device-width, initial-scale=1">
-            <style>
-                body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; max-width: 1000px; margin: 0 auto; padding: 20px; background: #f0f2f5; color: #1c1e21; }
-                .card { background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
-                h1, h2 { color: #050505; border-bottom: 1px solid #ddd; padding-bottom: 10px; }
-                pre { background: #f8f9fa; padding: 15px; border-radius: 5px; overflow-x: auto; border: 1px solid #eee; }
-                .status-badge { display: inline-block; padding: 4px 12px; border-radius: 15px; font-weight: bold; background: #42b983; color: white; }
-                .nav { margin-bottom: 20px; background: #fff; padding: 10px 20px; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
-                .nav a { margin-right: 15px; color: #1877f2; text-decoration: none; font-weight: bold; }
-                .nav a:hover { text-decoration: underline; }
-                footer { text-align: center; margin-top: 40px; color: #65676b; font-size: 0.9em; }
-                img { max-width: 100%; height: auto; }
-                table { border-collapse: collapse; width: 100%; margin-bottom: 1em; }
-                th, td { text-align: left; padding: 8px; border-bottom: 1px solid #ddd; }
-                th { background-color: #f8f9fa; }
-            </style>
-        </head>
-        <body>
-            <div class="nav">
-                <a href="#status">System Status</a>
-                <a href="#docs">Documentation</a>
-            </div>
-
-            <div id="status" class="card">
-                <h1>System Status <span class="status-badge">ONLINE</span></h1>
-                <p>MQL5 Trading Automation is running.</p>
-                {{ html_verification|safe }}
-            </div>
-
-            <div id="docs" class="card">
-                <h2>Project Documentation</h2>
-                {{ html_readme|safe }}
-            </div>
-
-            <footer>
-                <p>&copy; {{ year }} MQL5 Trading Automation | Dashboard v1.0.0</p>
-            </footer>
-            
-            <!-- Vercel Web Analytics -->
-            <script>
-                window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
-            </script>
-            <script defer src="/_vercel/insights/script.js"></script>
-        </body>
-        </html>
-        """, html_readme=html_readme, html_verification=html_verification, year=2026)
+        return render_template_string(DASHBOARD_TEMPLATE, html_readme=html_readme, html_verification=html_verification, year=2026)
     except Exception as e:
         return f"Error: {str(e)}", 500
 

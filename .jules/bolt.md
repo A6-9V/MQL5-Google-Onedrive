@@ -38,3 +38,7 @@ This journal is for CRITICAL, non-routine performance learnings ONLY.
 ## 2026-02-11 - Flask Dashboard Markdown Caching
 **Learning:** Rendering Markdown files on every request in a web dashboard is a significant and unnecessary CPU/IO bottleneck. Implementing a simple cache with `mtime` validation allows serving pre-rendered content for 99% of requests while still remaining dynamic when files are updated.
 **Action:** Always cache semi-static content like Markdown documentation in web-facing scripts, using file modification times as a lightweight cache invalidation trigger.
+
+## 2026-02-12 - MQL5 Cross-Process API Caching
+**Learning:** Functions like `TerminalInfoInteger(TERMINAL_TRADE_ALLOWED)` and `MQLInfoInteger(MQL_TRADE_ALLOWED)` involve cross-process communication (IPC) with the terminal core. In high-frequency EAs, calling these on every price tick (potentially hundreds of times per second) creates significant overhead. Caching these values for 1 second in a static variable provides a substantial performance boost without sacrificing trading safety, as terminal-level permissions rarely change multiple times within a single second.
+**Action:** Implement a 1-second caching layer for environment state checks in `OnTick` to minimize IPC overhead while maintaining sufficient reactivity to user/terminal state changes.
