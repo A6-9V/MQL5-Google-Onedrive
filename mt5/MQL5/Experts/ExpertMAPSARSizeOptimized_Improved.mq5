@@ -146,8 +146,22 @@ bool IsTradingAllowed(datetime now)
       }
    }
 
+   //--- ⚡ Bolt: 1-second caching for terminal and MQL trade allowed states.
+   //--- These API calls are relatively expensive as they require cross-process communication.
+   //--- Caching them for 1 second significantly reduces overhead during high tick volume.
+   static datetime lastAllowedCheck = 0;
+   static bool lastTerminalAllowed = false;
+   static bool lastMqlAllowed = false;
+
+   if(now - lastAllowedCheck >= 1)
+   {
+      lastTerminalAllowed = (bool)TerminalInfoInteger(TERMINAL_TRADE_ALLOWED);
+      lastMqlAllowed = (bool)MQLInfoInteger(MQL_TRADE_ALLOWED);
+      lastAllowedCheck = now;
+   }
+
    //--- Check if AutoTrading is enabled
-   if(!TerminalInfoInteger(TERMINAL_TRADE_ALLOWED))
+   if(!lastTerminalAllowed)
    {
       if(now - lastTerminalError > 3600) // Log once per hour
       {
@@ -157,7 +171,7 @@ bool IsTradingAllowed(datetime now)
       return false;
    }
 
-   if(!MQLInfoInteger(MQL_TRADE_ALLOWED))
+   if(!lastMqlAllowed)
    {
       if(now - lastMqlError > 3600) // Log once per hour
       {
