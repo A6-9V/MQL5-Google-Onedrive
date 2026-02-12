@@ -37,6 +37,7 @@ permissions:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  DOCKER_HUB_IMAGE: mouyleng/mql5-trading-automation
 
 jobs:
   validate:
@@ -114,11 +115,20 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Log in to Docker Hub
+        if: secrets.DOCKER_USERNAME != '' && secrets.DOCKER_PASSWORD != ''
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+            ${{ secrets.DOCKER_USERNAME != '' && secrets.DOCKER_PASSWORD != '' && env.DOCKER_HUB_IMAGE || '' }}
           tags: |
             type=ref,event=branch
             type=semver,pattern={{version}}
@@ -314,7 +324,8 @@ jobs:
           
           echo "### Available Deployments" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
-          echo "- 🐳 **Docker**: \`ghcr.io/${{ github.repository }}:latest\`" >> $GITHUB_STEP_SUMMARY
+          echo "- 🐳 **GHCR**: \`ghcr.io/${{ github.repository }}:latest\`" >> $GITHUB_STEP_SUMMARY
+          echo "- 🐳 **Docker Hub**: \`mouyleng/mql5-trading-automation:latest\` (if configured)" >> $GITHUB_STEP_SUMMARY
           echo "- ☁️ **Render**: Auto-deploys from main branch" >> $GITHUB_STEP_SUMMARY
           echo "- 🚂 **Railway**: Auto-deploys from main branch" >> $GITHUB_STEP_SUMMARY
           echo "- 🪰 **Fly.io**: Configured via fly.toml" >> $GITHUB_STEP_SUMMARY

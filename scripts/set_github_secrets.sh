@@ -1,5 +1,5 @@
 #!/bin/bash
-# Script to set GitHub Secrets for Cloudflare configuration
+# Script to set GitHub Secrets for Cloudflare and Docker Hub configuration
 # Requires GitHub CLI (gh) installed and authenticated
 
 set -e
@@ -43,9 +43,11 @@ if [ "$SOURCE" == "vault" ]; then
             ZONE_ID=$(python3 -c "import json; v=json.load(open('$VAULT_FILE')); print(v.get('cloudflare', {}).get('zone_id', ''))")
             ACCOUNT_ID=$(python3 -c "import json; v=json.load(open('$VAULT_FILE')); print(v.get('cloudflare', {}).get('account_id', ''))")
             DOMAIN=$(python3 -c "import json; v=json.load(open('$VAULT_FILE')); print(v.get('cloudflare', {}).get('domain', ''))")
+            DOCKER_USERNAME=$(python3 -c "import json; v=json.load(open('$VAULT_FILE')); print(v.get('docker', {}).get('username', ''))")
+            DOCKER_PASSWORD=$(python3 -c "import json; v=json.load(open('$VAULT_FILE')); print(v.get('docker', {}).get('password', ''))")
         else
             echo -e "${RED}Error: python3 not found for JSON parsing.${NC}"
-            exit 1
+            return 1
         fi
     else
         echo -e "${RED}Error: $VAULT_FILE not found.${NC}"
@@ -55,9 +57,13 @@ if [ "$SOURCE" == "vault" ]; then
         "zone_id": "your_zone_id",
         "account_id": "your_account_id",
         "domain": "your_domain.com"
+    },
+    "docker": {
+        "username": "your_docker_hub_username",
+        "password": "your_docker_hub_password_or_token"
     }
 }'
-        exit 1
+        return 1
     fi
 elif [ "$SOURCE" == "env" ]; then
     if [ -f "$ENV_FILE" ]; then
@@ -65,18 +71,28 @@ elif [ "$SOURCE" == "env" ]; then
         ZONE_ID=$(grep CLOUDFLARE_ZONE_ID "$ENV_FILE" | cut -d '=' -f2)
         ACCOUNT_ID=$(grep CLOUDFLARE_ACCOUNT_ID "$ENV_FILE" | cut -d '=' -f2)
         DOMAIN=$(grep DOMAIN_NAME "$ENV_FILE" | cut -d '=' -f2)
+        DOCKER_USERNAME=$(grep DOCKER_USERNAME "$ENV_FILE" | cut -d '=' -f2)
+        DOCKER_PASSWORD=$(grep DOCKER_PASSWORD "$ENV_FILE" | cut -d '=' -f2)
     else
         echo -e "${RED}Error: $ENV_FILE not found.${NC}"
-        exit 1
+        return 1
     fi
 else
     show_usage
-    exit 1
+    return 1
 fi
 
 # Set the secrets
 set_secret CLOUDFLARE_ZONE_ID "$ZONE_ID"
 set_secret CLOUDFLARE_ACCOUNT_ID "$ACCOUNT_ID"
 set_secret DOMAIN_NAME "$DOMAIN"
+
+if [ -n "$DOCKER_USERNAME" ]; then
+    set_secret DOCKER_USERNAME "$DOCKER_USERNAME"
+fi
+
+if [ -n "$DOCKER_PASSWORD" ]; then
+    set_secret DOCKER_PASSWORD "$DOCKER_PASSWORD"
+fi
 
 echo -e "${GREEN}✅ GitHub Secrets set successfully!${NC}"
