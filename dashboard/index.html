@@ -171,6 +171,15 @@
             outline: 2px solid white;
             outline-offset: -2px;
         }
+
+        /* Service Worker Toast */
+        .toast { position: fixed; bottom: 20px; right: 20px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); transform: translateY(100px); transition: transform 0.3s; z-index: 1000; border-left: 4px solid #667eea; display: flex; align-items: center; gap: 10px; }
+        .toast.show { transform: translateY(0); }
+        .toast-btn { border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: 600; }
+        .toast-btn-primary { background: #667eea; color: white; }
+        .toast-btn-primary:hover { background: #5568d3; }
+        .toast-btn-secondary { background: #f3f4f6; color: #333; }
+        .toast-btn-secondary:hover { background: #e5e7eb; }
     </style>
 </head>
 <body>
@@ -250,6 +259,13 @@
         </div>
     </div>
     
+    <!-- Service Worker Toast Notification -->
+    <div id="update-toast" class="toast" role="alert" aria-live="polite">
+        <span>New version available!</span>
+        <button id="update-btn" class="toast-btn toast-btn-primary">Update</button>
+        <button id="dismiss-btn" class="toast-btn toast-btn-secondary" aria-label="Dismiss">✕</button>
+    </div>
+
     <script>
         // Set last update time
         document.getElementById('lastUpdate').textContent = new Date().toLocaleString();
@@ -283,10 +299,22 @@
                             
                             newWorker.addEventListener('statechange', () => {
                                 if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
-                                    // New service worker available, prompt user
-                                    if (confirm('New version available! Reload to update?')) {
-                                        newWorker.postMessage({ type: 'SKIP_WAITING' });
-                                        window.location.reload();
+                                    // New service worker available, show toast
+                                    const toast = document.getElementById('update-toast');
+                                    const updateBtn = document.getElementById('update-btn');
+                                    const dismissBtn = document.getElementById('dismiss-btn');
+
+                                    if (toast) {
+                                        toast.classList.add('show');
+
+                                        updateBtn.onclick = () => {
+                                            newWorker.postMessage({ type: 'SKIP_WAITING' });
+                                            window.location.reload();
+                                        };
+
+                                        dismissBtn.onclick = () => {
+                                            toast.classList.remove('show');
+                                        };
                                     }
                                 }
                             });
