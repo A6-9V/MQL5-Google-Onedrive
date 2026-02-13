@@ -232,10 +232,27 @@ All startup activity is logged to the `logs/` directory:
 ### Python Not Found
 
 **Windows:**
+The startup scripts now automatically detect Python from multiple locations:
+- Standard PATH installations
+- Windows Store Python (recommended for easy installation)
+- Program Files installations
+
+If Python is not detected, install it from:
 ```cmd
+# Option 1: Microsoft Store (easiest)
+# Search for "Python" in Microsoft Store and install Python 3.8 or higher
+# Python 3.12 or later is recommended for best compatibility
+
+# Option 2: Official Python installer
 # Download from https://www.python.org/downloads/
-# Or use Microsoft Store
+# Minimum version: Python 3.8
+# During installation, check "Add Python to PATH"
 ```
+
+After installation, the scripts will automatically find Python in:
+- `%LOCALAPPDATA%\Microsoft\WindowsApps\python.exe` (Windows Store)
+- `C:\Program Files\Python*\python.exe` (Standard installer)
+- Any location in your PATH environment variable
 
 **Linux/WSL:**
 ```bash

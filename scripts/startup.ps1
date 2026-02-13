@@ -57,6 +57,68 @@ function Write-Log {
     }
 }
 
+function Find-PythonExecutable {
+    # Try to find Python executable, including Windows Store installations
+    Write-Log "Searching for Python executable..." -Level INFO
+    
+    # Try standard python command first
+    try {
+        $output = & python --version 2>&1
+        if ($LASTEXITCODE -eq 0 -and $output) {
+            Write-Log "Found Python in PATH" -Level INFO
+            return "python"
+        }
+    }
+    catch { 
+        # Command not found or execution failed, continue to next check
+    }
+    
+    # Check Windows Store Python installations
+    $WindowsAppsPaths = @(
+        "$env:LOCALAPPDATA\Microsoft\WindowsApps\python.exe",
+        "$env:LOCALAPPDATA\Microsoft\WindowsApps\python3.exe"
+    )
+    
+    foreach ($Path in $WindowsAppsPaths) {
+        if (Test-Path $Path) {
+            try {
+                $Version = & $Path --version 2>&1
+                if ($LASTEXITCODE -eq 0) {
+                    Write-Log "Found Windows Store Python at: $Path" -Level INFO
+                    Write-Log "Version: $Version" -Level INFO
+                    return $Path
+                }
+            }
+            catch { }
+        }
+    }
+    
+    # Check for Python in Program Files (standard installations)
+    $ProgramFilesPaths = @(
+        "C:\Program Files\Python*\python.exe",
+        "C:\Program Files (x86)\Python*\python.exe",
+        "$env:LOCALAPPDATA\Programs\Python\Python*\python.exe"
+    )
+    
+    foreach ($Pattern in $ProgramFilesPaths) {
+        $FoundPaths = Get-ChildItem -Path $Pattern -ErrorAction SilentlyContinue
+        if ($FoundPaths) {
+            $Path = $FoundPaths[0].FullName
+            try {
+                $Version = & $Path --version 2>&1
+                if ($LASTEXITCODE -eq 0) {
+                    Write-Log "Found Python at: $Path" -Level INFO
+                    Write-Log "Version: $Version" -Level INFO
+                    return $Path
+                }
+            }
+            catch { }
+        }
+    }
+    
+    return $null
+}
+
 function Test-Prerequisites {
     Write-Log "Checking prerequisites..." -Level INFO
     
@@ -70,13 +132,19 @@ function Test-Prerequisites {
     }
     
     # Check Python installation
+    $Script:PythonExe = Find-PythonExecutable
+    if (-not $Script:PythonExe) {
+        Write-Log "Python is not installed or not found" -Level ERROR
+        Write-Log "Install from: https://www.python.org/ or Microsoft Store" -Level ERROR
+        return $false
+    }
+    
     try {
-        $PythonVersion = & python --version 2>&1
+        $PythonVersion = & $Script:PythonExe --version 2>&1
         Write-Log "Python: $PythonVersion" -Level INFO
     }
     catch {
-        Write-Log "Python is not installed or not in PATH" -Level ERROR
-        Write-Log "Install from: https://www.python.org/" -Level ERROR
+        Write-Log "Python found but failed to execute" -Level ERROR
         return $false
     }
     
@@ -167,7 +235,7 @@ function Start-PythonOrchestrator {
         # Use --monitor 0 for infinite monitoring to keep processes running
         # When NoWait is used (scheduled task), processes should stay alive
         $MonitorArg = if ($NoWait) { "--monitor", "0" } else { @() }
-        $Process = Start-Process -FilePath "python" `
+        $Process = Start-Process -FilePath $Script:PythonExe `
             -ArgumentList (@($OrchestratorScript) + $MonitorArg) `
             -WorkingDirectory $RepoRoot `
             -NoNewWindow `
@@ -206,7 +274,7 @@ function Start-ValidationCheck {
     }
     
     try {
-        $Output = & python $ValidatorScript 2>&1
+        $Output = & $Script:PythonExe $ValidatorScript 2>&1
         if ($LASTEXITCODE -eq 0) {
             Write-Log "Validation passed" -Level SUCCESS
             return $true
