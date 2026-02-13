@@ -45,13 +45,8 @@ def get_prs_via_gh_cli():
 
 def get_prs_via_git():
     """Get PR information via git branches."""
-    # Get all branches that might be PR branches
-    # Use origin/main as base for robust comparison in CI/CD
-    result = run_command(["git", "branch", "-r", "--no-merged", "origin/main"])
-    branches = []
-    if result and result.returncode == 0:
-        branches = [b.strip() for b in result.stdout.strip().split("\n") 
-                    if b.strip() and "origin/main" not in b and "HEAD" not in b]
+    # We only fetch merged branches here. Open branches are fetched via get_unmerged_branch_details
+    # to avoid redundant git calls and ensure single source of truth.
     
     # Get merged branches that might have been PRs
     result_merged = run_command(["git", "branch", "-r", "--merged", "origin/main"])
@@ -61,7 +56,7 @@ def get_prs_via_git():
                           if b.strip() and "origin/main" not in b and "HEAD" not in b]
     
     return {
-        "open": branches,
+        "open": [], # Defer to get_unmerged_branch_details
         "merged": merged_branches
     }
 
@@ -101,7 +96,7 @@ def analyze_branch_name(branch_name):
     return info
 
 
-def get_all_branch_details():
+def get_unmerged_branch_details():
     """Get detailed information about unmerged branches using a single git command."""
     # We use git for-each-ref to get commit date and ahead/behind counts relative to origin/main
     # Note: %(ahead-behind:origin/main) requires git 2.41+
@@ -117,6 +112,11 @@ def get_all_branch_details():
             parts = line.split("|")
             if len(parts) >= 3:
                 ref = parts[0].strip()
+
+                # Filter out HEAD and origin itself if present
+                if "HEAD" in ref or ref == "origin":
+                    continue
+
                 date = parts[1].strip()
                 ahead_behind = parts[2].strip()
 
@@ -127,6 +127,10 @@ def get_all_branch_details():
                     ahead = int(ahead_str)
                 except (ValueError, IndexError):
                     ahead = 0
+
+                # Safety check: If not actually ahead, treat as merged (or synced) and skip
+                if ahead == 0:
+                    continue
 
                 # ref is like "origin/branchname"
                 branch_short = ref.replace("origin/", "")
@@ -228,11 +232,15 @@ def main():
         print("GitHub CLI not available, analyzing branches...")
         print()
         
+        # Get merged branches (open branches returned empty here)
         branch_info = get_prs_via_git()
-        
-        open_branches = branch_info["open"]
         merged_branches = branch_info["merged"]
         
+        # Fetch open branches and their details in a single batch operation
+        # ⚡ Optimization: Using git for-each-ref avoids N+1 subprocess calls
+        all_branch_details = get_unmerged_branch_details()
+        open_branches = list(all_branch_details.keys())
+
         print(f"Open branches (potential PRs): {len(open_branches)}")
         print(f"Merged branches (completed PRs): {len(merged_branches)}")
         print()
@@ -248,23 +256,26 @@ def main():
         print("=" * 80)
         print()
         
-        # Pre-fetch all branch details to avoid N+1 git calls
-        all_branch_details = get_all_branch_details()
-
         for category, branches in sorted(categories.items()):
             print(f"{category.upper()}: {len(branches)} branches")
-            for branch, info in branches[:10]:  # Show first 10
-                # Use pre-fetched details if available, otherwise fallback
-                branch_details = all_branch_details.get(branch)
 
-                if not branch_details:
-                    branch_details = get_branch_info(branch)
+            # Sort branches by date (newest first) if date is available, otherwise by name
+            branches_with_details = []
+            for b, info in branches:
+                details = all_branch_details.get(b)
+                if details:
+                    branches_with_details.append((b, info, details))
 
+            # Sort by commit date descending
+            branches_with_details.sort(key=lambda x: x[2].get('last_commit_date', ''), reverse=True)
+
+            for branch, info, branch_details in branches_with_details[:10]:  # Show first 10
                 print(f"  - {info['description']}")
                 print(f"    Branch: {branch_details['branch']}")
                 print(f"    Commits: {branch_details['commit_count']}")
                 if branch_details.get('last_commit_date'):
                     print(f"    Last commit: {branch_details['last_commit_date']}")
+
             if len(branches) > 10:
                 print(f"    ... and {len(branches) - 10} more")
             print()
