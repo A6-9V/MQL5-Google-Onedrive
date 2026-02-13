@@ -178,6 +178,46 @@ void OnDeinit(const int reason)
 }
 
 //+------------------------------------------------------------------+
+//| Check if trading is allowed (with caching and log throttling)      |
+//+------------------------------------------------------------------+
+bool IsTradingAllowed()
+{
+   static datetime lastCheck = 0;
+   static bool lastResult = false;
+   static datetime lastLogTime = 0;
+
+   datetime now = TimeCurrent();
+
+   // ⚡ Bolt: Cache results for 1 second to avoid expensive cross-process API calls on every tick.
+   if(now - lastCheck < 1) return lastResult;
+
+   lastCheck = now;
+
+   bool terminalAllowed = (bool)TerminalInfoInteger(TERMINAL_TRADE_ALLOWED);
+   bool eaAllowed = (bool)MQLInfoInteger(MQL_TRADE_ALLOWED);
+   lastResult = terminalAllowed && eaAllowed;
+
+   if(!lastResult)
+   {
+      // ⚡ Bolt: Log throttling - only print once per day to prevent log flooding during high volatility.
+      // g_todayStart is not available here, so we use 86400 seconds (1 day) threshold.
+      if(now - lastLogTime > 86400)
+      {
+         if(!terminalAllowed) Print("AutoTrading is disabled in terminal settings");
+         if(!eaAllowed) Print("AutoTrading is disabled in EA settings");
+         lastLogTime = now;
+      }
+   }
+   else
+   {
+      // Reset log timer when trading is allowed again to ensure immediate notification if it's disabled later.
+      lastLogTime = 0;
+   }
+
+   return lastResult;
+}
+
+//+------------------------------------------------------------------+
 //| Expert tick function                                               |
 //+------------------------------------------------------------------+
 void OnTick()
@@ -192,17 +232,8 @@ void OnTick()
    if(currentBarTime == lastBarTime) return; // Exit if not a new bar
 
    //--- ⚡ Bolt: Defer terminal state checks until AFTER the new bar check.
-   //--- TerminalInfoInteger and MQLInfoInteger are relatively expensive API calls.
-   //--- Moving them here avoids thousands of redundant calls per hour on every price tick.
-   if(!TerminalInfoInteger(TERMINAL_TRADE_ALLOWED)) {
-      Print("AutoTrading is disabled in terminal settings");
-      return;
-   }
-   
-   if(!MQLInfoInteger(MQL_TRADE_ALLOWED)) {
-      Print("AutoTrading is disabled in EA settings");
-      return;
-   }
+   //--- Use cached check to avoid expensive cross-process API calls and log flooding.
+   if(!IsTradingAllowed()) return;
 
    //--- ⚡ Bolt: Performance optimization - check if position already open BEFORE fetching data.
    //--- This avoids redundant CopyRates and CopyBuffer calls if we are already in a trade.
