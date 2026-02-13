@@ -112,16 +112,27 @@ bool IsTradingAllowed()
       return false;
    }
 
+   // ⚡ PERFORMANCE OPTIMIZATION: Cache environment state for 1 second
+   // This significantly reduces cross-process API call overhead during rapid price ticks.
+   static datetime lastCheck = 0;
+   static bool lastResult = true;
+   datetime now = TimeCurrent();
+
+   if(now < lastCheck + 1 && lastCheck > 0) return lastResult;
+   lastCheck = now;
+
    //--- Check if AutoTrading is enabled
    if(!TerminalInfoInteger(TERMINAL_TRADE_ALLOWED))
    {
       LogError("AutoTrading is disabled in terminal settings");
+      lastResult = false;
       return false;
    }
 
    if(!MQLInfoInteger(MQL_TRADE_ALLOWED))
    {
       LogError("AutoTrading is disabled in EA settings");
+      lastResult = false;
       return false;
    }
 
@@ -129,7 +140,7 @@ bool IsTradingAllowed()
    if(Inp_Risk_EnableTimeFilter)
    {
       MqlDateTime dt;
-      TimeToStruct(TimeCurrent(), dt);
+      TimeToStruct(now, dt);
       int currentHour = dt.hour;
 
       if(Inp_Risk_StartHour <= Inp_Risk_EndHour)
@@ -137,6 +148,7 @@ bool IsTradingAllowed()
          if(currentHour < Inp_Risk_StartHour || currentHour > Inp_Risk_EndHour)
          {
             LogDebug("Outside trading hours: ", currentHour);
+            lastResult = false;
             return false;
          }
       }
@@ -145,11 +157,13 @@ bool IsTradingAllowed()
          if(currentHour < Inp_Risk_StartHour && currentHour > Inp_Risk_EndHour)
          {
             LogDebug("Outside trading hours: ", currentHour);
+            lastResult = false;
             return false;
          }
       }
    }
 
+   lastResult = true;
    return true;
 }
 
