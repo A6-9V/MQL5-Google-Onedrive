@@ -36,10 +36,13 @@ echo [1/5] Checking Python installation... >> "%LOG_FILE%"
 
 REM Try standard python command first
 set "PYTHON_EXE=python"
-python --version >> "%LOG_FILE%" 2>&1
+where python >nul 2>&1
 if %errorlevel% equ 0 (
-    echo Python found in PATH >> "%LOG_FILE%"
-    goto :python_found
+    python --version >> "%LOG_FILE%" 2>&1
+    if %errorlevel% equ 0 (
+        echo Python found in PATH >> "%LOG_FILE%"
+        goto :python_found
+    )
 )
 
 REM Check Windows Store Python
@@ -139,7 +142,7 @@ REM Run validation check
 echo [5/5] Running validation checks... >> "%LOG_FILE%"
 echo [5/5] Running validation checks...
 "%PYTHON_EXE%" "%REPO_ROOT%\scripts\ci_validate_repo.py" >> "%LOG_FILE%" 2>&1
-if errorlevel 1 (
+if %errorlevel% neq 0 (
     echo WARNING: Validation check failed >> "%LOG_FILE%"
     echo [WARN] Validation check failed, but continuing...
 ) else (
