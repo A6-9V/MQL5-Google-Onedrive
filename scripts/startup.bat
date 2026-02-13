@@ -37,7 +37,7 @@ echo [1/5] Checking Python installation... >> "%LOG_FILE%"
 REM Try standard python command first
 set "PYTHON_EXE=python"
 python --version >> "%LOG_FILE%" 2>&1
-if not errorlevel 1 (
+if %errorlevel% equ 0 (
     echo Python found in PATH >> "%LOG_FILE%"
     goto :python_found
 )
@@ -46,7 +46,7 @@ REM Check Windows Store Python
 set "PYTHON_EXE=%LOCALAPPDATA%\Microsoft\WindowsApps\python.exe"
 if exist "%PYTHON_EXE%" (
     "%PYTHON_EXE%" --version >> "%LOG_FILE%" 2>&1
-    if not errorlevel 1 (
+    if %errorlevel% equ 0 (
         echo Found Windows Store Python >> "%LOG_FILE%"
         goto :python_found
     )
@@ -56,7 +56,7 @@ REM Check Windows Store Python3
 set "PYTHON_EXE=%LOCALAPPDATA%\Microsoft\WindowsApps\python3.exe"
 if exist "%PYTHON_EXE%" (
     "%PYTHON_EXE%" --version >> "%LOG_FILE%" 2>&1
-    if not errorlevel 1 (
+    if %errorlevel% equ 0 (
         echo Found Windows Store Python3 >> "%LOG_FILE%"
         goto :python_found
     )
