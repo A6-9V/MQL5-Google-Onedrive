@@ -22,6 +22,15 @@ This repo contains:
 - Copy directly into your MT5 Data Folder (run this on the machine that has MT5 installed):
   - `bash scripts/deploy_mt5.sh "/path/from/MT5/File->Open Data Folder"`
 
+### Documentation Website (Vercel)
+
+📚 **Live Documentation**: This repository is deployed on Vercel for easy access to documentation and resources.
+
+To set up Vercel for your fork:
+- See [docs/Vercel_CLI_setup.md](docs/Vercel_CLI_setup.md) for complete setup guide
+- The site is automatically deployed from the `public/` directory
+- Free tier includes unlimited deployments and custom domains
+
 ### GitHub automation (reviews, CI, auto-merge, OneDrive sync)
 
 This repo includes GitHub Actions workflows under `.github/workflows/`:

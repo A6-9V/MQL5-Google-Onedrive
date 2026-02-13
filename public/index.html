@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="SMC + Trend Breakout (MTF) for Exness MT5 - Documentation and Resources">
+    <title>MQL5 Google OneDrive - Documentation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        header {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 2rem;
+            border-radius: 10px;
+            margin-bottom: 2rem;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            color: #667eea;
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .subtitle {
+            color: #666;
+            font-size: 1.2rem;
+        }
+        
+        .content {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+        }
+        
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+        
+        .card {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .card h3 {
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+        
+        .card ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .card li {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        .card li:last-child {
+            border-bottom: none;
+        }
+        
+        a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        a:hover {
+            text-decoration: underline;
+        }
+        
+        .btn {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 5px;
+            text-decoration: none;
+            margin: 0.5rem 0.5rem 0.5rem 0;
+            transition: background 0.3s ease;
+        }
+        
+        .btn:hover {
+            background: #5568d3;
+            text-decoration: none;
+        }
+        
+        .btn-secondary {
+            background: #764ba2;
+        }
+        
+        .btn-secondary:hover {
+            background: #643d8a;
+        }
+        
+        footer {
+            text-align: center;
+            color: white;
+            padding: 2rem;
+            margin-top: 2rem;
+        }
+        
+        .highlight {
+            background: #fffbea;
+            padding: 1rem;
+            border-radius: 5px;
+            border-left: 4px solid #f59e0b;
+            margin: 1rem 0;
+        }
+        
+        code {
+            background: #e5e7eb;
+            padding: 0.2rem 0.5rem;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🚀 MQL5 Google OneDrive</h1>
+            <p class="subtitle">SMC + Trend Breakout (MTF) for Exness MT5</p>
+        </header>
+        
+        <div class="content">
+            <h2>Welcome to the Documentation</h2>
+            <p>This repository contains a professional MetaTrader 5 trading system with Smart Money Concepts (SMC) and trend breakout strategies.</p>
+            
+            <div class="highlight">
+                <strong>⚠️ Important:</strong> This is a rules-based implementation. Always test in Strategy Tester and demo accounts before using real funds.
+            </div>
+            
+            <div style="margin: 2rem 0;">
+                <a href="https://github.com/A6-9V/MQL5-Google-Onedrive" class="btn">View on GitHub</a>
+                <a href="https://github.com/A6-9V/MQL5-Google-Onedrive/releases" class="btn btn-secondary">Download Releases</a>
+            </div>
+            
+            <div class="grid">
+                <div class="card">
+                    <h3>📦 What's Included</h3>
+                    <ul>
+                        <li><strong>Indicator:</strong> SMC_TrendBreakout_MTF.mq5</li>
+                        <li><strong>Expert Advisor:</strong> SMC_TrendBreakout_MTF_EA.mq5</li>
+                        <li><strong>Documentation:</strong> Setup guides and CLI tools</li>
+                        <li><strong>Automation:</strong> CI/CD and OneDrive sync</li>
+                    </ul>
+                </div>
+                
+                <div class="card">
+                    <h3>🛠️ Setup Guides</h3>
+                    <ul>
+                        <li><a href="https://github.com/A6-9V/MQL5-Google-Onedrive/blob/main/docs/GitHub_CLI_setup.md">GitHub CLI Setup</a></li>
+                        <li><a href="https://github.com/A6-9V/MQL5-Google-Onedrive/blob/main/docs/Firebase_CLI_setup.md">Firebase CLI Setup</a></li>
+                        <li><a href="https://github.com/A6-9V/MQL5-Google-Onedrive/blob/main/docs/Docker_CLI_setup.md">Docker CLI Setup</a></li>
+                        <li><a href="https://github.com/A6-9V/MQL5-Google-Onedrive/blob/main/docs/Vercel_CLI_setup.md">Vercel CLI Setup</a></li>
+                    </ul>
+                </div>
+                
+                <div class="card">
+                    <h3>⚙️ Features</h3>
+                    <ul>
+                        <li>BOS/CHoCH detection with fractals</li>
+                        <li>Donchian channel breakout</li>
+                        <li>Multi-timeframe confirmation</li>
+                        <li>Auto SL/TP with multiple modes</li>
+                        <li>Risk management (% of equity)</li>
+                        <li>Push notifications to phone</li>
+                    </ul>
+                </div>
+                
+                <div class="card">
+                    <h3>🤖 Automation</h3>
+                    <ul>
+                        <li><strong>CI:</strong> Auto-build and package</li>
+                        <li><strong>OneDrive Sync:</strong> Auto-sync to cloud</li>
+                        <li><strong>Auto-merge:</strong> Label-driven PR merging</li>
+                        <li><strong>Code Quality:</strong> Automated reviews</li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div style="margin-top: 3rem;">
+                <h2>🚀 Quick Start</h2>
+                <ol style="padding-left: 1.5rem;">
+                    <li>Open <strong>Exness MT5</strong></li>
+                    <li>Go to <strong>File → Open Data Folder</strong></li>
+                    <li>Copy the indicator to <code>MQL5/Indicators/</code></li>
+                    <li>Copy the EA to <code>MQL5/Experts/</code></li>
+                    <li>Compile in <strong>MetaEditor</strong> (F4)</li>
+                    <li>Refresh <strong>Navigator</strong> in MT5</li>
+                </ol>
+            </div>
+            
+            <div style="margin-top: 2rem;">
+                <h2>📞 Contact & Support</h2>
+                <p>
+                    <strong>Email:</strong> Lengkundee01.org@domain.com<br>
+                    <strong>WhatsApp:</strong> <a href="https://chat.whatsapp.com/DYemXrBnMD63K55bjUMKYF">Join Agent Community</a>
+                </p>
+            </div>
+        </div>
+        
+        <footer>
+            <p>© 2026 MQL5 Google OneDrive Project | Deployed with Vercel 💜</p>
+            <p style="margin-top: 0.5rem; opacity: 0.8;">Open Source | MIT License</p>
+        </footer>
+    </div>
+</body>
+</html>
