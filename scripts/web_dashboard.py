@@ -1,8 +1,13 @@
 import os
 import sys
+import logging
 from flask import Flask, render_template_string, jsonify
 import markdown
 import time
+
+# Setup logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 
@@ -145,7 +150,8 @@ def dashboard():
 
         return DASHBOARD_TEMPLATE.render(html_readme=html_readme, html_verification=html_verification, year=2026)
     except Exception as e:
-        return f"Error: {str(e)}", 500
+        logger.error(f"Dashboard error: {str(e)}", exc_info=True)
+        return "Internal Server Error", 500
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 8080))
