@@ -1,0 +1,25 @@
+# Git files
+.git
+.gitignore
+.gitattributes
+
+# GitHub configuration
+.github
+
+# MT5 source files (not needed for docs site)
+mt5
+scripts
+
+# Documentation source (included via links)
+docs/*.md
+
+# Editor configs
+.editorconfig
+.vscode
+.idea
+
+# Temporary files
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
