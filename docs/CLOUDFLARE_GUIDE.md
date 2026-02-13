@@ -84,3 +84,6 @@ To use the 1.1.1.1 WARP client to access private resources:
 1.  Ensure "Zero Trust" is configured in your Cloudflare Dashboard.
 2.  Enroll your device in your Zero Trust organization.
 3.  Connect via the WARP client.
+
+## DNS Configuration
+For a detailed guide on how to configure your DNS records for `lengkundee01.org`, including cleaning up conflicts and pointing to various hosting methods, see [DNS Configuration Recommendation](DNS_CONFIG_RECOMMENDATION.md).
