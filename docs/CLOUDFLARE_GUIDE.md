@@ -1,6 +1,12 @@
 # Cloudflare Management & Tunnel Guide
 
 This guide explains how to manage your Cloudflare settings and set up a secure tunnel for `lengkundee01.org`.
+## Nameservers
+
+If you are using Cloudflare to manage your DNS, ensure your domain nameservers are set to:
+- `daisy.ns.cloudflare.com`
+- `rocco.ns.cloudflare.com`
+
 
 ## Prerequisite: API Token
 

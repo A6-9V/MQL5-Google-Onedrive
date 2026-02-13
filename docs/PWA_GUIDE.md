@@ -56,7 +56,7 @@ A user-friendly offline page that:
 ### For Users
 
 1. **Accessing the Dashboard:**
-   - Visit the site: `https://lengkundee.org` (or your deployed URL)
+   - Visit the site: `https://lengkundee01.org` (or your deployed URL)
    - The service worker will automatically register on first visit
 
 2. **Installing as PWA:**
