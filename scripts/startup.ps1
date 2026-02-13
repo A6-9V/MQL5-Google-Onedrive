@@ -63,13 +63,15 @@ function Find-PythonExecutable {
     
     # Try standard python command first
     try {
-        $null = & python --version 2>&1
-        if ($LASTEXITCODE -eq 0) {
+        $output = & python --version 2>&1
+        if ($LASTEXITCODE -eq 0 -and $output) {
             Write-Log "Found Python in PATH" -Level INFO
             return "python"
         }
     }
-    catch { }
+    catch { 
+        # Command not found or execution failed, continue to next check
+    }
     
     # Check Windows Store Python installations
     $WindowsAppsPaths = @(

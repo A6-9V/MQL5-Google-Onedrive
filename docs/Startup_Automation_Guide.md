@@ -240,10 +240,12 @@ The startup scripts now automatically detect Python from multiple locations:
 If Python is not detected, install it from:
 ```cmd
 # Option 1: Microsoft Store (easiest)
-# Search for "Python" in Microsoft Store and install Python 3.12 or higher
+# Search for "Python" in Microsoft Store and install Python 3.8 or higher
+# Python 3.12 or later is recommended for best compatibility
 
 # Option 2: Official Python installer
 # Download from https://www.python.org/downloads/
+# Minimum version: Python 3.8
 # During installation, check "Add Python to PATH"
 ```
 
