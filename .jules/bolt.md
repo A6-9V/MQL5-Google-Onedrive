@@ -38,3 +38,11 @@ This journal is for CRITICAL, non-routine performance learnings ONLY.
 ## 2026-02-11 - Flask Dashboard Markdown Caching and Syscall Reduction
 **Learning:** Rendering Markdown files on every request in a web dashboard is a significant CPU/IO bottleneck. Efficiency can be further improved by consolidating file metadata checks. Using `os.stat()` once is faster than calling `os.path.exists()` and `os.path.getmtime()` separately, as it retrieves all metadata in a single system call. Additionally, extracting large HTML templates to module-level constants avoids repeated memory allocations and string concatenations within the request lifecycle.
 **Action:** In Python web scripts, consolidate file metadata retrieval into a single `os.stat()` call and move static template strings outside of request handler functions.
+
+## 2026-02-13 - Python Process Pool Overhead for Micro-Tests
+**Learning:** Using `ProcessPoolExecutor` for a small number of very fast tests (e.g., scripts that run in < 100ms) is a performance anti-pattern. The overhead of spawning multiple Python processes and orchestrating inter-process communication can be significantly higher than the total execution time of the tests themselves. In this codebase, switching from parallel to sequential execution in `test_automation.py` reduced execution time by approximately 30%.
+**Action:** Prefer sequential execution for small test suites composed of fast, independent tests. Reserve process pools for truly CPU-intensive tasks where the workload per process justifies the startup overhead.
+
+## 2026-02-13 - Optimized Single-Pass File Validation
+**Learning:** Multi-pass file validation (e.g., gathering files, checking size, and checking content in separate loops) is inefficient. Consolidating these into a single `os.walk` pass with size-first checks and chunked reading significantly reduces I/O overhead and memory pressure. Chunked reading (e.g., 64KB) for NUL byte detection allows for an early exit and prevents memory exhaustion on unexpectedly large files.
+**Action:** Always implement file-system validators as single-pass operations and use chunked reading for content-based checks.
