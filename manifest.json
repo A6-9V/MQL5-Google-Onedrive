@@ -4,8 +4,8 @@
   "description": "GenX FX Trading System - SMC + Trend Breakout (MTF) for Exness MT5",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#667eea",
-  "theme_color": "#667eea",
+  "background_color": "#4f46e5",
+  "theme_color": "#4f46e5",
   "orientation": "any",
   "icons": [
     {
