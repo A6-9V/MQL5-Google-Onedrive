@@ -83,6 +83,8 @@ double   g_maxDailyLossCurrency = 0;   // ⚡ Bolt: Cached daily loss limit in c
 double   g_maxDailyProfitCurrency = 0; // ⚡ Bolt: Cached daily profit limit in currency
 double   g_lossFactor = 0;             // ⚡ Bolt: Cached loss factor
 double   g_profitFactor = 0;           // ⚡ Bolt: Cached profit factor
+int      g_startSeconds = 0;           // ⚡ Bolt: Cached trading start time in seconds
+int      g_endSeconds = 0;             // ⚡ Bolt: Cached trading end time in seconds
 
 //+------------------------------------------------------------------+
 //| Logging Functions                                                |
@@ -110,9 +112,12 @@ void LogDebug(string message)
 //+------------------------------------------------------------------+
 bool IsTradingAllowed(datetime now)
 {
-   //--- ⚡ Bolt: Use static variables for log throttling to avoid flooding the log on every tick.
+   //--- ⚡ Bolt: Use static variables for log throttling and caching to avoid flooding and redundant API calls.
    static datetime lastTerminalError = 0;
    static datetime lastMqlError = 0;
+   static datetime nextCheck = 0;
+   static bool terminalAllowed = false;
+   static bool mqlAllowed = false;
 
    //--- Check if trading is enabled
    if(!Expert_EnableTrading)
@@ -124,30 +129,38 @@ bool IsTradingAllowed(datetime now)
    //--- ⚡ Bolt: Move time filter check (cheap math) before expensive terminal API calls.
    if(Inp_Risk_EnableTimeFilter)
    {
-      //--- ⚡ Bolt: Use fast integer math for hour extraction instead of TimeToStruct.
-      int currentHour = (int)((now / 3600) % 24);
+      //--- ⚡ Bolt: Use pre-calculated second-based bounds for faster comparison.
+      int secondsToday = (int)(now % 86400);
 
       bool outsideHours = false;
-      if(Inp_Risk_StartHour <= Inp_Risk_EndHour)
+      if(g_startSeconds <= g_endSeconds)
       {
-         if(currentHour < Inp_Risk_StartHour || currentHour > Inp_Risk_EndHour)
+         if(secondsToday < g_startSeconds || secondsToday > g_endSeconds)
             outsideHours = true;
       }
       else // Overnight trading
       {
-         if(currentHour < Inp_Risk_StartHour && currentHour > Inp_Risk_EndHour)
+         if(secondsToday < g_startSeconds && secondsToday > g_endSeconds)
             outsideHours = true;
       }
 
       if(outsideHours)
       {
-         if(Inp_Log_Level >= 2) LogDebug("Outside trading hours: " + IntegerToString(currentHour));
+         if(Inp_Log_Level >= 2) LogDebug("Outside trading hours: " + IntegerToString(secondsToday / 3600));
          return false;
       }
    }
 
+   //--- ⚡ Bolt: Implement 1-second caching for environment API calls.
+   if(now >= nextCheck)
+   {
+      terminalAllowed = (bool)TerminalInfoInteger(TERMINAL_TRADE_ALLOWED);
+      mqlAllowed = (bool)MQLInfoInteger(MQL_TRADE_ALLOWED);
+      nextCheck = now + 1;
+   }
+
    //--- Check if AutoTrading is enabled
-   if(!TerminalInfoInteger(TERMINAL_TRADE_ALLOWED))
+   if(!terminalAllowed)
    {
       if(now - lastTerminalError > 3600) // Log once per hour
       {
@@ -157,7 +170,7 @@ bool IsTradingAllowed(datetime now)
       return false;
    }
 
-   if(!MQLInfoInteger(MQL_TRADE_ALLOWED))
+   if(!mqlAllowed)
    {
       if(now - lastMqlError > 3600) // Log once per hour
       {
@@ -397,6 +410,10 @@ int OnInit(void)
    //--- ⚡ Bolt: Pre-calculate daily risk factors for performance
    g_lossFactor = (Inp_Risk_MaxDailyLoss > 0) ? (Inp_Risk_MaxDailyLoss / 100.0) : 0;
    g_profitFactor = (Inp_Risk_MaxDailyProfit > 0) ? (Inp_Risk_MaxDailyProfit / 100.0) : 0;
+
+   //--- ⚡ Bolt: Pre-calculate time filter bounds for performance
+   g_startSeconds = Inp_Risk_StartHour * 3600;
+   g_endSeconds = (Inp_Risk_EndHour + 1) * 3600 - 1;
 
    //--- ⚡ Bolt: Initialize daily statistics and set timer for periodic updates
    UpdateDailyStatistics();
