@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MQL5 Trading Automation Dashboard</title>
     <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#667eea">
+    <meta name="theme-color" content="#4f46e5">
     <meta name="description" content="GenX FX Trading System - SMC + Trend Breakout (MTF) for Exness MT5">
     <link rel="apple-touch-icon" href="/icons/icon-192x192.png">
     <style>
@@ -17,7 +17,7 @@
 
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #4f46e5 0%, #764ba2 100%);
             min-height: 100vh;
             padding: 20px;
         }
@@ -68,7 +68,7 @@
         }
 
         .card h2 {
-            color: #667eea;
+            color: #4f46e5;
             margin-bottom: 15px;
             font-size: 1.5em;
         }
@@ -82,7 +82,7 @@
         .btn {
             display: inline-block;
             padding: 12px 24px;
-            background: #667eea;
+            background: #4f46e5;
             color: white;
             text-decoration: none;
             border-radius: 8px;
@@ -91,11 +91,11 @@
         }
 
         .btn:hover {
-            background: #5568d3;
+            background: #4338ca;
         }
 
         .btn:focus-visible {
-            outline: 2px solid #667eea;
+            outline: 2px solid #4f46e5;
             outline-offset: 2px;
         }
 
@@ -123,7 +123,7 @@
         }
 
         .status-value {
-            color: #667eea;
+            color: #4f46e5;
             font-weight: 700;
         }
 
@@ -156,7 +156,7 @@
             position: absolute;
             top: -40px;
             left: 0;
-            background: #667eea;
+            background: #4f46e5;
             color: white;
             padding: 8px;
             z-index: 100;
@@ -173,11 +173,11 @@
         }
 
         /* Service Worker Toast */
-        .toast { position: fixed; bottom: 20px; right: 20px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); transform: translateY(100px); transition: transform 0.3s; z-index: 1000; border-left: 4px solid #667eea; display: flex; align-items: center; gap: 10px; }
+        .toast { position: fixed; bottom: 20px; right: 20px; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); transform: translateY(100px); transition: transform 0.3s; z-index: 1000; border-left: 4px solid #4f46e5; display: flex; align-items: center; gap: 10px; }
         .toast.show { transform: translateY(0); }
         .toast-btn { border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-weight: 600; }
-        .toast-btn-primary { background: #667eea; color: white; }
-        .toast-btn-primary:hover { background: #5568d3; }
+        .toast-btn-primary { background: #4f46e5; color: white; }
+        .toast-btn-primary:hover { background: #4338ca; }
         .toast-btn-secondary { background: #f3f4f6; color: #333; }
         .toast-btn-secondary:hover { background: #e5e7eb; }
     </style>
@@ -235,7 +235,7 @@
         </div>
 
         <div class="status">
-            <h2 style="color: #667eea; margin-bottom: 20px;">System Status</h2>
+            <h2 style="color: #4f46e5; margin-bottom: 20px;">System Status</h2>
             <div class="status-item">
                 <span class="status-label">Deployment Status</span>
                 <span class="badge badge-success">Active</span>
@@ -262,7 +262,7 @@
     <!-- Service Worker Toast Notification -->
     <div id="update-toast" class="toast" role="alert" aria-live="polite">
         <span>New version available!</span>
-        <button id="update-btn" class="toast-btn toast-btn-primary">Update</button>
+        <button id="update-btn" class="toast-btn toast-btn-primary" aria-label="Update application to latest version">Update</button>
         <button id="dismiss-btn" class="toast-btn toast-btn-secondary" aria-label="Dismiss">✕</button>
     </div>
 
