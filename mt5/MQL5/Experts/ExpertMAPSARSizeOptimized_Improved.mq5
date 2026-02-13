@@ -114,6 +114,18 @@ bool IsTradingAllowed(datetime now)
    static datetime lastTerminalError = 0;
    static datetime lastMqlError = 0;
 
+   //--- ⚡ Bolt: Cache trading allowed states for 1 second to avoid expensive cross-process API calls on every tick.
+   static datetime lastAllowedCheck = 0;
+   static bool cachedTerminalAllowed = false;
+   static bool cachedMqlAllowed = false;
+
+   if(now - lastAllowedCheck >= 1)
+   {
+      cachedTerminalAllowed = (bool)TerminalInfoInteger(TERMINAL_TRADE_ALLOWED);
+      cachedMqlAllowed = (bool)MQLInfoInteger(MQL_TRADE_ALLOWED);
+      lastAllowedCheck = now;
+   }
+
    //--- Check if trading is enabled
    if(!Expert_EnableTrading)
    {
@@ -147,7 +159,7 @@ bool IsTradingAllowed(datetime now)
    }
 
    //--- Check if AutoTrading is enabled
-   if(!TerminalInfoInteger(TERMINAL_TRADE_ALLOWED))
+   if(!cachedTerminalAllowed)
    {
       if(now - lastTerminalError > 3600) // Log once per hour
       {
@@ -157,7 +169,7 @@ bool IsTradingAllowed(datetime now)
       return false;
    }
 
-   if(!MQLInfoInteger(MQL_TRADE_ALLOWED))
+   if(!cachedMqlAllowed)
    {
       if(now - lastMqlError > 3600) // Log once per hour
       {
