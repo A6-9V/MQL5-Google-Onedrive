@@ -11,6 +11,7 @@ Guides for setting up your development and execution environment.
 - [Cursor CLI Setup](Cursor_CLI_setup.md) - Setting up Cursor IDE CLI.
 - [Docker CLI Setup](Docker_CLI_setup.md) - Setting up Docker.
 - [Firebase CLI Setup](Firebase_CLI_setup.md) - Setting up Firebase tools.
+- [Gemini CLI Setup](Gemini_CLI_setup.md) - Installing the Gemini agent tools.
 - [GitHub CLI Setup](GitHub_CLI_setup.md) - Setting up `gh` CLI.
 - [Jules CLI Setup](Jules_CLI_setup.md) - Installing the Jules agent tools.
 - [Mouy-leng Request Guide](Mouy-leng_Request_Guide.md) - Procedures for requests.

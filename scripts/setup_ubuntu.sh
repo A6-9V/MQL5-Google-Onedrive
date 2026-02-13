@@ -118,8 +118,8 @@ setup_python_env() {
     log_success "Python dependencies installed."
 }
 
-install_node_and_jules() {
-    log_info "Checking Node.js and Jules CLI..."
+install_node_and_ai_clis() {
+    log_info "Checking Node.js, Jules and Gemini CLIs..."
 
     # Check/Install Node.js
     if ! command -v node &> /dev/null; then
@@ -138,14 +138,23 @@ install_node_and_jules() {
     else
         log_info "Jules CLI is already installed."
     fi
-}
 
+    # Check/Install Gemini CLI
+    if ! command -v gemini &> /dev/null; then
+        log_info "Installing Gemini CLI..."
+        sudo npm install -g @google/gemini-cli
+        log_success "Gemini CLI installed."
+    else
+        log_info "Gemini CLI is already installed."
+    fi
+}
 make_executable() {
     log_info "Making scripts executable..."
     chmod +x "$SCRIPT_DIR/startup.sh"
     chmod +x "$SCRIPT_DIR/startup_orchestrator.py"
     log_success "Scripts are now executable."
 }
+
 
 main() {
     print_header
@@ -176,7 +185,7 @@ main() {
     fi
 
     setup_python_env
-    install_node_and_jules
+    install_node_and_ai_clis
     make_executable
 
     echo ""
