@@ -13,6 +13,8 @@ import requests
 # Constants
 VAULT_FILE = "config/vault.json"
 BASE_URL = "https://api.cloudflare.com/client/v4"
+# OPTIMIZATION: Set reasonable timeout for API requests
+REQUEST_TIMEOUT = 10  # seconds
 
 def load_config():
     """Load configuration from vault.json or environment variables."""
@@ -51,7 +53,8 @@ def get_security_level(zone_id, api_token):
     """Get the current security level."""
     url = f"{BASE_URL}/zones/{zone_id}/settings/security_level"
     try:
-        response = requests.get(url, headers=get_headers(api_token))
+        # OPTIMIZATION: Add timeout to prevent hanging
+        response = requests.get(url, headers=get_headers(api_token), timeout=REQUEST_TIMEOUT)
         response.raise_for_status()
         data = response.json()
         if data.get("success"):
@@ -74,7 +77,8 @@ def set_security_level(zone_id, api_token, level):
     payload = {"value": level}
 
     try:
-        response = requests.patch(url, headers=get_headers(api_token), json=payload)
+        # OPTIMIZATION: Add timeout to prevent hanging
+        response = requests.patch(url, headers=get_headers(api_token), json=payload, timeout=REQUEST_TIMEOUT)
         response.raise_for_status()
         data = response.json()
         if data.get("success"):

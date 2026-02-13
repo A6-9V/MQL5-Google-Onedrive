@@ -107,8 +107,9 @@ def main():
     ea_path = REPO_ROOT / "mt5/MQL5/Experts/SMC_TrendBreakout_MTF_EA.mq5"
     ea_code = ""
     if ea_path.exists():
+        # OPTIMIZATION: Read only the bytes we need instead of reading entire file then truncating
         with open(ea_path, 'r') as f:
-            ea_code = f.read()[:5000]
+            ea_code = f.read(5000)
 
     prompt = f"""
     Based on the following market research and optional NotebookLM context, suggest 3 specific code upgrades or parameter adjustments for the trading bot.
