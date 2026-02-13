@@ -38,3 +38,11 @@ This journal is for CRITICAL, non-routine performance learnings ONLY.
 ## 2026-02-11 - Flask Dashboard Markdown Caching and Syscall Reduction
 **Learning:** Rendering Markdown files on every request in a web dashboard is a significant CPU/IO bottleneck. Efficiency can be further improved by consolidating file metadata checks. Using `os.stat()` once is faster than calling `os.path.exists()` and `os.path.getmtime()` separately, as it retrieves all metadata in a single system call. Additionally, extracting large HTML templates to module-level constants avoids repeated memory allocations and string concatenations within the request lifecycle.
 **Action:** In Python web scripts, consolidate file metadata retrieval into a single `os.stat()` call and move static template strings outside of request handler functions.
+
+## 2026-02-12 - Trade State Caching and Log Throttling in SMC EA
+**Learning:** Redundant environment API calls (, ) in the  path are a significant bottleneck when an EA is running but trading is disabled. Throttling these calls to once per second using  variables and throttling the associated "AutoTrading disabled" logs to once per day prevents both CPU overhead and log file bloat during high-volatility market conditions.
+**Action:** Always implement a cached  helper with log throttling in EAs, and place it immediately after the "new bar" gatekeeper in  to ensure it only runs when necessary, but protects the EA from overhead when in a restricted state.
+
+## 2026-02-12 - Trade State Caching and Log Throttling in SMC EA
+**Learning:** Redundant environment API calls (`TerminalInfoInteger`, `MQLInfoInteger`) in the `OnTick` path are a significant bottleneck when an EA is running but trading is disabled. Throttling these calls to once per second using `static` variables and throttling the associated "AutoTrading disabled" logs to once per day prevents both CPU overhead and log file bloat during high-volatility market conditions.
+**Action:** Always implement a cached `IsTradingAllowed()` helper with log throttling in EAs, and place it immediately after the "new bar" gatekeeper in `OnTick` to ensure it only runs when necessary, but protects the EA from overhead when in a restricted state.
