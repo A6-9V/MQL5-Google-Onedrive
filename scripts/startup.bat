@@ -33,14 +33,43 @@ echo.
 
 REM Check if Python is installed
 echo [1/5] Checking Python installation... >> "%LOG_FILE%"
+
+REM Try standard python command first
+set "PYTHON_EXE=python"
 python --version >> "%LOG_FILE%" 2>&1
-if errorlevel 1 (
-    echo ERROR: Python is not installed or not in PATH >> "%LOG_FILE%"
-    echo ERROR: Python is not installed or not in PATH
-    echo Please install Python 3.8 or higher from https://www.python.org/
-    pause
-    exit /b 1
+if not errorlevel 1 (
+    echo Python found in PATH >> "%LOG_FILE%"
+    goto :python_found
 )
+
+REM Check Windows Store Python
+set "PYTHON_EXE=%LOCALAPPDATA%\Microsoft\WindowsApps\python.exe"
+if exist "%PYTHON_EXE%" (
+    "%PYTHON_EXE%" --version >> "%LOG_FILE%" 2>&1
+    if not errorlevel 1 (
+        echo Found Windows Store Python >> "%LOG_FILE%"
+        goto :python_found
+    )
+)
+
+REM Check Windows Store Python3
+set "PYTHON_EXE=%LOCALAPPDATA%\Microsoft\WindowsApps\python3.exe"
+if exist "%PYTHON_EXE%" (
+    "%PYTHON_EXE%" --version >> "%LOG_FILE%" 2>&1
+    if not errorlevel 1 (
+        echo Found Windows Store Python3 >> "%LOG_FILE%"
+        goto :python_found
+    )
+)
+
+REM Python not found
+echo ERROR: Python is not installed or not found >> "%LOG_FILE%"
+echo ERROR: Python is not installed or not found
+echo Please install Python 3.8 or higher from https://www.python.org/ or Microsoft Store
+pause
+exit /b 1
+
+:python_found
 echo Python check passed >> "%LOG_FILE%"
 echo [OK] Python installed
 
@@ -59,7 +88,7 @@ REM Run Python startup orchestrator
 echo [3/5] Starting Python orchestrator... >> "%LOG_FILE%"
 echo [3/5] Starting Python orchestrator...
 cd /d "%REPO_ROOT%"
-python "%SCRIPT_DIR%startup_orchestrator.py" >> "%LOG_FILE%" 2>&1
+"%PYTHON_EXE%" "%SCRIPT_DIR%startup_orchestrator.py" >> "%LOG_FILE%" 2>&1
 set "ORCHESTRATOR_EXIT=%errorlevel%"
 
 if %ORCHESTRATOR_EXIT% neq 0 (
@@ -109,7 +138,7 @@ if "%ERRORLEVEL%"=="0" (
 REM Run validation check
 echo [5/5] Running validation checks... >> "%LOG_FILE%"
 echo [5/5] Running validation checks...
-python "%REPO_ROOT%\scripts\ci_validate_repo.py" >> "%LOG_FILE%" 2>&1
+"%PYTHON_EXE%" "%REPO_ROOT%\scripts\ci_validate_repo.py" >> "%LOG_FILE%" 2>&1
 if errorlevel 1 (
     echo WARNING: Validation check failed >> "%LOG_FILE%"
     echo [WARN] Validation check failed, but continuing...
