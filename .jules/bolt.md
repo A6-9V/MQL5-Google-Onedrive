@@ -22,3 +22,7 @@ This journal is for CRITICAL, non-routine performance learnings ONLY.
 ## 2026-02-09 - Git Command Performance
 **Learning:** `git for-each-ref` is a powerful tool for batch data retrieval, but without filtering, it processes *all* refs, including thousands of stale merged branches in older repositories. Calculating `ahead-behind` counts for these stale branches is O(N) where N is total branches, which can be significantly slower than O(M) where M is active branches.
 **Action:** Always filter `git for-each-ref` with `--no-merged` (or `--merged` depending on use case) when only interested in a subset of branches, especially when expensive formatting options like `ahead-behind` are used.
+
+## 2026-02-13 - Git Branch Logic and N+1 Calls
+**Learning:** Optimizing N+1 subprocess calls by batching with `git for-each-ref` is highly effective, but replacing filtering logic (like `git branch --no-merged`) requires careful verification. A simple function rename (`get_unmerged_branch_details`) and explicit safety checks (e.g., `ahead > 0`) clarify intent and prevent regressions where merged branches might slip through due to subtle differences or misunderstandings of command flags.
+**Action:** When replacing a loop of subprocess calls with a single batch command, explicitly verify edge cases (like merged branches appearing as unmerged) and use descriptive function names to reflect the data scope.
