@@ -128,20 +128,23 @@
         }
         
         .badge {
-            display: inline-block;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
             padding: 4px 12px;
             border-radius: 20px;
             font-size: 0.85em;
             font-weight: 600;
+            vertical-align: middle;
         }
         
         .badge-success {
-            background: #10b981;
+            background: #15803d; /* Green 700 for better contrast */
             color: white;
         }
         
         .badge-warning {
-            background: #f59e0b;
+            background: #b45309; /* Amber 700 for better contrast */
             color: white;
         }
         
@@ -238,7 +241,12 @@
             <h2 style="color: #4f46e5; margin-bottom: 20px;">System Status</h2>
             <div class="status-item">
                 <span class="status-label">Deployment Status</span>
-                <span class="badge badge-success">Active</span>
+                <span class="badge badge-success">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    Active
+                </span>
             </div>
             <div class="status-item">
                 <span class="status-label">Fly.io App</span>
