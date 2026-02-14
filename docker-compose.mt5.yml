@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   mql5-ea-container:
     build:

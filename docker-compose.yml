@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # Light version (Python only)
   mql5-automation:
