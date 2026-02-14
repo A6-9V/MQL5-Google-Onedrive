@@ -5,6 +5,13 @@ All notable changes to the MQL5 SMC + Trend Breakout Trading System will be docu
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Firebase Integration**: Firebase Admin SDK v7.1.0
+  - Backend support for Firebase services
+  - Authentication and Firestore capabilities
+
 ## [1.21.0] - 2026-02-04
 
 ### Added
