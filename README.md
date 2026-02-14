@@ -1,6 +1,70 @@
+# MQL5 Trading Automation for Exness MT5
+
+> **Smart Money Concepts + Trend Breakout Multi-Timeframe Trading System**  
+> Automated trading with AI integration, cloud deployment, and comprehensive monitoring.
+
+[![CI](https://github.com/A6-9V/MQL5-Google-Onedrive/actions/workflows/ci.yml/badge.svg)](https://github.com/A6-9V/MQL5-Google-Onedrive/actions/workflows/ci.yml)
+[![CD](https://github.com/A6-9V/MQL5-Google-Onedrive/actions/workflows/cd.yml/badge.svg)](https://github.com/A6-9V/MQL5-Google-Onedrive/actions/workflows/cd.yml)
+[![License](https://img.shields.io/github/license/A6-9V/MQL5-Google-Onedrive)](LICENSE)
+
+---
+
 ## 📓 Knowledge Base
 - **NotebookLM**: [Access here](https://notebooklm.google.com/notebook/e8f4c29d-9aec-4d5f-8f51-2ca168687616)
 - **Note**: This notebook is available for reading and writing. AI agents must read it before starting work.
+
+---
+
+## 📑 Table of Contents
+
+- [🚀 Quick Start](#-quick-start)
+- [SMC + Trend Breakout (MTF) for Exness MT5](#smc--trend-breakout-mtf-for-exness-mt5)
+- [☁️ Cloud Deployment](#️-cloud-deployment)
+- [🤖 Telegram Bot Deployment](#-telegram-bot-deployment)
+- [🚀 Automated Startup](#-automated-startup-new)
+- [📚 Documentation](#-documentation)
+- [📺 Demo Scripts](#-demo-scripts)
+- [GitHub Automation](#github-automation-reviews-ci-auto-merge-onedrive-sync)
+- [Install into Exness MetaTrader 5](#install-into-exness-metatrader-5)
+- [Using the Indicator](#use-the-indicator)
+- [Using the Expert Advisor](#use-the-ea-push-to-terminal--optional-auto-trading)
+- [🤖 AI Integration](#-ai-integration-gemini--jules)
+- [🧠 AI Market Research & Upgrade Automation](#-ai-market-research--upgrade-automation-new)
+- [Risk Management](#auto-sltp--risk-management-ea)
+- [Notes / Safety](#notes--safety)
+- [Project Links](#project-links)
+- [Contact](#contact)
+
+---
+
+---
+
+## 🚀 Quick Start
+
+**New to this project?** Here's how to get started in 3 steps:
+
+1. **Clone the repository**:
+   ```bash
+   git clone https://github.com/A6-9V/MQL5-Google-Onedrive.git
+   cd MQL5-Google-Onedrive
+   ```
+
+2. **Run automated setup** (validates environment and dependencies):
+   ```bash
+   bash setup.sh
+   ```
+
+3. **Install MT5 files** (for trading):
+   - Open MetaTrader 5 → File → Open Data Folder
+   - Copy files from `mt5/MQL5/` to your MT5 data folder
+   - Compile in MetaEditor (F4) and refresh Navigator
+   - See detailed guide: [Exness Deployment Guide](docs/Exness_Deployment_Guide.md)
+
+**For cloud deployment**, **automated startup**, or **Telegram bot** setup, see the respective sections below.
+
+**Need help?** Check the [Documentation Index](docs/INDEX.md) or [Contributing Guide](CONTRIBUTING.md).
+
+---
 
 ## SMC + Trend Breakout (MTF) for Exness MT5
 
@@ -272,9 +336,10 @@ The EA supports **Google Gemini** and **Jules AI** to confirm trades before entr
     *   Select `AiProvider`: `PROVIDER_GEMINI` or `PROVIDER_JULES`.
     *   Paste your API Key into `GeminiApiKey` or `JulesApiKey`.
 
-    **Shared/Default Keys:**
-    *   **Gemini**: `[INSERT_GEMINI_API_KEY]`
-    *   **Jules**: `[INSERT_JULES_API_KEY]`
+    **Note on API Keys:**
+    *   These are **personal API keys** - obtain your own from the respective platforms
+    *   Never share or commit API keys to version control
+    *   Store keys in `.env` file or GitHub Secrets (see [Secrets Management](docs/Secrets_Management.md))
 
 ### 🧠 AI Market Research & Upgrade Automation (New!)
 
@@ -320,18 +385,18 @@ In `SMC_TrendBreakout_MTF_EA`:
 
 ### Project links
 
+**For comprehensive list of related repositories and external resources, see [REPOSITORY_LINKS.md](REPOSITORY_LINKS.md)**
+
+Quick links:
 - [**User Notes & References**](docs/USER_NOTES.md) - 📝 Personal notes and external links
-- **OneDrive Vault Password**: `[ACCESS_CODE_REQUIRED]` (Access Code)
-- **NotebookLM Context**: [NotebookLM](https://notebooklm.google.com/notebook/0e4dfc9b-d57d-4cfc-812d-905d37d67402)
-- **Cursor Connect**: [Join Session](https://prod.liveshare.vsengsaas.visualstudio.com/join?9C5AED55D7D6624FE2E1B50AD9F14D1339A5)
-- Developer tip window project: https://chatgpt.com/g/g-p-691e9c0ace5c8191a1b409c09251cc2b-window-for-developer-tip/project
-- GenX Workspace (VSCode): [OneDrive Folder](https://1drv.ms/f/c/8F247B1B46E82304/IgCPaN4jwMKZTar1XBwn8W9zAYFz0tYoNz7alcAhiiI9oIQ)
-- Samurai All Branch Structure: [OneDrive Folder](https://1drv.ms/f/c/8F247B1B46E82304/IgDpUzdplXkDTpiyCkdNDZpXASUMJEccVuNGxAaY3MxB1sA)
-- Plugin Integration: [ZOLO-A6-9V-NUNA-](https://1drv.ms/f/c/8F247B1B46E82304/IgBYRTEjjPv-SKHi70WnmmU8AZb3Mr5X1o3a0QNU_mKgAZg)
-- GitHub Pages: https://github.com/Mouy-leng/-LengKundee-mql5.github.io.git
-- ZOLO Bridge Endpoint: (set this privately in EA inputs / vault)
+- [**Contributing Guidelines**](CONTRIBUTING.md) - 🤝 How to contribute
+- [**Project Timeline**](TIMELINE.md) - 📅 Project history and milestones
+- **NotebookLM Context**: [Knowledge Base](https://notebooklm.google.com/notebook/e8f4c29d-9aec-4d5f-8f51-2ca168687616)
+- **GitHub Pages**: [Documentation Site](https://github.com/Mouy-leng/-LengKundee-mql5.github.io.git)
 
 ### Contact
 
-- Email: `Lengkundee01.org@domain.com`
-- WhatsApp: [Agent community](https://chat.whatsapp.com/DYemXrBnMD63K55bjUMKYF)
+- **GitHub Issues**: [Report bugs or request features](https://github.com/A6-9V/MQL5-Google-Onedrive/issues)
+- **GitHub Discussions**: [Ask questions and share ideas](https://github.com/A6-9V/MQL5-Google-Onedrive/discussions)
+- **WhatsApp**: [Agent Community](https://chat.whatsapp.com/DYemXrBnMD63K55bjUMKYF)
+- **Email**: Contact via GitHub issues for best response
