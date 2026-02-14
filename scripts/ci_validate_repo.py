@@ -22,10 +22,13 @@ def fail(msg: str) -> None:
 def iter_source_files() -> list[Path]:
     if not MQL5_DIR.exists():
         fail(f"Missing directory: {MQL5_DIR}")
+
+    # ⚡ Bolt: Performance optimization - use specific globs to avoid iterating over
+    # every file in the directory tree (like .git or other non-source files).
     files: list[Path] = []
-    for p in MQL5_DIR.rglob("*"):
-        if p.is_file() and p.suffix.lower() in {".mq5", ".mqh"}:
-            files.append(p)
+    for ext in ("*.mq5", "*.mqh"):
+        files.extend(MQL5_DIR.rglob(ext))
+
     if not files:
         fail(f"No .mq5/.mqh files found under {MQL5_DIR}")
     return sorted(files)
@@ -33,6 +36,7 @@ def iter_source_files() -> list[Path]:
 
 def check_no_nul_bytes(files: list[Path]) -> None:
     for p in files:
+        # Note: check_reasonable_size should be called before this to avoid reading huge files.
         data = p.read_bytes()
         if b"\x00" in data:
             fail(f"NUL byte found in {p.relative_to(REPO_ROOT)}")
@@ -48,8 +52,10 @@ def check_reasonable_size(files: list[Path]) -> None:
 
 def main() -> int:
     files = iter_source_files()
-    check_no_nul_bytes(files)
+
+    # ⚡ Bolt: Reorder checks - verify size BEFORE reading content to prevent memory issues with large files.
     check_reasonable_size(files)
+    check_no_nul_bytes(files)
 
     rel = [str(p.relative_to(REPO_ROOT)) for p in files]
     print("OK: found source files:")
@@ -60,4 +66,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
