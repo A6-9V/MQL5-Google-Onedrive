@@ -1,0 +1,235 @@
+# GitLab Environment Toolkit Configuration
+# This file configures GET for deploying GitLab runners and infrastructure
+
+version: "1.0"
+
+# Project configuration
+project:
+  name: "MQL5 Trading System"
+  description: "Smart Money Concepts + Trend Breakout Multi-Timeframe Trading System"
+  gitlab_url: "https://gitlab.com"
+  
+# GitLab Runner configuration
+runners:
+  # Number of runners to deploy
+  count: 2
+  
+  # Runner type
+  executor: docker
+  
+  # Runner tags
+  tags:
+    - mql5
+    - python
+    - docker
+    - trading
+    
+  # Docker configuration for runner
+  docker:
+    image: "python:3.12-slim"
+    privileged: false
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+      - "/cache"
+    
+  # Resource limits
+  resources:
+    cpus: 2
+    memory: "4GB"
+    disk: "50GB"
+    
+  # Concurrent jobs per runner
+  concurrent: 2
+  
+  # Idle timeout (seconds)
+  idle_timeout: 300
+
+# Environment configuration
+environments:
+  # Development environment
+  development:
+    enabled: true
+    url: "http://localhost:8000"
+    auto_deploy: true
+    
+  # Staging environment  
+  staging:
+    enabled: true
+    url: "https://staging.example.com"
+    auto_deploy: false
+    protected: false
+    
+  # Production environment
+  production:
+    enabled: true
+    url: "https://production.example.com"
+    auto_deploy: false
+    protected: true
+    
+# Deployment targets
+deployment:
+  # Docker Registry
+  registry:
+    enabled: true
+    url: "registry.gitlab.com"
+    
+  # Cloud platforms
+  cloud:
+    # Render.com
+    render:
+      enabled: true
+      app_name: "mql5-trading-system"
+      region: "oregon"
+      plan: "free"
+      
+    # Railway.app
+    railway:
+      enabled: true
+      project_name: "mql5-trading"
+      environment: "production"
+      
+    # Fly.io
+    flyio:
+      enabled: true
+      app_name: "mql5-trading"
+      region: "iad"
+      
+  # VPS/Dedicated servers
+  vps:
+    enabled: false
+    hosts: []
+
+# CI/CD Pipeline configuration
+pipeline:
+  # Auto-cancel redundant pipelines
+  auto_cancel_redundant: true
+  
+  # Retry failed jobs
+  retry:
+    max: 2
+    when:
+      - runner_system_failure
+      - stuck_or_timeout_failure
+      
+  # Timeout for jobs (minutes)
+  timeout: 60
+  
+  # Cache configuration
+  cache:
+    key: "${CI_COMMIT_REF_SLUG}"
+    paths:
+      - ".cache/pip"
+      - "node_modules/"
+      - "dist/"
+      
+  # Artifacts configuration
+  artifacts:
+    expire_in: "30 days"
+    paths:
+      - "dist/"
+      - "logs/"
+
+# Monitoring and notifications
+monitoring:
+  # Enable monitoring
+  enabled: true
+  
+  # Prometheus metrics
+  prometheus:
+    enabled: false
+    
+  # Notifications
+  notifications:
+    # Slack
+    slack:
+      enabled: false
+      webhook_url: "${SLACK_WEBHOOK}"
+      channel: "#ci-cd"
+      
+    # Email
+    email:
+      enabled: false
+      recipients:
+        - "team@example.com"
+        
+    # Telegram
+    telegram:
+      enabled: true
+      bot_token: "${TELEGRAM_BOT_TOKEN}"
+      chat_id: "${TELEGRAM_CHAT_ID}"
+
+# Security settings
+security:
+  # Secret scanning
+  secret_detection:
+    enabled: true
+    
+  # Dependency scanning
+  dependency_scanning:
+    enabled: true
+    
+  # Container scanning
+  container_scanning:
+    enabled: true
+    
+  # SAST (Static Application Security Testing)
+  sast:
+    enabled: false
+    
+  # Branch protection
+  branch_protection:
+    main:
+      required_approvals: 1
+      dismiss_stale_reviews: true
+      require_code_owner_reviews: false
+      
+# Advanced settings
+advanced:
+  # Enable debug mode
+  debug: false
+  
+  # Custom scripts
+  before_script:
+    - echo "Starting CI/CD pipeline"
+    
+  after_script:
+    - echo "Pipeline completed"
+    
+  # Environment variables
+  variables:
+    PIP_CACHE_DIR: ".cache/pip"
+    PYTHONUNBUFFERED: "1"
+    DOCKER_DRIVER: "overlay2"
+    
+# Terraform configuration (if using GET with Terraform)
+terraform:
+  enabled: false
+  backend: "local"
+  
+  # AWS configuration
+  aws:
+    region: "us-east-1"
+    
+  # GCP configuration
+  gcp:
+    project: ""
+    region: "us-central1"
+    
+  # Azure configuration
+  azure:
+    location: "eastus"
+
+# Ansible configuration (if using GET with Ansible)
+ansible:
+  enabled: false
+  inventory: "inventory/hosts.yml"
+  playbooks:
+    - "playbooks/setup-runner.yml"
+    - "playbooks/deploy.yml"
+
+---
+# Notes:
+# 1. Copy this file to .get-config.yml in your repository root
+# 2. Customize values for your environment
+# 3. Use environment variables for sensitive values (${VAR_NAME})
+# 4. See GET documentation: https://gitlab.com/gitlab-org/gitlab-environment-toolkit

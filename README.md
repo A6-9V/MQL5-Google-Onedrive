@@ -185,6 +185,34 @@ This repo includes GitHub Actions workflows under `.github/workflows/`:
 - **Auto-merge enablement (`Enable auto-merge (label-driven)`)**: if a PR has the label **`automerge`**, it will enable GitHub’s auto-merge (squash). Your branch protection rules still control *when* it can merge (required reviews, required CI, etc.).
 - **OneDrive sync (`Sync to OneDrive (rclone)`)**: on pushes to `main` (and manual runs), syncs `mt5/MQL5` to OneDrive via `rclone`.
 
+#### GitLab CI/CD
+
+This repo also includes GitLab CI/CD configuration in `.gitlab-ci.yml`:
+
+- **Multi-stage pipeline**: validate → build → test → package → deploy
+- **Docker image builds**: Automated Docker image creation and registry push
+- **Cloud deployments**: Deploy to Render, Railway, Fly.io
+- **Manual environments**: Staging and production deployment controls
+- **GitLab releases**: Automatic release creation with artifacts
+
+📖 **Setup Guides**:
+- [GitLab CI/CD Setup](docs/GITLAB_CI_CD_SETUP.md) - Complete setup guide with GitLab Environment Toolkit
+- [GitLab Quick Reference](docs/GITLAB_QUICK_REFERENCE.md) - Quick commands and tips
+- [API Environment Secrets](docs/API_ENVIRONMENT_SECRETS.md) - Comprehensive secrets management guide
+
+**Quick Setup**:
+```bash
+# Add GitLab remote
+git remote add gitlab git@gitlab.com:username/mql5-google-onedrive.git
+
+# Setup secrets
+bash scripts/set_gitlab_secrets.sh gitlab_vault
+
+# Push to trigger pipeline
+git push gitlab main
+```
+
+
 Recommended repo settings (GitHub → **Settings**):
 
 - **Branch protection (main)**:
