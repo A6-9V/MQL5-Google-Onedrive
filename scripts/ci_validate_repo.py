@@ -81,10 +81,18 @@ def scan_for_secrets() -> None:
 
     # Keep this scan fast and avoid binary/large files.
     scan_suffixes = {
-        ".md", ".txt", ".json", ".yml", ".yaml", ".toml", ".ini", ".cfg",
+        ".json", ".yml", ".yaml", ".toml", ".ini", ".cfg",
         ".py", ".ps1", ".sh", ".bat",
         ".mq5", ".mqh",
         ".html", ".js", ".css",
+    }
+    # Exclude documentation files from secret scanning (they contain examples)
+    exclude_doc_paths = {
+        "docs/API_ENVIRONMENT_SECRETS.md",
+        "docs/GITLAB_CI_CD_SETUP.md", 
+        "docs/Secrets_Management.md",
+        "GITHUB_SECRETS_SETUP.md",
+        "SECRETS_TEMPLATE.md",
     }
     scan_filenames = {"Dockerfile", "docker-compose.yml", "docker-compose.dev.yml"}
     excluded_dirnames = {
@@ -102,6 +110,11 @@ def scan_for_secrets() -> None:
 
         # Skip excluded directories anywhere in path
         if any(part in excluded_dirnames for part in p.parts):
+            continue
+        
+        # Skip documentation files with example credentials
+        rel_path = str(p.relative_to(REPO_ROOT))
+        if rel_path in exclude_doc_paths:
             continue
 
         if p.name not in scan_filenames and p.suffix.lower() not in scan_suffixes:

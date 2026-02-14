@@ -29,6 +29,7 @@ Continuous Integration and Continuous Deployment setup and configuration.
 
 - [GitHub CI/CD Setup](GITHUB_CI_CD_SETUP.md) - GitHub Actions workflows and configuration.
 - [GitLab CI/CD Setup](GITLAB_CI_CD_SETUP.md) - GitLab CI/CD pipelines and GitLab Environment Toolkit.
+- [GitLab Environment Toolkit](GITLAB_ENVIRONMENT_TOOLKIT.md) - Complete GET installation and deployment guide.
 - [GitLab Quick Reference](GITLAB_QUICK_REFERENCE.md) - Quick commands and references for GitLab CI/CD.
 - [API Environment Secrets](API_ENVIRONMENT_SECRETS.md) - Comprehensive guide to API credentials and secrets management.
 - [CD Workflow Guide](CD_WORKFLOW_GUIDE.md) - Continuous Deployment workflow details.
