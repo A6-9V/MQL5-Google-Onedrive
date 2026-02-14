@@ -1,0 +1,184 @@
+{
+  "folders": [
+    {
+      "name": "🏠 Root",
+      "path": "."
+    },
+    {
+      "name": "📊 MT5 Trading Logic",
+      "path": "./mt5/MQL5"
+    },
+    {
+      "name": "🤖 Automation Scripts",
+      "path": "./scripts"
+    },
+    {
+      "name": "📚 Documentation",
+      "path": "./docs"
+    },
+    {
+      "name": "⚙️ Configuration",
+      "path": "./config"
+    },
+    {
+      "name": "🐳 Docker & DevOps",
+      "path": ".",
+      "settings": {
+        "files.exclude": {
+          "**/*": true,
+          "!Dockerfile*": false,
+          "!docker-compose*.yml": false,
+          "!.dockerignore": false,
+          "!.devcontainer": false,
+          "!.github/workflows": false
+        }
+      }
+    }
+  ],
+  "settings": {
+    "editor.formatOnSave": true,
+    "editor.defaultFormatter": "esbenp.prettier-vscode",
+    "editor.tabSize": 2,
+    "editor.insertSpaces": true,
+    "files.eol": "\n",
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true,
+    "files.exclude": {
+      "**/.git": true,
+      "**/__pycache__": true,
+      "**/*.pyc": true,
+      "**/node_modules": true,
+      "**/dist": true,
+      "**/logs/*.log": true
+    },
+    "python.defaultInterpreterPath": "/usr/local/bin/python",
+    "python.linting.enabled": true,
+    "python.linting.pylintEnabled": true,
+    "python.formatting.provider": "black",
+    "[python]": {
+      "editor.formatOnSave": true,
+      "editor.defaultFormatter": "ms-python.black-formatter"
+    },
+    "[markdown]": {
+      "editor.formatOnSave": true,
+      "editor.wordWrap": "on"
+    },
+    "git.autofetch": true,
+    "git.confirmSync": false
+  },
+  "extensions": {
+    "recommendations": [
+      "ms-python.python",
+      "ms-python.vscode-pylance",
+      "ms-python.black-formatter",
+      "ms-azuretools.vscode-docker",
+      "github.copilot",
+      "eamodio.gitlens",
+      "ms-vscode.powershell",
+      "esbenp.prettier-vscode",
+      "redhat.vscode-yaml",
+      "yzhang.markdown-all-in-one",
+      "davidanson.vscode-markdownlint",
+      "github.vscode-github-actions"
+    ]
+  },
+  "launch": {
+    "version": "0.2.0",
+    "configurations": [
+      {
+        "name": "Python: Current File",
+        "type": "python",
+        "request": "launch",
+        "program": "${file}",
+        "console": "integratedTerminal",
+        "justMyCode": true
+      },
+      {
+        "name": "Python: Startup Orchestrator",
+        "type": "python",
+        "request": "launch",
+        "program": "${workspaceFolder}/scripts/startup_orchestrator.py",
+        "console": "integratedTerminal"
+      },
+      {
+        "name": "Python: CI Validate Repo",
+        "type": "python",
+        "request": "launch",
+        "program": "${workspaceFolder}/scripts/ci_validate_repo.py",
+        "console": "integratedTerminal"
+      },
+      {
+        "name": "Python: Test Automation",
+        "type": "python",
+        "request": "launch",
+        "program": "${workspaceFolder}/scripts/test_automation.py",
+        "console": "integratedTerminal"
+      }
+    ]
+  },
+  "tasks": {
+    "version": "2.0.0",
+    "tasks": [
+      {
+        "label": "Validate Repository",
+        "type": "shell",
+        "command": "python scripts/ci_validate_repo.py",
+        "group": "test",
+        "presentation": {
+          "reveal": "always",
+          "panel": "new"
+        }
+      },
+      {
+        "label": "Test Automation",
+        "type": "shell",
+        "command": "python scripts/test_automation.py",
+        "group": "test",
+        "presentation": {
+          "reveal": "always",
+          "panel": "new"
+        }
+      },
+      {
+        "label": "Package MT5",
+        "type": "shell",
+        "command": "bash scripts/package_mt5.sh",
+        "group": "build",
+        "presentation": {
+          "reveal": "always",
+          "panel": "new"
+        }
+      },
+      {
+        "label": "Docker: Build Dev",
+        "type": "shell",
+        "command": "docker-compose -f docker-compose.dev.yml build",
+        "group": "build",
+        "presentation": {
+          "reveal": "always",
+          "panel": "new"
+        }
+      },
+      {
+        "label": "Docker: Start Dev",
+        "type": "shell",
+        "command": "docker-compose -f docker-compose.dev.yml up -d",
+        "group": "none",
+        "presentation": {
+          "reveal": "always",
+          "panel": "new"
+        }
+      },
+      {
+        "label": "Docker: Stop Dev",
+        "type": "shell",
+        "command": "docker-compose -f docker-compose.dev.yml down",
+        "group": "none",
+        "presentation": {
+          "reveal": "always",
+          "panel": "new"
+        }
+      }
+    ]
+  }
+}
