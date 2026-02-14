@@ -174,18 +174,31 @@ async def status(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
     
     try:
-        result = subprocess.run(
-            ['flyctl', 'status'],
+        # ⚡ Bolt Optimization: Use asyncio to prevent blocking the event loop
+        process = await asyncio.create_subprocess_exec(
+            'flyctl', 'status',
             cwd=REPO_ROOT,
-            capture_output=True,
-            text=True,
-            timeout=30
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
         )
-        
-        if result.returncode == 0:
-            await update.message.reply_text(f"📊 <b>Fly.io Status:</b>\n\n<code>{result.stdout}</code>", parse_mode='HTML')
-        else:
-            await update.message.reply_text(f"❌ Status check failed:\n\n{result.stderr}")
+
+        try:
+            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=30)
+            stdout_text = stdout.decode('utf-8', errors='replace')
+            stderr_text = stderr.decode('utf-8', errors='replace')
+
+            if process.returncode == 0:
+                await update.message.reply_text(f"📊 <b>Fly.io Status:</b>\n\n<code>{stdout_text}</code>", parse_mode='HTML')
+            else:
+                await update.message.reply_text(f"❌ Status check failed:\n\n{stderr_text}")
+        except asyncio.TimeoutError:
+            try:
+                process.kill()
+                await process.wait()
+            except Exception:
+                pass
+            await update.message.reply_text("⏱️ Status check timed out after 30 seconds")
+
     except FileNotFoundError:
         await update.message.reply_text("❌ flyctl not found. Is Fly CLI installed?")
     except Exception as e:
