@@ -105,6 +105,19 @@ void LogDebug(string message)
 //+------------------------------------------------------------------+
 bool IsTradingAllowed()
 {
+   // ⚡ PERF: 1-second caching for environment API calls to reduce cross-process overhead.
+   static bool     s_terminalTradeAllowed = false;
+   static bool     s_mqlTradeAllowed = false;
+   static datetime s_lastCacheTime = 0;
+
+   datetime now = TimeCurrent();
+   if(now != s_lastCacheTime)
+   {
+      s_terminalTradeAllowed = (bool)TerminalInfoInteger(TERMINAL_TRADE_ALLOWED);
+      s_mqlTradeAllowed = (bool)MQLInfoInteger(MQL_TRADE_ALLOWED);
+      s_lastCacheTime = now;
+   }
+
    //--- Check if trading is enabled
    if(!Expert_EnableTrading)
    {
@@ -113,15 +126,26 @@ bool IsTradingAllowed()
    }
 
    //--- Check if AutoTrading is enabled
-   if(!TerminalInfoInteger(TERMINAL_TRADE_ALLOWED))
+   if(!s_terminalTradeAllowed)
    {
-      LogError("AutoTrading is disabled in terminal settings");
+      // ⚡ PERF: Log throttling to prevent spamming on every price tick.
+      static datetime s_lastErrorTime = 0;
+      if(now - s_lastErrorTime > 3600) // Once per hour
+      {
+         LogError("AutoTrading is disabled in terminal settings");
+         s_lastErrorTime = now;
+      }
       return false;
    }
 
-   if(!MQLInfoInteger(MQL_TRADE_ALLOWED))
+   if(!s_mqlTradeAllowed)
    {
-      LogError("AutoTrading is disabled in EA settings");
+      static datetime s_lastErrorTime = 0;
+      if(now - s_lastErrorTime > 3600)
+      {
+         LogError("AutoTrading is disabled in EA settings");
+         s_lastErrorTime = now;
+      }
       return false;
    }
 
@@ -404,12 +428,15 @@ void OnDeinit(const int reason)
 //+------------------------------------------------------------------+
 void OnTick(void)
 {
-   //--- Check if trading is allowed
-   if(!IsTradingAllowed())
+   // ⚡ PERF: Prioritize cheap, internal logic checks before functions
+   // that perform expensive terminal environment API calls.
+
+   //--- Check daily limits (mostly internal math and history access)
+   if(!CheckDailyLimits())
       return;
 
-   //--- Check daily limits
-   if(!CheckDailyLimits())
+   //--- Check if trading is allowed (terminal and EA state API calls)
+   if(!IsTradingAllowed())
       return;
 
    //--- Update daily statistics

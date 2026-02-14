@@ -133,6 +133,7 @@ static double G_TICK_VALUE = 0.0;
 static double G_VOL_MIN = 0.0;
 static double G_VOL_MAX = 0.0;
 static double G_VOL_STEP = 0.0;
+static double G_INV_VOL_STEP = 0.0; // ⚡ PERF: Cached inverse for fast multiplication
 static int    G_DIGITS = 2;
 static int    G_STOPS_LEVEL = 0;
 static double G_MIN_STOP_PRICE = 0.0;
@@ -141,6 +142,52 @@ static double G_MIN_STOP_PRICE = 0.0;
 // The lower-TF EMA direction only needs to be checked once per new bar on that TF.
 static datetime g_mtfDir_lastCheckTime = 0;
 static int      g_mtfDir_cachedValue = 0;
+
+//+------------------------------------------------------------------+
+//| Check Trading Allowed                                            |
+//+------------------------------------------------------------------+
+bool IsTradingAllowed()
+{
+   // ⚡ PERF: 1-second caching for environment API calls to reduce cross-process overhead.
+   static bool     s_terminalTradeAllowed = false;
+   static bool     s_mqlTradeAllowed = false;
+   static datetime s_lastCacheTime = 0;
+
+   datetime now = TimeCurrent();
+   if(now != s_lastCacheTime)
+   {
+      s_terminalTradeAllowed = (bool)TerminalInfoInteger(TERMINAL_TRADE_ALLOWED);
+      s_mqlTradeAllowed = (bool)MQLInfoInteger(MQL_TRADE_ALLOWED);
+      s_lastCacheTime = now;
+   }
+
+   //--- Check if AutoTrading is enabled in terminal settings
+   if(!s_terminalTradeAllowed)
+   {
+      // ⚡ PERF: Log throttling to prevent spamming on every price tick.
+      static datetime s_lastErrorTime = 0;
+      if(now - s_lastErrorTime > 3600) // Once per hour
+      {
+         Print("[ERROR] AutoTrading is disabled in terminal settings");
+         s_lastErrorTime = now;
+      }
+      return false;
+   }
+
+   //--- Check if AutoTrading is enabled for this EA
+   if(!s_mqlTradeAllowed)
+   {
+      static datetime s_lastErrorTime = 0;
+      if(now - s_lastErrorTime > 3600)
+      {
+         Print("[ERROR] AutoTrading is disabled in EA settings");
+         s_lastErrorTime = now;
+      }
+      return false;
+   }
+
+   return true;
+}
 
 static int GetMTFDir()
 {
@@ -217,7 +264,8 @@ static double NormalizeLots(const string sym, double lots)
 {
   // Use cached properties
   lots = MathMax(G_VOL_MIN, MathMin(G_VOL_MAX, lots));
-  lots = MathFloor(lots/G_VOL_STEP) * G_VOL_STEP;
+  // ⚡ PERF: Use cached inverse for multiplication instead of division
+  lots = MathFloor(lots * G_INV_VOL_STEP) * G_VOL_STEP;
   int volumeDecimalPlaces = (int)MathRound(-MathLog10(G_VOL_STEP));
   if(volumeDecimalPlaces < 0) volumeDecimalPlaces = 2;
   if(volumeDecimalPlaces > 8) volumeDecimalPlaces = 8;
@@ -310,6 +358,7 @@ int OnInit()
   G_VOL_MAX = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_MAX);
   G_VOL_STEP = SymbolInfoDouble(_Symbol, SYMBOL_VOLUME_STEP);
   if(G_VOL_STEP <= 0) G_VOL_STEP = 0.01;
+  G_INV_VOL_STEP = 1.0 / G_VOL_STEP;
   G_DIGITS = (int)SymbolInfoInteger(_Symbol, SYMBOL_DIGITS);
 
   int stopsLevel  = (int)SymbolInfoInteger(_Symbol, SYMBOL_TRADE_STOPS_LEVEL);
@@ -346,6 +395,10 @@ void OnTick()
   if(sigTime == 0) return; // Data not ready
   if(sigTime == gLastSignalBarTime) return; // Not a new signal bar, exit early.
 
+  // ⚡ PERF: Check if trading is allowed ONLY after a new bar is detected.
+  // This avoids redundant terminal/EA state API calls on every tick.
+  if(EnableTrading && !IsTradingAllowed()) return;
+
   // Now that we've passed all checks, we can commit to this bar time.
   gLastSignalBarTime = sigTime;
 
@@ -358,9 +411,9 @@ void OnTick()
   // PERF: Lazy Calculation - only search for swings if needed for SMC or SL.
   if(UseSMC || SLMode == SL_SWING)
   {
-    // PERF: Array allocation is deferred to this block to avoid overhead on the lighter path.
+    // PERF: Use static arrays to avoid repeated memory allocation on every signal bar.
     // OPTIMIZATION: Use simple datetime array instead of full MqlRates struct to save memory/bandwidth.
-    datetime times[400];
+    static datetime times[400];
     ArraySetAsSeries(times, true);
 
     // This path requires a deep history for fractal/swing analysis.
@@ -375,7 +428,7 @@ void OnTick()
 
     // Get fractals (for structure break)
     int fractalBarsNeeded = MathMin(300, needBars);
-    double upwardFractals[300], downwardFractals[300];
+    static double upwardFractals[300], downwardFractals[300];
     ArraySetAsSeries(upwardFractals, true);
     ArraySetAsSeries(downwardFractals, true);
     if(CopyBuffer(gFractalsHandle, 0, 0, fractalBarsNeeded, upwardFractals) <= 0) return;
