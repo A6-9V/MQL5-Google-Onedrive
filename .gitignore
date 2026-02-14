@@ -30,7 +30,7 @@ ENV/
 !.env.example
 
 # IDE
-.vscode/
+# Keep .vscode/ settings for workspace consistency
 .idea/
 *.swp
 *.swo
