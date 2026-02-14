@@ -8,3 +8,8 @@
 ## 2026-02-13 - [Documentation] Cloudflare Nameservers and Domain Unification
 - Updated Cloudflare nameservers to daisy.ns.cloudflare.com and rocco.ns.cloudflare.com.
 - Unified domain name to lengkundee01.org across CNAME and PWA documentation.
+
+## 2026-02-14 - Web Dashboard Exception Leakage
+**Vulnerability:** The web dashboard (`scripts/web_dashboard.py`) was catching generic `Exception` and returning `str(e)` directly to the user. This could expose sensitive internal details (stack traces, file paths, database errors) in the HTTP response.
+**Learning:** Returning raw exception messages is a common but dangerous pattern. It prioritizes debugging convenience over security.
+**Prevention:** Always catch exceptions, log the full details (including stack traces) to a secure log file, and return a generic "Internal Server Error" message to the client.
