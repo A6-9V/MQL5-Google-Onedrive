@@ -1,0 +1,251 @@
+# GitLab CI/CD Pipeline for MQL5 Trading System
+# This pipeline validates, builds, and deploys the MQL5 trading indicators and Expert Advisors
+
+# Define pipeline stages
+stages:
+  - validate
+  - build
+  - test
+  - package
+  - deploy
+
+# Default settings for all jobs
+default:
+  # Use official Python image for most jobs
+  image: python:3.12-slim
+  # Cache pip packages across jobs
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}
+    paths:
+      - .cache/pip
+  # Set up before each job
+  before_script:
+    - export PIP_CACHE_DIR=".cache/pip"
+    - apt-get update -qq
+    - apt-get install -y -qq git bash zip
+
+# Variables available to all jobs
+variables:
+  # Disable Git submodule fetching
+  GIT_SUBMODULE_STRATEGY: none
+  # Package output directory
+  DIST_DIR: "dist"
+  # Python packages cache
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+
+# ============================================
+# STAGE: VALIDATE
+# ============================================
+
+# Job: Validate repository structure and MQL5 files
+validate:repository:
+  stage: validate
+  script:
+    - echo "Validating repository structure and MQL5 files..."
+    - python3 --version
+    - python3 scripts/ci_validate_repo.py
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master"'
+    - if: '$CI_COMMIT_TAG'
+
+# Job: Validate shell scripts syntax
+validate:scripts:
+  stage: validate
+  image: bash:latest
+  script:
+    - echo "Validating shell script syntax..."
+    - bash --version
+    - bash -n scripts/package_mt5.sh
+    - bash -n scripts/deploy_mt5.sh
+    - bash -n scripts/startup.sh
+    - echo "All shell scripts validated successfully"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master"'
+    - if: '$CI_COMMIT_TAG'
+
+# Job: Security scan for secrets
+validate:secrets:
+  stage: validate
+  script:
+    - echo "Scanning for accidentally committed secrets..."
+    # The ci_validate_repo.py script already includes secret scanning
+    - python3 scripts/ci_validate_repo.py
+    - echo "No secrets detected"
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master"'
+  allow_failure: false
+
+# ============================================
+# STAGE: BUILD
+# ============================================
+
+# Job: Build documentation
+build:docs:
+  stage: build
+  script:
+    - echo "Building documentation..."
+    - mkdir -p ${DIST_DIR}/docs
+    - cp -r docs/* ${DIST_DIR}/docs/ 2>/dev/null || true
+    - cp README.md ${DIST_DIR}/ 2>/dev/null || true
+    - echo "Documentation built successfully"
+  artifacts:
+    name: "docs-${CI_COMMIT_SHORT_SHA}"
+    paths:
+      - ${DIST_DIR}/docs/
+      - ${DIST_DIR}/README.md
+    expire_in: 1 week
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master"'
+    - if: '$CI_COMMIT_TAG'
+
+# ============================================
+# STAGE: TEST
+# ============================================
+
+# Job: Run automation tests
+test:automation:
+  stage: test
+  script:
+    - echo "Running automation tests..."
+    - pip3 install -r requirements.txt
+    - python3 scripts/test_automation.py
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master"'
+
+# ============================================
+# STAGE: PACKAGE
+# ============================================
+
+# Job: Package MT5 files
+package:mt5:
+  stage: package
+  script:
+    - echo "Packaging MT5 source files..."
+    - bash scripts/package_mt5.sh
+    - echo "Package created successfully"
+    - ls -lh ${DIST_DIR}/
+  artifacts:
+    name: "mt5-package-${CI_COMMIT_SHORT_SHA}"
+    paths:
+      - ${DIST_DIR}/Exness_MT5_MQL5.zip
+    expire_in: 30 days
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master"'
+    - if: '$CI_COMMIT_TAG'
+    - if: '$CI_PIPELINE_SOURCE == "merge_request_event"'
+
+# Job: Create Docker image
+package:docker:
+  stage: package
+  image: docker:24-cli
+  services:
+    - docker:24-dind
+  variables:
+    DOCKER_DRIVER: overlay2
+    DOCKER_TLS_CERTDIR: "/certs"
+  before_script:
+    - docker info
+  script:
+    - echo "Building Docker image..."
+    - docker build -t ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA} -f Dockerfile .
+    - docker tag ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA} ${CI_REGISTRY_IMAGE}:latest
+    - echo "Docker image built successfully"
+    # Login to GitLab Container Registry
+    - echo "${CI_REGISTRY_PASSWORD}" | docker login -u "${CI_REGISTRY_USER}" --password-stdin ${CI_REGISTRY}
+    - docker push ${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHORT_SHA}
+    - docker push ${CI_REGISTRY_IMAGE}:latest
+    - echo "Docker image pushed to registry"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master"'
+    - if: '$CI_COMMIT_TAG'
+  only:
+    variables:
+      - $CI_REGISTRY_IMAGE
+
+# ============================================
+# STAGE: DEPLOY
+# ============================================
+
+# Job: Deploy to staging (manual trigger)
+deploy:staging:
+  stage: deploy
+  environment:
+    name: staging
+    url: https://staging.example.com
+  script:
+    - echo "Deploying to staging environment..."
+    - echo "Installing deployment dependencies..."
+    - pip3 install -r requirements.txt
+    # Add your staging deployment commands here
+    - echo "Deployment to staging completed"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main" || $CI_COMMIT_BRANCH == "master"'
+      when: manual
+  needs:
+    - package:mt5
+    - package:docker
+
+# Job: Deploy to production (manual trigger for tags only)
+deploy:production:
+  stage: deploy
+  environment:
+    name: production
+    url: https://production.example.com
+  script:
+    - echo "Deploying to production environment..."
+    - echo "Installing deployment dependencies..."
+    - pip3 install -r requirements.txt
+    # Add your production deployment commands here
+    - echo "Deployment to production completed"
+  rules:
+    - if: '$CI_COMMIT_TAG'
+      when: manual
+  needs:
+    - package:mt5
+    - package:docker
+
+# Job: Deploy Docker to cloud platforms
+deploy:cloud:
+  stage: deploy
+  script:
+    - echo "Deploying to cloud platforms..."
+    - pip3 install -r requirements.txt
+    # Deploy to Render, Railway, Fly.io
+    - python3 scripts/deploy_cloud.py render || echo "Render deployment skipped"
+    - python3 scripts/deploy_cloud.py railway || echo "Railway deployment skipped"
+    - python3 scripts/deploy_cloud.py flyio || echo "Fly.io deployment skipped"
+    - echo "Cloud deployment completed"
+  rules:
+    - if: '$CI_COMMIT_TAG'
+      when: manual
+    - if: '$CI_COMMIT_BRANCH == "main"'
+      when: manual
+  needs:
+    - package:docker
+  only:
+    variables:
+      - $RENDER_API_KEY
+      - $RAILWAY_TOKEN
+      - $FLY_API_TOKEN
+
+# Job: Create GitLab Release
+release:create:
+  stage: deploy
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  script:
+    - echo "Creating GitLab release for tag ${CI_COMMIT_TAG}"
+  release:
+    tag_name: '${CI_COMMIT_TAG}'
+    description: 'Release ${CI_COMMIT_TAG}'
+    assets:
+      links:
+        - name: 'MT5 Package'
+          url: '${CI_PROJECT_URL}/-/jobs/${CI_JOB_ID}/artifacts/file/${DIST_DIR}/Exness_MT5_MQL5.zip'
+  rules:
+    - if: '$CI_COMMIT_TAG'
+  needs:
+    - package:mt5

@@ -45,4 +45,6 @@ Desktop.ini
 
 # Personal vault - sensitive credentials
 config/vault.json
+config/*vault*.json
+!config/*.json.example
 data/

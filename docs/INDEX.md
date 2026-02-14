@@ -23,6 +23,17 @@ Learn how to use GitHub features to showcase your work and share code.
 - [GitHub Profile README Guide](GitHub_Profile_README_Guide.md) - Create an impressive GitHub profile page.
 - [GitHub Gists Guide](GitHub_Gists_Guide.md) - Share code snippets and notes easily.
 
+## 🔄 CI/CD & DevOps
+
+Continuous Integration and Continuous Deployment setup and configuration.
+
+- [GitHub CI/CD Setup](GITHUB_CI_CD_SETUP.md) - GitHub Actions workflows and configuration.
+- [GitLab CI/CD Setup](GITLAB_CI_CD_SETUP.md) - GitLab CI/CD pipelines and GitLab Environment Toolkit.
+- [GitLab Quick Reference](GITLAB_QUICK_REFERENCE.md) - Quick commands and references for GitLab CI/CD.
+- [API Environment Secrets](API_ENVIRONMENT_SECRETS.md) - Comprehensive guide to API credentials and secrets management.
+- [CD Workflow Guide](CD_WORKFLOW_GUIDE.md) - Continuous Deployment workflow details.
+- [CD Quick Reference](CD_QUICK_REFERENCE.md) - Quick reference for CD commands.
+
 ## ☁️ Deployment
 
 Instructions for deploying the application to various platforms.
