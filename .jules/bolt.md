@@ -38,3 +38,7 @@ This journal is for CRITICAL, non-routine performance learnings ONLY.
 ## 2026-02-11 - Flask Dashboard Markdown Caching and Syscall Reduction
 **Learning:** Rendering Markdown files on every request in a web dashboard is a significant CPU/IO bottleneck. Efficiency can be further improved by consolidating file metadata checks. Using `os.stat()` once is faster than calling `os.path.exists()` and `os.path.getmtime()` separately, as it retrieves all metadata in a single system call. Additionally, extracting large HTML templates to module-level constants avoids repeated memory allocations and string concatenations within the request lifecycle.
 **Action:** In Python web scripts, consolidate file metadata retrieval into a single `os.stat()` call and move static template strings outside of request handler functions.
+
+## 2026-02-12 - Sequential vs. Parallel Script Execution Overhead
+**Learning:** In Python, the overhead of creating a `ProcessPoolExecutor` and managing inter-process communication (pickling, IPC) can far exceed the execution time of short-running tasks. For the integration test suite consisting of five 200ms subprocess calls, parallelization actually increased total execution time by ~30% compared to a simple sequential loop.
+**Action:** Always prefer sequential execution for task suites where the individual task duration is comparable to or smaller than the process creation overhead (typically <500ms on many systems). Measure parallel performance against a sequential baseline for small task sets.
