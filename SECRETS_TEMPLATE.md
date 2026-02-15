@@ -23,7 +23,7 @@ When configuring the EAs in MetaTrader 5, use the Inputs tab. Do not hardcode th
 - **GeminiApiKey**: Your Google Gemini API Key (for `SMC_TrendBreakout_MTF_EA`).
 - **WebRequestURL**: The ZOLO Bridge URL.
   - Default: empty (disabled unless you enable WebRequest explicitly)
-  - Example: `https://your-bridge.example/api/signal`
+  - Example: `https://your-app.onrender.com/api/signal`
   - Ensure this URL uses `https://` to encrypt traffic.
 
 ## Windows Credential Manager
