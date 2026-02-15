@@ -1,9 +1,9 @@
 {
   "description": "Startup configuration for MQL5 Trading Automation",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "components": [
     {
-      "name": "Web Dashboard",
+      "name": "Web Dashboard & Webhook",
       "executable": "python",
       "args": ["scripts/web_dashboard.py"],
       "working_dir": null,
@@ -42,7 +42,8 @@
   "settings": {
     "log_retention_days": 30,
     "max_startup_retries": 3,
-    "startup_delay_seconds": 5
+    "startup_delay_seconds": 5,
+    "webhook_endpoint": "/api/signal"
   },
   "mt5_paths": {
     "windows": [
@@ -58,11 +59,9 @@
   },
   "notifications": {
     "enabled": true,
-    "email": "",
-    "webhook_url": "https://core.telegram.org/bots/api",
+    "webhook_url": "https://your-app.onrender.com/api/signal",
     "telegram": {
       "bot_name": "t.me/your_bot_name",
-      "bot_token": "your_bot_token_here",
       "enabled": true
     }
   }

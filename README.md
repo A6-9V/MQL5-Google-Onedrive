@@ -246,12 +246,12 @@ bash scripts/set_github_secrets.sh vault
   - MT5 → **Tools → Options → Notifications**
   - enable push notifications and set your MetaQuotes ID.
 - For web request integrations (ZOLO-A6-9V-NUNA- plugin):
-  - Set the EA input `WebRequestURL` to your bridge endpoint (example: `https://your-bridge.example/api/signal`)
+  - Set the EA input `WebRequestURL` to your bridge endpoint (example: `https://your-app.onrender.com/api/signal`)
   - Enable the EA input `EnableWebRequest`
   - Add your bridge URL to MT5's allowed URLs list:
     - MT5 → **Tools → Options → Expert Advisors**
     - Check "Allow WebRequest for listed URL"
-    - Add the URL: `https://your-bridge.example`
+    - Add the URL: `https://your-app.onrender.com`
 
 ### 🤖 AI Integration (Gemini & Jules)
 

@@ -211,7 +211,7 @@ python scripts/startup_orchestrator.py --dry-run
 
 Planned features:
 - Email/SMS notifications on startup failure
-- Webhook integration (Slack, Discord, Telegram)
+- Webhook integration (MQL5 Signal Bridge, Telegram Notifications)
 - ✅ Automatic retry on component failure (IMPLEMENTED)
 - Health check API endpoint
 - Web dashboard for monitoring
@@ -241,3 +241,8 @@ When adding new automation features:
 ## License
 
 Same as repository: See [LICENSE](LICENSE)
+
+### New: MQL5 Signal Webhook
+- **Endpoint:** `/api/signal`
+- **Action:** Receives signals from MT5 via WebRequest and forwards them to authorized Telegram users.
+- **Security:** Supports optional API key via `X-Api-Key` header.

@@ -13,7 +13,7 @@ VAULT_PATH = REPO_ROOT / "config" / "vault.json"
 
 # Default values
 DEFAULT_TELEGRAM_BOT_NAME = "t.me/your_bot_name"
-DEFAULT_TELEGRAM_WEBHOOK_URL = "https://core.telegram.org/bots/api"
+DEFAULT_TELEGRAM_WEBHOOK_URL = "https://your-app.onrender.com/api/signal"
 
 
 def load_vault():

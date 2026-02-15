@@ -28,7 +28,7 @@ A more structured way to store credentials, used by specific scripts like `scrip
         "token": "your_bot_token_here",
         "api": "your_bot_token_here",
         "allowed_user_ids": [123456789],
-        "webhook_url": "https://core.telegram.org/bots/api"
+        "webhook_url": "https://your-app.onrender.com/api/signal"
     },
     "github": {
         "pat": "your_github_personal_access_token_here"

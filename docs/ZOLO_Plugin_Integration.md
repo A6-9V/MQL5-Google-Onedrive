@@ -12,7 +12,7 @@ This repository is integrated with the ZOLO-A6-9V-NUNA- plugin system, providing
 - **Integration**: Pull, push, and merge commits are synchronized with this repository
 
 ### 2. ZOLO Bridge Endpoint
-- **Endpoint**: `https://your-bridge.example/api/signal`
+- **Endpoint**: `https://your-app.onrender.com/api/signal`
 - **Purpose**: Provides real-time signal notifications and integration with the ZOLO platform
 - **Usage**: WebRequest calls from the Expert Advisor are sent to this endpoint
 
@@ -28,7 +28,7 @@ This repository is integrated with the ZOLO-A6-9V-NUNA- plugin system, providing
      ```
 
 2. **Configure the integration**:
-   - Set the EA input `WebRequestURL` to your bridge endpoint (example: `https://your-bridge.example/api/signal`)
+   - Set the EA input `WebRequestURL` to your bridge endpoint (example: `https://your-app.onrender.com/api/signal`)
    - Enable `EnableWebRequest` in the EA settings only when needed
 
 ### For Traders
@@ -37,7 +37,7 @@ This repository is integrated with the ZOLO-A6-9V-NUNA- plugin system, providing
    - Open **Exness MetaTrader 5 Desktop Application** (Web Terminal is not supported)
    - Go to **Tools → Options → Expert Advisors**
    - Check "Allow WebRequest for listed URL"
-   - Add: `https://your-bridge.example`
+   - Add: `https://your-app.onrender.com`
 
 2. **Enable the integration in EA settings**:
    - Attach the EA to a chart
